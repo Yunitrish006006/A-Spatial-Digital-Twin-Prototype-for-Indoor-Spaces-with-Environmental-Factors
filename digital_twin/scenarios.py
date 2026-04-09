@@ -1,0 +1,210 @@
+from copy import deepcopy
+from dataclasses import dataclass
+from typing import Dict, List
+
+from .entities import (
+    Action,
+    ActionEffect,
+    ComfortTarget,
+    Device,
+    Environment,
+    GridResolution,
+    Room,
+    Sensor,
+    Vector3,
+    Zone,
+    create_corner_sensors,
+)
+from .recommendations import apply_action
+
+
+@dataclass(frozen=True)
+class Scenario:
+    name: str
+    description: str
+    room: Room
+    environment: Environment
+    devices: List[Device]
+    sensors: List[Sensor]
+    zones: List[Zone]
+    resolution: GridResolution
+    elapsed_minutes: float
+    truth_adjustments: List[ActionEffect]
+    comfort_target: ComfortTarget
+    candidate_actions: List[Action]
+    target_zone_name: str
+
+
+def build_standard_room() -> Room:
+    return Room(
+        name="standard_room",
+        width=6.0,
+        length=4.0,
+        height=3.0,
+        base_temperature=29.0,
+        base_humidity=67.0,
+        base_illuminance=90.0,
+    )
+
+
+def build_standard_zones(room: Room) -> List[Zone]:
+    return [
+        Zone(
+            name="window_zone",
+            min_corner=Vector3(0.0, 0.8, 0.0),
+            max_corner=Vector3(1.8, 3.2, 2.2),
+        ),
+        Zone(
+            name="center_zone",
+            min_corner=Vector3(2.0, 1.0, 0.0),
+            max_corner=Vector3(4.2, 3.0, 2.2),
+        ),
+        Zone(
+            name="door_side_zone",
+            min_corner=Vector3(4.4, 0.4, 0.0),
+            max_corner=Vector3(6.0, 3.6, 2.2),
+        ),
+    ]
+
+
+def build_standard_devices() -> List[Device]:
+    return [
+        Device(
+            name="ac_main",
+            kind="ac",
+            position=Vector3(5.4, 2.0, 2.75),
+            orientation=Vector3(-1.0, 0.0, -0.25),
+            influence_radius=3.2,
+            power=1.0,
+            activation=0.0,
+            response_time_minutes=12.0,
+            metadata={"cooling_delta": 8.5, "drying_delta": 5.0, "direction_floor": 0.25},
+        ),
+        Device(
+            name="window_main",
+            kind="window",
+            position=Vector3(0.0, 2.0, 1.4),
+            orientation=Vector3(1.0, 0.0, 0.0),
+            influence_radius=2.6,
+            power=1.0,
+            activation=0.0,
+            response_time_minutes=2.0,
+            metadata={"thermal_exchange": 0.35, "humidity_exchange": 0.26, "solar_gain": 0.02, "direction_floor": 0.2},
+        ),
+        Device(
+            name="light_main",
+            kind="light",
+            position=Vector3(3.0, 2.0, 2.85),
+            orientation=Vector3(0.0, 0.0, -1.0),
+            influence_radius=2.4,
+            power=1.0,
+            activation=0.0,
+            response_time_minutes=0.5,
+            metadata={"illuminance_gain": 1050.0, "heat_gain": 0.8, "direction_floor": 0.4},
+        ),
+    ]
+
+
+def build_standard_environment() -> Environment:
+    return Environment(
+        outdoor_temperature=33.0,
+        outdoor_humidity=74.0,
+        sunlight_illuminance=32000.0,
+        daylight_factor=0.95,
+    )
+
+
+def build_comfort_target() -> ComfortTarget:
+    return ComfortTarget(
+        temperature=25.0,
+        temperature_tolerance=1.0,
+        humidity=58.0,
+        humidity_tolerance=6.0,
+        illuminance=500.0,
+        illuminance_tolerance=120.0,
+    )
+
+
+def build_candidate_actions() -> List[Action]:
+    return [
+        Action(
+            name="turn_on_ac",
+            description="開啟冷氣至 85% 出力",
+            effects=[ActionEffect(device_name="ac_main", activation=0.85)],
+        ),
+        Action(
+            name="open_window",
+            description="開窗至 70% 等效開啟程度",
+            effects=[ActionEffect(device_name="window_main", activation=0.7)],
+        ),
+        Action(
+            name="turn_on_light",
+            description="開啟主要照明至 80% 亮度",
+            effects=[ActionEffect(device_name="light_main", activation=0.8)],
+        ),
+        Action(
+            name="ac_and_light",
+            description="同時開啟冷氣與照明",
+            effects=[
+                ActionEffect(device_name="ac_main", activation=0.8),
+                ActionEffect(device_name="light_main", activation=0.7),
+            ],
+        ),
+    ]
+
+
+def build_validation_scenarios() -> List[Scenario]:
+    room = build_standard_room()
+    sensors = create_corner_sensors(room)
+    zones = build_standard_zones(room)
+    environment = build_standard_environment()
+    comfort_target = build_comfort_target()
+    resolution = GridResolution(nx=10, ny=8, nz=4)
+    actions = build_candidate_actions()
+
+    scenario_definitions = [
+        ("idle", "無設備作用", {"ac_main": 0.0, "window_main": 0.0, "light_main": 0.0}),
+        ("ac_only", "僅冷氣作用", {"ac_main": 0.8, "window_main": 0.0, "light_main": 0.0}),
+        ("window_only", "僅開窗作用", {"ac_main": 0.0, "window_main": 0.7, "light_main": 0.0}),
+        ("light_only", "僅照明作用", {"ac_main": 0.0, "window_main": 0.0, "light_main": 0.8}),
+        ("ac_window", "冷氣與窗戶同時作用", {"ac_main": 0.75, "window_main": 0.45, "light_main": 0.0}),
+        ("window_light", "窗戶與照明同時作用", {"ac_main": 0.0, "window_main": 0.55, "light_main": 0.75}),
+        ("ac_light", "冷氣與照明同時作用", {"ac_main": 0.75, "window_main": 0.0, "light_main": 0.75}),
+        ("all_active", "冷氣、窗戶與照明同時作用", {"ac_main": 0.75, "window_main": 0.4, "light_main": 0.7}),
+    ]
+
+    truth_adjustments = [
+        ActionEffect(device_name="ac_main", power_scale=1.08),
+        ActionEffect(device_name="window_main", power_scale=0.92),
+        ActionEffect(device_name="light_main", power_scale=1.05),
+    ]
+
+    scenarios: List[Scenario] = []
+    for name, description, activation_map in scenario_definitions:
+        devices = build_standard_devices()
+        for device in devices:
+            if device.name in activation_map:
+                device.activation = activation_map[device.name]
+        scenarios.append(
+            Scenario(
+                name=name,
+                description=description,
+                room=room,
+                environment=environment,
+                devices=devices,
+                sensors=sensors,
+                zones=zones,
+                resolution=resolution,
+                elapsed_minutes=18.0,
+                truth_adjustments=truth_adjustments,
+                comfort_target=comfort_target,
+                candidate_actions=actions,
+                target_zone_name="center_zone",
+            )
+        )
+    return scenarios
+
+
+def apply_truth_adjustments(devices: List[Device], adjustments: List[ActionEffect]) -> List[Device]:
+    action = Action(name="truth", description="truth adjustments", effects=adjustments)
+    return apply_action(devices, action)
