@@ -1,12 +1,12 @@
-# A Lightweight Spatial Digital Twin Prototype for Single-Room Temperature, Humidity, and Illuminance Estimation Using Corner Sensor Calibration
+# An MCP-Enabled Lightweight Spatial Digital Twin Prototype for Learning the Environmental Impact of Non-Networked Appliances in a Single Room
 
-中文暫定題目：基於角落感測器校正之單房間溫度、濕度與照度輕量化空間數位孿生原型
+中文暫定題目：基於 MCP 之單房間非連網家電環境影響學習與三因子控制數位孿生原型
 
 建議 GitHub repository 名稱：
 
-`single-room-spatial-digital-twin`
+`mcp-single-room-spatial-digital-twin`
 
-這個專案實作了一個可直接執行的 Python 研究原型，用來模擬單一房間中的三個環境參數：
+這個專案實作了一個可直接執行的 Python 研究原型，用來學習非連網家電或環境裝置對單一房間三個環境參數造成的影響：
 
 - 溫度 `T(x, y, z, t)`
 - 濕度 `H(x, y, z, t)`
@@ -18,7 +18,7 @@
 - Humidity
 - Illuminance
 
-模型採用「連續影響場 + 離散採樣網格」的混合方式，並固定使用 8 顆角落感測器進行觀測與校正。
+模型採用「連續影響場 + 離散採樣網格」的混合方式，並固定使用 8 顆角落感測器進行觀測與校正。研究重點是：即使冷氣、窗戶、照明等裝置本身沒有連網、沒有 API、也無法直接回報狀態，系統仍可透過環境感測資料學習其影響，並用於更準確地控制溫度、濕度與照度。系統同時提供 MCP server，讓支援 MCP 的 AI client 可以呼叫模型工具。
 
 ## 內容
 
@@ -30,6 +30,8 @@
   基本單元測試與行為驗證。
 - `docs/thesis_guide_zh.md`
   將此原型對應到碩士論文撰寫的章節與方法說明。
+- `docs/problem_statement_zh.md`
+  說明本研究要解決的非連網家電環境影響學習問題。
 
 ## 快速開始
 

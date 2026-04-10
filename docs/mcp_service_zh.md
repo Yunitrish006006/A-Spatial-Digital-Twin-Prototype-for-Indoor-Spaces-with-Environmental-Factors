@@ -1,6 +1,6 @@
-# MCP 服務設計與使用方式
+# MCP-Enabled 數位孿生服務設計與使用方式
 
-本專案已加入一個本地 stdio MCP server，可讓支援 MCP 的 client 直接呼叫單房間數位孿生模型。
+本專案已加入一個本地 stdio MCP server，可讓支援 MCP 的 client 直接呼叫單房間數位孿生模型。若將 MCP 納入論文主題，建議定位為「AI-agent-accessible interface」，也就是讓模型可被 AI client 以標準工具介面使用，而不是把整篇論文改成通訊協定研究。
 
 ## 為什麼適合做成 MCP
 
@@ -104,7 +104,7 @@ printf '%s\n' \
 ```json
 {
   "mcpServers": {
-    "single-room-spatial-digital-twin": {
+    "mcp-single-room-spatial-digital-twin": {
       "command": "python3",
       "args": [
         "/Volumes/DataExtended/school/scripts/run_mcp_server.py"

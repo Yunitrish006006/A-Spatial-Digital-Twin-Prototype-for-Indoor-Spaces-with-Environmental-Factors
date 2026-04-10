@@ -4,7 +4,7 @@
 
 ## 查核題目
 
-**A Lightweight Spatial Digital Twin Prototype for Single-Room Temperature, Humidity, and Illuminance Estimation Using Corner Sensor Calibration**
+**An MCP-Enabled Lightweight Spatial Digital Twin Prototype for Single-Room Temperature, Humidity, and Illuminance Estimation Using Corner Sensor Calibration**
 
 ## 初步結論
 
@@ -24,6 +24,7 @@
 3. 固定使用 8 顆角落感測器進行場校正。
 4. 以設備影響函數推估冷氣、窗戶與照明對區域參數的影響。
 5. 以可解釋的舒適度改善分數輸出候選設備動作排序。
+6. 將模型能力封裝為 MCP tools，支援 AI client 或 agent 以工具方式存取。
 
 ## 查核方式
 
@@ -57,7 +58,7 @@ Crossref 查詢中未出現完全同名題目。最接近的題名包含 tempera
 
 採用英文題目：
 
-**A Lightweight Spatial Digital Twin Prototype for Single-Room Temperature, Humidity, and Illuminance Estimation Using Corner Sensor Calibration**
+**An MCP-Enabled Lightweight Spatial Digital Twin Prototype for Single-Room Temperature, Humidity, and Illuminance Estimation Using Corner Sensor Calibration**
 
 此題目比原本更清楚地表達：
 
@@ -66,10 +67,15 @@ Crossref 查詢中未出現完全同名題目。最接近的題名包含 tempera
 - temperature, humidity, illuminance
 - estimation
 - corner sensor calibration
+- MCP-enabled tool interface
 
 若要保留設備影響與決策推薦，也可以使用更完整版本：
 
 **A Lightweight Spatial Digital Twin Prototype for Single-Room Environmental Field Estimation and Appliance Impact Ranking**
+
+若要把 MCP 放進題目但保持簡短，也可以使用：
+
+**An MCP-Enabled Spatial Digital Twin Prototype for Single-Room Environmental Field Estimation**
 
 ## 建議摘要差異化寫法
 
@@ -78,7 +84,8 @@ Crossref 查詢中未出現完全同名題目。最接近的題名包含 tempera
 ```text
 Unlike BIM-centered or reinforcement-learning-based building digital twin systems,
 this study focuses on a lightweight single-room spatial field estimation method
-using only eight corner-mounted sensor nodes.
+using only eight corner-mounted sensor nodes and exposes the model as MCP tools
+for AI-agent access.
 ```
 
 中文意思是：
@@ -100,6 +107,7 @@ using only eight corner-mounted sensor nodes.
 - 使用固定 8 角落感測器進行三因子空間場校正。
 - 建立冷氣、窗戶與照明的簡化影響函數。
 - 輸出可解釋的候選設備動作排序。
+- 以 MCP tools 封裝模型能力，讓 AI client 能查詢與操作數位孿生原型。
 
 ## 參考來源
 
