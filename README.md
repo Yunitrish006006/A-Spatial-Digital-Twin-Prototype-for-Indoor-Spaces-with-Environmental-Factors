@@ -1,10 +1,22 @@
-# 單房間三因子空間數位孿生原型
+# A Lightweight Spatial Digital Twin Prototype for Single-Room Temperature, Humidity, and Illuminance Estimation Using Corner Sensor Calibration
+
+中文暫定題目：基於角落感測器校正之單房間溫度、濕度與照度輕量化空間數位孿生原型
+
+建議 GitHub repository 名稱：
+
+`single-room-spatial-digital-twin`
 
 這個專案實作了一個可直接執行的 Python 研究原型，用來模擬單一房間中的三個環境參數：
 
 - 溫度 `T(x, y, z, t)`
 - 濕度 `H(x, y, z, t)`
 - 亮度 `L(x, y, z, t)`
+
+英文題目中的三個環境因素明確定義為：
+
+- Temperature
+- Humidity
+- Illuminance
 
 模型採用「連續影響場 + 離散採樣網格」的混合方式，並固定使用 8 顆角落感測器進行觀測與校正。
 
