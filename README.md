@@ -32,6 +32,8 @@
   將此原型對應到碩士論文撰寫的章節與方法說明。
 - `docs/problem_statement_zh.md`
   說明本研究要解決的非連網家電環境影響學習問題。
+- `docs/graduation_requirements_checklist_zh.md`
+  整理資工系碩士畢業條件、學位考試流程與口試文件 checklist。
 
 ## 快速開始
 
