@@ -146,6 +146,43 @@ class DigitalTwinTests(unittest.TestCase):
         self.assertLess(mae_after["humidity"], mae_before["humidity"])
         self.assertLess(mae_after["illuminance"], mae_before["illuminance"])
 
+    def test_trilinear_sensor_calibration_uses_corner_residuals(self) -> None:
+        truth_devices = apply_truth_adjustments(
+            self.devices,
+            [
+                build_candidate_actions()[0].effects[0],
+                build_candidate_actions()[2].effects[0],
+            ],
+        )
+        truth_result = self.model.simulate(
+            room=self.room,
+            environment=self.environment,
+            devices=truth_devices,
+            sensors=self.sensors,
+            zones=self.zones,
+            elapsed_minutes=self.elapsed_minutes,
+            resolution=self.resolution,
+        )
+        observed = synthesize_sensor_observations(truth_result.sensor_predictions, self.sensors)
+        after = self.model.simulate(
+            room=self.room,
+            environment=self.environment,
+            devices=self.devices,
+            sensors=self.sensors,
+            zones=self.zones,
+            elapsed_minutes=self.elapsed_minutes,
+            resolution=self.resolution,
+            observed_sensors=observed,
+        )
+        mae_after = compare_sensors(after.sensor_predictions, observed)
+        self.assertLess(mae_after["temperature"], 1e-5)
+        self.assertLess(mae_after["humidity"], 1e-5)
+        self.assertLess(mae_after["illuminance"], 1e-5)
+        correction = after.corrections["temperature"]
+        self.assertTrue(
+            any(abs(value) > 1e-9 for value in [correction.xy, correction.xz, correction.yz, correction.xyz])
+        )
+
     def test_idw_baseline_builds_field(self) -> None:
         observed = self.model.predict_sensors(
             room=self.room,

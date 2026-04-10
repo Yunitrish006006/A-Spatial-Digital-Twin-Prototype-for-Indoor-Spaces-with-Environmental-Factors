@@ -1,4 +1,5 @@
 import math
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -10,14 +11,33 @@ METRICS = ("temperature", "humidity", "illuminance")
 
 
 @dataclass(frozen=True)
-class AffineCorrection:
+class TrilinearCorrection:
     bias: float = 0.0
     x: float = 0.0
     y: float = 0.0
     z: float = 0.0
+    xy: float = 0.0
+    xz: float = 0.0
+    yz: float = 0.0
+    xyz: float = 0.0
+    room_width: float = 1.0
+    room_length: float = 1.0
+    room_height: float = 1.0
 
     def evaluate(self, point: Vector3) -> float:
-        return self.bias + self.x * point.x + self.y * point.y + self.z * point.z
+        nx = clamp(point.x / max(self.room_width, 1e-9), 0.0, 1.0)
+        ny = clamp(point.y / max(self.room_length, 1e-9), 0.0, 1.0)
+        nz = clamp(point.z / max(self.room_height, 1e-9), 0.0, 1.0)
+        return (
+            self.bias
+            + self.x * nx
+            + self.y * ny
+            + self.z * nz
+            + self.xy * nx * ny
+            + self.xz * nx * nz
+            + self.yz * ny * nz
+            + self.xyz * nx * ny * nz
+        )
 
 
 @dataclass
@@ -52,7 +72,8 @@ class SimulationResult:
     field: FieldGrid
     sensor_predictions: Dict[str, Dict[str, float]]
     zone_averages: Dict[str, Dict[str, float]]
-    corrections: Dict[str, AffineCorrection]
+    corrections: Dict[str, TrilinearCorrection]
+    calibrated_devices: List[Device] = field(default_factory=list)
 
 
 class DigitalTwinModel:
@@ -66,13 +87,23 @@ class DigitalTwinModel:
         elapsed_minutes: float,
         resolution: GridResolution,
         observed_sensors: Optional[Dict[str, Dict[str, float]]] = None,
-        corrections: Optional[Dict[str, AffineCorrection]] = None,
+        corrections: Optional[Dict[str, TrilinearCorrection]] = None,
     ) -> SimulationResult:
+        calibrated_devices = devices
+        if observed_sensors and corrections is None:
+            calibrated_devices = self.calibrate_active_device_powers(
+                room=room,
+                environment=environment,
+                devices=devices,
+                sensors=sensors,
+                observed_sensors=observed_sensors,
+                elapsed_minutes=elapsed_minutes,
+            )
         if corrections is None:
             corrections = self.fit_corrections(
                 room=room,
                 environment=environment,
-                devices=devices,
+                devices=calibrated_devices,
                 sensors=sensors,
                 observed_sensors=observed_sensors,
                 elapsed_minutes=elapsed_minutes,
@@ -81,7 +112,7 @@ class DigitalTwinModel:
         field = self.build_field(
             room=room,
             environment=environment,
-            devices=devices,
+            devices=calibrated_devices,
             elapsed_minutes=elapsed_minutes,
             resolution=resolution,
             corrections=corrections,
@@ -89,7 +120,7 @@ class DigitalTwinModel:
         sensor_predictions = self.predict_sensors(
             room=room,
             environment=environment,
-            devices=devices,
+            devices=calibrated_devices,
             sensors=sensors,
             elapsed_minutes=elapsed_minutes,
             corrections=corrections,
@@ -100,7 +131,76 @@ class DigitalTwinModel:
             sensor_predictions=sensor_predictions,
             zone_averages=zone_averages,
             corrections=corrections,
+            calibrated_devices=calibrated_devices,
         )
+
+    def calibrate_active_device_powers(
+        self,
+        room: Room,
+        environment: Environment,
+        devices: List[Device],
+        sensors: List[Sensor],
+        observed_sensors: Dict[str, Dict[str, float]],
+        elapsed_minutes: float,
+    ) -> List[Device]:
+        active_devices = [device for device in devices if device.activation > 0.0 and device.power > 0.0]
+        if not active_devices:
+            return devices
+
+        default_corrections = {metric: TrilinearCorrection() for metric in METRICS}
+        predicted = self.predict_sensors(
+            room=room,
+            environment=environment,
+            devices=devices,
+            sensors=sensors,
+            elapsed_minutes=elapsed_minutes,
+            corrections=default_corrections,
+        )
+        rows: List[List[float]] = []
+        targets: List[float] = []
+        for sensor in sensors:
+            if sensor.name not in observed_sensors:
+                continue
+            for metric in METRICS:
+                row = [
+                    self._device_delta(
+                        point=sensor.position,
+                        room=room,
+                        environment=environment,
+                        device=device,
+                        elapsed_minutes=elapsed_minutes,
+                    )[metric]
+                    for device in active_devices
+                ]
+                if max((abs(value) for value in row), default=0.0) <= 1e-9:
+                    continue
+                rows.append(row)
+                targets.append(observed_sensors[sensor.name][metric] - predicted[sensor.name][metric])
+
+        if not rows:
+            return devices
+
+        count = len(active_devices)
+        matrix = [[0.0 for _ in range(count)] for _ in range(count)]
+        vector = [0.0 for _ in range(count)]
+        for row, target in zip(rows, targets):
+            for i in range(count):
+                vector[i] += row[i] * target
+                for j in range(count):
+                    matrix[i][j] += row[i] * row[j]
+
+        for index in range(count):
+            matrix[index][index] += 1e-6
+
+        delta_scales = solve_linear_system(matrix, vector)
+        calibrated = deepcopy(devices)
+        calibrated_by_name = {device.name: device for device in calibrated}
+        for device, delta_scale in zip(active_devices, delta_scales):
+            calibrated_device = calibrated_by_name[device.name]
+            scale = clamp(1.0 + 0.65 * delta_scale, 0.25, 1.75)
+            calibrated_device.power *= scale
+            calibrated_device.metadata["calibrated_power_scale"] = scale
+        return calibrated
 
     def fit_corrections(
         self,
@@ -110,8 +210,8 @@ class DigitalTwinModel:
         sensors: List[Sensor],
         observed_sensors: Optional[Dict[str, Dict[str, float]]],
         elapsed_minutes: float,
-    ) -> Dict[str, AffineCorrection]:
-        default_corrections = {metric: AffineCorrection() for metric in METRICS}
+    ) -> Dict[str, TrilinearCorrection]:
+        default_corrections = {metric: TrilinearCorrection() for metric in METRICS}
         if not observed_sensors:
             return default_corrections
 
@@ -123,7 +223,7 @@ class DigitalTwinModel:
             elapsed_minutes=elapsed_minutes,
             corrections=default_corrections,
         )
-        corrections: Dict[str, AffineCorrection] = {}
+        corrections: Dict[str, TrilinearCorrection] = {}
         for metric in METRICS:
             residuals: List[float] = []
             positions: List[Vector3] = []
@@ -132,7 +232,7 @@ class DigitalTwinModel:
                     continue
                 residuals.append(observed_sensors[sensor.name][metric] - predicted[sensor.name][metric])
                 positions.append(sensor.position)
-            corrections[metric] = self._fit_affine_surface(positions, residuals)
+            corrections[metric] = self._fit_trilinear_correction(room, positions, residuals)
         return corrections
 
     def build_field(
@@ -142,9 +242,9 @@ class DigitalTwinModel:
         devices: List[Device],
         elapsed_minutes: float,
         resolution: GridResolution,
-        corrections: Optional[Dict[str, AffineCorrection]] = None,
+        corrections: Optional[Dict[str, TrilinearCorrection]] = None,
     ) -> FieldGrid:
-        corrections = corrections or {metric: AffineCorrection() for metric in METRICS}
+        corrections = corrections or {metric: TrilinearCorrection() for metric in METRICS}
         x_coords = spaced_values(room.width, resolution.nx)
         y_coords = spaced_values(room.length, resolution.ny)
         z_coords = spaced_values(room.height, resolution.nz)
@@ -180,7 +280,7 @@ class DigitalTwinModel:
         devices: List[Device],
         sensors: List[Sensor],
         elapsed_minutes: float,
-        corrections: Optional[Dict[str, AffineCorrection]] = None,
+        corrections: Optional[Dict[str, TrilinearCorrection]] = None,
     ) -> Dict[str, Dict[str, float]]:
         predictions: Dict[str, Dict[str, float]] = {}
         for sensor in sensors:
@@ -201,9 +301,9 @@ class DigitalTwinModel:
         environment: Environment,
         devices: List[Device],
         elapsed_minutes: float,
-        corrections: Optional[Dict[str, AffineCorrection]] = None,
+        corrections: Optional[Dict[str, TrilinearCorrection]] = None,
     ) -> Dict[str, float]:
-        corrections = corrections or {metric: AffineCorrection() for metric in METRICS}
+        corrections = corrections or {metric: TrilinearCorrection() for metric in METRICS}
         values = self._background_field(point, room)
         for device in devices:
             delta = self._device_delta(
@@ -341,26 +441,47 @@ class DigitalTwinModel:
         time_constant = max(device.response_time_minutes, 0.1)
         return device.activation * (1.0 - math.exp(-elapsed_minutes / time_constant))
 
-    def _fit_affine_surface(self, positions: List[Vector3], residuals: List[float]) -> AffineCorrection:
+    def _fit_trilinear_correction(
+        self,
+        room: Room,
+        positions: List[Vector3],
+        residuals: List[float],
+    ) -> TrilinearCorrection:
         if len(positions) < 4 or len(residuals) < 4:
-            return AffineCorrection()
+            return TrilinearCorrection()
 
-        matrix = [[0.0 for _ in range(4)] for _ in range(4)]
-        vector = [0.0 for _ in range(4)]
+        feature_count = 8 if len(positions) >= 8 and len(residuals) >= 8 else 4
+        matrix = [[0.0 for _ in range(feature_count)] for _ in range(feature_count)]
+        vector = [0.0 for _ in range(feature_count)]
         for position, residual in zip(positions, residuals):
-            features = [1.0, position.x, position.y, position.z]
-            for i in range(4):
+            features = self._correction_features(room, position, feature_count)
+            for i in range(feature_count):
                 vector[i] += features[i] * residual
-                for j in range(4):
+                for j in range(feature_count):
                     matrix[i][j] += features[i] * features[j]
 
-        for index in range(4):
+        for index in range(feature_count):
             matrix[index][index] += 1e-8
 
         coefficients = solve_linear_system(matrix, vector)
-        return AffineCorrection(
-            bias=coefficients[0],
-            x=coefficients[1],
-            y=coefficients[2],
-            z=coefficients[3],
+        padded = coefficients + [0.0] * (8 - len(coefficients))
+        return TrilinearCorrection(
+            bias=padded[0],
+            x=padded[1],
+            y=padded[2],
+            z=padded[3],
+            xy=padded[4],
+            xz=padded[5],
+            yz=padded[6],
+            xyz=padded[7],
+            room_width=room.width,
+            room_length=room.length,
+            room_height=room.height,
         )
+
+    def _correction_features(self, room: Room, point: Vector3, feature_count: int) -> List[float]:
+        nx = clamp(point.x / max(room.width, 1e-9), 0.0, 1.0)
+        ny = clamp(point.y / max(room.length, 1e-9), 0.0, 1.0)
+        nz = clamp(point.z / max(room.height, 1e-9), 0.0, 1.0)
+        features = [1.0, nx, ny, nz, nx * ny, nx * nz, ny * nz, nx * ny * nz]
+        return features[:feature_count]

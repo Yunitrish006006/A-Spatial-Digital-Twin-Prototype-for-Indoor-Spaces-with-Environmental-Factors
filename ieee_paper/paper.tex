@@ -27,7 +27,7 @@ advisor@example.com}
 \maketitle
 
 \begin{abstract}
-Indoor digital twins are often designed under the assumption that appliances are network-connected and can directly report their operating states. In ordinary rooms, however, many devices and environmental elements remain non-networked: a conventional air conditioner may not expose its actual output, a manual window cannot report its opening degree, and ordinary lights may not provide feedback beyond environmental changes. This paper presents a lightweight spatial digital twin prototype that learns the environmental impact of non-networked appliances from limited room sensors. The proposed prototype models a single room as three spatial fields: temperature, humidity, and illuminance. Eight corner sensor nodes are used to calibrate a physics-inspired appliance influence model through affine residual correction. The system further estimates active appliance impact coefficients from before-and-after sensor observations and ranks candidate control actions by target-zone comfort improvement. To support AI-agent access, the prototype exposes its simulation, point estimation, baseline comparison, impact learning, window-matrix analysis, and direct window-condition simulation through a local Model Context Protocol (MCP) server. The implementation includes a Python simulation backend, an inverse distance weighting baseline, a 48-case window simulation matrix, direct window input, and an interactive rotatable 3D web demo. Simulation results show that the proposed appliance-aware model can provide interpretable field reconstruction and action recommendations under sparse sensing constraints.
+Indoor digital twins are often designed under the assumption that appliances are network-connected and can directly report their operating states. In ordinary rooms, however, many devices and environmental elements remain non-networked: a conventional air conditioner may not expose its actual output, a manual window cannot report its opening degree, and ordinary lights may not provide feedback beyond environmental changes. This paper presents a lightweight spatial digital twin prototype that learns the environmental impact of non-networked appliances from limited room sensors. The proposed prototype models a single room as three spatial fields: temperature, humidity, and illuminance. Eight corner sensor nodes are used to calibrate active device power scales and a physics-inspired appliance influence model through trilinear residual correction. The system further estimates active appliance impact coefficients from before-and-after sensor observations and ranks candidate control actions by target-zone comfort improvement. To support AI-agent access, the prototype exposes its simulation, point estimation, baseline comparison, impact learning, window-matrix analysis, and direct window-condition simulation through a local Model Context Protocol (MCP) server. The implementation includes a Python simulation backend, an inverse distance weighting baseline, a 48-case window simulation matrix, direct window input, and an interactive rotatable 3D web demo. Simulation results show that the proposed appliance-aware model can provide interpretable field reconstruction and action recommendations under sparse sensing constraints.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -39,7 +39,7 @@ Smart homes and smart buildings increasingly rely on indoor environmental data t
 
 A second practical limitation is that many appliances that influence the environment are not network-connected. Traditional air conditioners, manual windows, and ordinary lights may significantly affect temperature, humidity, and illuminance, but they may not expose state, output power, or operating parameters through an API. Therefore, a digital twin that depends only on connected-device telemetry may fail to represent a realistic room. The challenge is to infer how such non-networked appliances influence the room from environmental observations alone.
 
-This paper addresses the following research question: can a single-room spatial digital twin estimate temperature, humidity, and illuminance distributions, learn the impact of non-networked appliances from limited corner sensors, and expose the resulting capabilities as AI-agent-accessible tools? We propose a lightweight prototype that uses eight fixed corner sensors, parameterized appliance influence functions, affine sensor residual correction, and before-and-after impact learning.
+This paper addresses the following research question: can a single-room spatial digital twin estimate temperature, humidity, and illuminance distributions, learn the impact of non-networked appliances from limited corner sensors, and expose the resulting capabilities as AI-agent-accessible tools? We propose a lightweight prototype that uses eight fixed corner sensors, parameterized appliance influence functions, active-device power calibration, trilinear sensor residual correction, and before-and-after impact learning.
 
 The main contributions are as follows:
 \begin{itemize}
@@ -87,7 +87,9 @@ Corner sensor observations\\
 $\downarrow$\\
 Appliance influence field model\\
 $\downarrow$\\
-Affine residual correction\\
+Active-device power calibration\\
+$\downarrow$\\
+Trilinear residual correction\\
 $\downarrow$\\
 3-factor field estimation\\
 $\downarrow$\\
@@ -125,11 +127,13 @@ Let $\hat{y}_{i,m}$ be the predicted value at sensor $i$ for metric $m$, and let
 \begin{equation}
 r_{i,m}=y_{i,m}-\hat{y}_{i,m}.
 \end{equation}
-The prototype fits an affine correction:
-\begin{equation}
-C_m(x,y,z)=\alpha_{0,m}+\alpha_{1,m}x+\alpha_{2,m}y+\alpha_{3,m}z.
-\end{equation}
-This correction cannot represent high-frequency turbulence or complex local reflections, but it can correct overall bias and first-order spatial gradients using only eight corner measurements.
+The prototype first estimates active-device power scale adjustments using least squares over sensor residuals. It then fits a trilinear correction:
+\begin{align}
+C_m(x,y,z)={}&c_{0,m}+c_{1,m}X+c_{2,m}Y+c_{3,m}Z \nonumber\\
+&+c_{4,m}XY+c_{5,m}XZ \nonumber\\
+&+c_{6,m}YZ+c_{7,m}XYZ .
+\end{align}
+Here $X$, $Y$, and $Z$ are normalized room coordinates. This correction cannot represent high-frequency turbulence or complex local reflections, but it can use the eight corner measurements to correct bias, first-order gradients, and corner interaction terms.
 
 \subsection{Learning Non-Networked Appliance Impacts}
 For non-networked devices, the system estimates impact coefficients from before-and-after observations. Given sensor deltas $\Delta y_m$ and appliance envelopes collected into matrix $X$, the coefficient vector for metric $m$ is estimated by least squares:
@@ -163,17 +167,17 @@ Eight standard scenarios were evaluated: idle, air conditioner only, window only
 \hline
 Scenario & Temp. & Hum. & Illum. & Best action\\
 \hline
-idle & 28.87 & 67.50 & 90.00 & ac\_and\_light\\
-ac\_only & 26.97 & 66.39 & 90.00 & turn\_on\_light\\
-window\_only & 29.14 & 67.85 & 208.41 & ac\_and\_light\\
-light\_only & 29.12 & 67.50 & 416.53 & turn\_on\_ac\\
-all\_active & 27.46 & 66.66 & 443.38 & turn\_on\_ac\\
+idle & 28.84 & 67.60 & 90.00 & ac\_and\_light\\
+ac\_only & 26.90 & 66.46 & 90.00 & turn\_on\_light\\
+window\_only & 29.11 & 67.95 & 205.41 & ac\_and\_light\\
+light\_only & 29.10 & 67.60 & 425.65 & turn\_on\_ac\\
+all\_active & 27.40 & 66.73 & 449.65 & turn\_on\_ac\\
 \hline
 \end{tabular}
 \end{table}
 
 \subsection{Field Reconstruction Error}
-Across the eight validation scenarios, the average mean absolute error (MAE) was 0.0626 for temperature, 0.1867 for humidity, and 3.5248 for illuminance. Illuminance has the largest numerical MAE because its scale is larger and because it is more sensitive to device position and directionality.
+Across the eight validation scenarios, the average mean absolute error (MAE) was 0.0482 for temperature, 0.1763 for humidity, and 2.1616 for illuminance. Illuminance has the largest numerical MAE because its scale is larger and because it is more sensitive to device position and directionality.
 
 \begin{table}[t]
 \caption{Field Reconstruction Error Summary}
@@ -183,9 +187,9 @@ Across the eight validation scenarios, the average mean absolute error (MAE) was
 \hline
 Metric & Average MAE & Maximum MAE\\
 \hline
-Temperature & 0.0626 & 0.0789\\
-Humidity & 0.1867 & 0.1905\\
-Illuminance & 3.5248 & 5.4440\\
+Temperature & 0.0482 & 0.0502\\
+Humidity & 0.1763 & 0.1772\\
+Illuminance & 2.1616 & 2.7090\\
 \hline
 \end{tabular}
 \end{table}
@@ -201,12 +205,12 @@ Table~\ref{tab:idw} compares the proposed model with IDW for two scenarios. In t
 \hline
 Scenario & Metric & Model & IDW & Reduction\\
 \hline
-light\_only & Temp. & 0.0493 & 0.1592 & 69.03\%\\
-light\_only & Hum. & 0.1839 & 0.5104 & 63.97\%\\
-light\_only & Illum. & 5.4440 & 106.7814 & 94.90\%\\
-ac\_only & Temp. & 0.0779 & 0.7613 & 89.77\%\\
-ac\_only & Hum. & 0.1905 & 0.7245 & 73.71\%\\
-ac\_only & Illum. & 1.8393 & 1.3876 & -32.55\%\\
+light\_only & Temp. & 0.0470 & 0.1523 & 69.14\%\\
+light\_only & Hum. & 0.1762 & 0.4656 & 62.16\%\\
+light\_only & Illum. & 2.7090 & 119.5279 & 97.73\%\\
+ac\_only & Temp. & 0.0502 & 0.8306 & 93.96\%\\
+ac\_only & Hum. & 0.1772 & 0.7076 & 74.96\%\\
+ac\_only & Illum. & 1.7625 & 1.3210 & -33.42\%\\
 \hline
 \end{tabular}
 \end{table}
@@ -226,9 +230,9 @@ The window matrix contains 48 cases: four times of day, three weather states, an
 \hline
 Case & $T_o$ & $H_o$ & Sun & $L_w$\\
 \hline
-summer-sun-noon & 37.0 & 71.0 & 36000.0 & 223.90\\
-winter-rain-night & 11.0 & 78.0 & 15.2 & 68.90\\
-spring-cloud-morn. & 21.5 & 70.0 & 5005.0 & 90.39\\
+summer-sun-noon & 37.0 & 71.0 & 36000.0 & 237.71\\
+winter-rain-night & 11.0 & 78.0 & 15.2 & 68.97\\
+spring-cloud-morn. & 21.5 & 70.0 & 5005.0 & 92.38\\
 \hline
 \end{tabular}
 \end{table}

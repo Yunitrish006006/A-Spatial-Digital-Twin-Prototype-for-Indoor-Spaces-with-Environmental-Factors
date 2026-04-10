@@ -65,12 +65,13 @@ def rank_actions(
         observed_sensors=observed_sensors,
     )
     corrections = baseline.corrections
+    calibrated_devices = baseline.calibrated_devices or devices
     baseline_zone = baseline.zone_averages[target_zone_name]
     baseline_penalty = score_zone(baseline_zone, target)
 
     results: List[ActionScore] = []
     for action in actions:
-        candidate_devices = apply_action(devices, action)
+        candidate_devices = apply_action(calibrated_devices, action)
         candidate = model.simulate(
             room=room,
             environment=environment,

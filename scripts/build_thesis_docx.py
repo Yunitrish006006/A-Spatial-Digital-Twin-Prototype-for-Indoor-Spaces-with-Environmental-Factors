@@ -21,14 +21,14 @@ def build_blocks() -> List[Block]:
         paragraph("研究生：林昀佑", align="center"),
         paragraph("指導教授：易昶霈", align="center"),
         paragraph("版本：論文初稿 v0.1", align="center"),
-        paragraph("日期：2026 年 4 月 10 日", align="center"),
+        paragraph("日期：2026 年 4 月 11 日", align="center"),
         page_break(),
         heading("摘要", 1),
         paragraph(
             "智慧建築與智慧居家系統通常需要掌握室內環境狀態，才能支援舒適度評估、能源管理與設備控制。然而，實際場域中仍有許多會影響環境的家電或環境裝置並沒有連網能力，也沒有 API 可直接回報自身狀態或運轉功率。例如傳統冷氣、手動窗戶與一般照明雖會改變室內環境，卻不一定能被系統直接讀取。若系統僅依賴智慧裝置回報，便難以建立完整且可用於控制決策的室內環境模型。"
         ),
         paragraph(
-            "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。模型將室內狀態定義為溫度、濕度與照度三個空間場，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的影響。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差擬合 affine 校正場，以修正背景場與設備影響函數之偏差。"
+            "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。模型將室內狀態定義為溫度、濕度與照度三個空間場，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的影響。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差進行主動設備 power scale 校準與 trilinear residual correction，以修正背景場與設備影響函數之偏差。"
         ),
         paragraph(
             "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為提升系統可存取性，本研究將模型能力封裝為本地 Model Context Protocol（MCP）服務，提供情境查詢、模擬、座標估計、baseline 比較、影響學習、窗戶時段/天氣/季節矩陣模擬與窗戶外部條件直接輸入模擬等工具。最後，本研究以 Python 原型、模擬案例、IDW baseline 比較、48 組窗戶矩陣、窗戶 direct input 與可旋轉 3D web demo 驗證模型之可解釋性與實作可行性。"
@@ -40,7 +40,7 @@ def build_blocks() -> List[Block]:
             "Smart building and smart home systems require an understanding of indoor environmental conditions to support comfort assessment, energy management, and device control. However, many appliances and environmental elements in real rooms are not network-connected and cannot directly report their states or operating power. Conventional air conditioners, manual windows, and ordinary lights may significantly affect indoor temperature, humidity, and illuminance, yet remain invisible to API-based control systems."
         ),
         paragraph(
-            "This thesis proposes an MCP-enabled lightweight spatial digital twin prototype for a single room. The proposed model represents the room state as three environmental fields: temperature, humidity, and illuminance. Parameterized influence functions are used to describe the effects of air conditioning, windows, and lighting, while eight corner sensor nodes are used to calibrate the estimated fields through an affine residual correction model. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, and ranks candidate control actions according to target-zone comfort improvement."
+            "This thesis proposes an MCP-enabled lightweight spatial digital twin prototype for a single room. The proposed model represents the room state as three environmental fields: temperature, humidity, and illuminance. Parameterized influence functions are used to describe the effects of air conditioning, windows, and lighting, while eight corner sensor nodes are used to calibrate active device power scales and estimated fields through a trilinear residual correction model. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, and ranks candidate control actions according to target-zone comfort improvement."
         ),
         paragraph(
             "The prototype is implemented in Python and exposed through a local Model Context Protocol server, enabling AI clients to query scenarios, estimate point-level environmental states, compare against an IDW baseline, learn appliance impacts, and run a 48-case window simulation matrix across time of day, weather, and season. Simulation results and an interactive rotatable 3D web demo demonstrate the feasibility and interpretability of the proposed approach."
@@ -133,7 +133,7 @@ def build_blocks() -> List[Block]:
         heading("第三章 系統架構與數學模型", 1),
         heading("3.1 系統架構", 2),
         paragraph(
-            "本研究系統由五個主要模組組成：房間與設備設定、三因子影響場模型、角落感測器校正、非連網裝置影響學習、以及控制動作排序與 MCP 工具介面。整體流程為：輸入房間幾何、設備位置與外部環境條件後，模型先建立背景場，再加入設備影響函數，接著使用 8 顆角落感測器觀測值校正場估計，最後輸出任意座標或目標區域的三因子估計與候選控制動作排序。"
+            "本研究系統由五個主要模組組成：房間與設備設定、三因子影響場模型、角落感測器校正、非連網裝置影響學習、以及控制動作排序與 MCP 工具介面。整體流程為：輸入房間幾何、設備位置與外部環境條件後，模型先建立背景場，再加入設備影響函數，接著使用 8 顆角落感測器觀測值校準 active device power scale 並建立 trilinear 校正場，最後輸出任意座標或目標區域的三因子估計與候選控制動作排序。"
         ),
         heading("3.2 房間、區域與感測器設定", 2),
         paragraph(
@@ -144,6 +144,7 @@ def build_blocks() -> List[Block]:
             [
                 ["房間尺寸", "6.0 m × 4.0 m × 3.0 m"],
                 ["感測器數量", "8 顆角落節點"],
+                ["採樣網格", "16 × 12 × 6"],
                 ["三個環境因素", "Temperature, Humidity, Illuminance"],
                 ["主要區域", "window_zone, center_zone, door_side_zone"],
                 ["設備類型", "ac_main, window_main, light_main"],
@@ -171,11 +172,11 @@ def build_blocks() -> List[Block]:
         ),
         heading("3.5 感測器校正模型", 2),
         paragraph(
-            "模型先預測 8 顆角落感測器位置的三因子值，再與觀測值比較得到殘差。對每一個環境因素，系統以 affine surface 擬合殘差："
+            "模型先預測 8 顆角落感測器位置的三因子值，再與觀測值比較得到殘差。為提高環境估計精度，系統先以最小平方法估計 active device 的 power scale，使設備影響函數更接近觀測資料；接著對每一個環境因素，以 8 參數 trilinear correction 擬合角落殘差："
         ),
-        code("delta(x, y, z) = a0 + a1*x + a2*y + a3*z"),
+        code("C(x, y, z) = c0 + c1*X + c2*Y + c3*Z + c4*X*Y + c5*X*Z + c6*Y*Z + c7*X*Y*Z"),
         paragraph(
-            "此校正方式無法重建任意高頻局部變化，但能修正整體偏移與一階空間梯度，符合固定 8 顆角落感測器的低成本設計目標。"
+            "其中 X、Y、Z 為正規化後的房間座標。相較於一階 affine surface，trilinear correction 可使用 8 個角點支撐 8 個校正係數，除了整體偏移與一階梯度外，也能表示角落之間的交互變化。不過此方法仍無法重建任意高頻局部變化，因此其定位仍是低成本、可解釋的場校正方法。"
         ),
         heading("3.6 非連網裝置影響學習", 2),
         paragraph("對非連網裝置，系統不依賴裝置 API，而是由啟用前後的感測器變化估計影響係數。流程如下："),
@@ -234,20 +235,20 @@ def build_blocks() -> List[Block]:
         table(
             ["情境", "中央溫度", "中央濕度", "中央照度", "最佳推薦"],
             [
-                ["idle", "28.87", "67.50", "90.00", "ac_and_light"],
-                ["ac_only", "26.97", "66.39", "90.00", "turn_on_light"],
-                ["window_only", "29.14", "67.85", "208.41", "ac_and_light"],
-                ["light_only", "29.12", "67.50", "416.53", "turn_on_ac"],
-                ["all_active", "27.46", "66.66", "443.38", "turn_on_ac"],
+                ["idle", "28.84", "67.60", "90.00", "ac_and_light"],
+                ["ac_only", "26.90", "66.46", "90.00", "turn_on_light"],
+                ["window_only", "29.11", "67.95", "205.41", "ac_and_light"],
+                ["light_only", "29.10", "67.60", "425.65", "turn_on_ac"],
+                ["all_active", "27.40", "66.73", "449.65", "turn_on_ac"],
             ],
         ),
         heading("5.2 場重建誤差", 2),
         paragraph(
-            "8 組標準情境中，平均溫度 MAE 為 0.0626，平均濕度 MAE 為 0.1867，平均照度 MAE 為 3.5248。照度 MAE 較高，主要原因是照度場受燈具位置、窗戶日照與方向性影響較大，且數值尺度遠高於溫度與濕度。"
+            "8 組標準情境中，平均溫度 MAE 為 0.0482，平均濕度 MAE 為 0.1763，平均照度 MAE 為 2.1616。照度 MAE 較高，主要原因是照度場受燈具位置、窗戶日照與方向性影響較大，且數值尺度遠高於溫度與濕度。相較於先前一階 affine 校正設定，trilinear correction 與 active device power scale 校準降低了三個環境因素的平均重建誤差。"
         ),
         heading("5.3 IDW Baseline 比較", 2),
         paragraph(
-            "以 light_only 情境為例，本研究模型在照度 MAE 上相較 IDW baseline 降低約 94.90%。這表示只依靠角落感測器插值難以重建中央燈具造成的局部照度提升，而加入設備位置與影響函數後，可更有效描述設備作用。"
+            "以 light_only 情境為例，本研究模型在照度 MAE 上相較 IDW baseline 降低約 97.73%。這表示只依靠角落感測器插值難以重建中央燈具造成的局部照度提升，而加入設備位置、影響函數、power scale 校準與 trilinear residual correction 後，可更有效描述設備作用。"
         ),
         heading("5.4 非連網裝置影響學習", 2),
         paragraph(
@@ -263,9 +264,9 @@ def build_blocks() -> List[Block]:
         table(
             ["情境", "外部溫度", "外部濕度", "外部日照", "窗戶區照度"],
             [
-                ["window_summer_sunny_noon", "37.0", "71.0", "36000.0", "223.9044"],
-                ["window_winter_rainy_night", "11.0", "78.0", "15.2", "68.8988"],
-                ["window_spring_cloudy_morning", "21.5", "70.0", "5005.0", "90.3925"],
+                ["window_summer_sunny_noon", "37.0", "71.0", "36000.0", "237.7066"],
+                ["window_winter_rainy_night", "11.0", "78.0", "15.2", "68.9714"],
+                ["window_spring_cloudy_morning", "21.5", "70.0", "5005.0", "92.3808"],
             ],
         ),
         heading("5.6 可旋轉 3D 展示", 2),
@@ -276,7 +277,7 @@ def build_blocks() -> List[Block]:
         heading("第六章 結論與未來工作", 1),
         heading("6.1 結論", 2),
         paragraph(
-            "本研究建立一個 MCP-enabled 單房間三因子空間數位孿生原型，針對非連網家電或環境裝置對 temperature、humidity 與 illuminance 造成的影響進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數與 affine 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋的場估計。"
+            "本研究建立一個 MCP-enabled 單房間三因子空間數位孿生原型，針對非連網家電或環境裝置對 temperature、humidity 與 illuminance 造成的影響進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計。"
         ),
         paragraph(
             "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並用於更準確的控制動作推薦。"

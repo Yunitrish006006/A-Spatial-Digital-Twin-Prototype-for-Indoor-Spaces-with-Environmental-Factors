@@ -291,7 +291,7 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 77.
 
-[2] [3] (paper.bbl)
+[2] [3] (paper.bbl [4])
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -303,9 +303,11 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[4] (paper.aux)
+[5
+
+] (paper.aux)
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (4 pages, 182340 bytes).
+Output written on paper.xdv (5 pages, 185436 bytes).

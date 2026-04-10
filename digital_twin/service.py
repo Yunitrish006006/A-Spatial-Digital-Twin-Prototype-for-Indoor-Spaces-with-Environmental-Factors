@@ -138,6 +138,7 @@ def _evaluate_scenario_object(scenario: Scenario) -> Dict:
         "zone_mae": compare_zone_averages(estimated_result.zone_averages, truth_result.zone_averages),
         "sensor_mae_before": compare_sensors(raw_nominal.sensor_predictions, observed_sensors),
         "sensor_mae_after": compare_sensors(estimated_result.sensor_predictions, observed_sensors),
+        "device_power_calibration": _device_power_calibration(estimated_result.calibrated_devices),
         "learned_device_impacts": learn_active_device_impacts(
             model=model,
             scenario_devices=scenario.devices,
@@ -153,10 +154,15 @@ def _evaluate_scenario_object(scenario: Scenario) -> Dict:
         "zone_truth": _round_zone_dict(truth_result.zone_averages),
         "corrections": {
             metric: {
+                "model": "trilinear",
                 "bias": round(correction.bias, 6),
                 "x": round(correction.x, 6),
                 "y": round(correction.y, 6),
                 "z": round(correction.z, 6),
+                "xy": round(correction.xy, 6),
+                "xz": round(correction.xz, 6),
+                "yz": round(correction.yz, 6),
+                "xyz": round(correction.xyz, 6),
             }
             for metric, correction in estimated_result.corrections.items()
         },
@@ -246,10 +252,12 @@ def get_scenario_volume(scenario_name: str, device_overrides: Optional[Dict[str,
                 "name": device.name,
                 "kind": device.kind,
                 "activation": round(device.activation, 4),
+                "power": round(device.power, 4),
+                "calibrated_power_scale": round(float(device.metadata.get("calibrated_power_scale", 1.0)), 4),
                 "position": _vector_to_dict(device.position),
                 "geometry": _device_geometry(device),
             }
-            for device in scenario.devices
+            for device in estimated_result.calibrated_devices
         ],
         "points": points,
     }
@@ -351,7 +359,7 @@ def compare_scenario_baseline(scenario_name: str, device_overrides: Optional[Dic
     idw_mae = compare_fields(idw_field, truth_result.field)
     return {
         "scenario": scenario.name,
-        "model": "affine-corrected appliance influence field",
+        "model": "trilinear-corrected appliance influence field",
         "baseline": "inverse distance weighting",
         "comparison": compare_model_to_idw(model_mae, idw_mae),
     }
@@ -449,6 +457,19 @@ def _device_geometry(device) -> Dict:
             "height": float(device.metadata.get("surface_height", 1.1)),
         }
     return {"shape": "point"}
+
+
+def _device_power_calibration(devices) -> List[Dict]:
+    return [
+        {
+            "name": device.name,
+            "kind": device.kind,
+            "activation": round(device.activation, 4),
+            "power": round(device.power, 4),
+            "calibrated_power_scale": round(float(device.metadata.get("calibrated_power_scale", 1.0)), 4),
+        }
+        for device in devices
+    ]
 
 
 def _dimension_items(keys, profiles) -> List[Dict]:

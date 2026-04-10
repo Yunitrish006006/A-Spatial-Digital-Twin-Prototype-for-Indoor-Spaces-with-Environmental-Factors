@@ -68,7 +68,9 @@ class ServiceTests(unittest.TestCase):
     def test_get_scenario_volume_returns_points_and_devices(self) -> None:
         result = get_scenario_volume("idle")
         self.assertEqual(result["scenario"], "idle")
-        self.assertEqual(len(result["points"]), 10 * 8 * 4)
+        resolution = result["resolution"]
+        self.assertEqual(len(result["points"]), resolution["nx"] * resolution["ny"] * resolution["nz"])
+        self.assertEqual(resolution, {"nx": 16, "ny": 12, "nz": 6})
         self.assertEqual({device["name"] for device in result["devices"]}, {"ac_main", "window_main", "light_main"})
         self.assertIn("temperature", result["points"][0])
         ac = next(device for device in result["devices"] if device["name"] == "ac_main")

@@ -212,6 +212,11 @@ TIME_OF_DAY_PROFILES = {
 WINDOW_SEASON_ORDER = ("spring", "summer", "autumn", "winter")
 WINDOW_WEATHER_ORDER = ("cloudy", "sunny", "rainy")
 WINDOW_TIME_ORDER = ("morning", "noon", "afternoon", "night")
+HIGH_PRECISION_GRID = GridResolution(nx=16, ny=12, nz=6)
+
+
+def build_high_precision_resolution() -> GridResolution:
+    return HIGH_PRECISION_GRID
 
 
 def build_window_matrix_room(season: str) -> Room:
@@ -297,7 +302,7 @@ def build_validation_scenarios() -> List[Scenario]:
     zones = build_standard_zones(room)
     environment = build_standard_environment()
     comfort_target = build_comfort_target()
-    resolution = GridResolution(nx=10, ny=8, nz=4)
+    resolution = build_high_precision_resolution()
     actions = build_candidate_actions()
 
     scenario_definitions = [
@@ -345,7 +350,7 @@ def build_validation_scenarios() -> List[Scenario]:
 
 def build_window_matrix_scenarios() -> List[Scenario]:
     comfort_target = build_comfort_target()
-    resolution = GridResolution(nx=10, ny=8, nz=4)
+    resolution = build_high_precision_resolution()
     actions = build_candidate_actions()
     truth_adjustments = [ActionEffect(device_name="window_main", power_scale=0.92)]
 
@@ -435,7 +440,7 @@ def build_direct_window_scenario(
         devices=devices,
         sensors=sensors,
         zones=zones,
-        resolution=GridResolution(nx=10, ny=8, nz=4),
+        resolution=build_high_precision_resolution(),
         elapsed_minutes=max(0.0, float(elapsed_minutes)),
         truth_adjustments=[ActionEffect(device_name="window_main", power_scale=0.92)],
         comfort_target=build_comfort_target(),
