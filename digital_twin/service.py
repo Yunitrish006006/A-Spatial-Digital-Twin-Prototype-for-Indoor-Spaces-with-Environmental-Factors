@@ -13,27 +13,26 @@ from .demo import (
 from .entities import Vector3
 from .model import DigitalTwinModel
 from .recommendations import rank_actions
-from .scenarios import Scenario, apply_truth_adjustments, build_validation_scenarios
+from .scenarios import (
+    SEASON_PROFILES,
+    TIME_OF_DAY_PROFILES,
+    WEATHER_PROFILES,
+    WINDOW_SEASON_ORDER,
+    WINDOW_TIME_ORDER,
+    WINDOW_WEATHER_ORDER,
+    Scenario,
+    apply_truth_adjustments,
+    build_validation_scenarios,
+    build_window_matrix_scenarios,
+)
 
 
 def list_scenario_metadata() -> List[Dict]:
-    return [
-        {
-            "name": scenario.name,
-            "description": scenario.description,
-            "target_zone": scenario.target_zone_name,
-            "devices": [
-                {
-                    "name": device.name,
-                    "kind": device.kind,
-                    "activation": device.activation,
-                    "position": _vector_to_dict(device.position),
-                }
-                for device in scenario.devices
-            ],
-        }
-        for scenario in build_validation_scenarios()
-    ]
+    return [_scenario_metadata(scenario) for scenario in build_validation_scenarios()]
+
+
+def list_window_scenario_metadata() -> List[Dict]:
+    return [_scenario_metadata(scenario) for scenario in build_window_matrix_scenarios()]
 
 
 def evaluate_scenario(scenario_name: str) -> Dict:
@@ -85,6 +84,13 @@ def evaluate_scenario(scenario_name: str) -> Dict:
     return {
         "name": scenario.name,
         "description": scenario.description,
+        "metadata": scenario.metadata,
+        "environment": {
+            "outdoor_temperature": scenario.environment.outdoor_temperature,
+            "outdoor_humidity": scenario.environment.outdoor_humidity,
+            "sunlight_illuminance": scenario.environment.sunlight_illuminance,
+            "daylight_factor": scenario.environment.daylight_factor,
+        },
         "field_mae": field_mae,
         "idw_field_mae": idw_field_mae,
         "idw_zone_mae": compare_zone_averages(idw_zone_averages, truth_result.zone_averages),
@@ -103,6 +109,8 @@ def evaluate_scenario(scenario_name: str) -> Dict:
         "target_zone": scenario.target_zone_name,
         "target_zone_estimated": _round_metric_dict(estimated_result.zone_averages[scenario.target_zone_name]),
         "target_zone_truth": _round_metric_dict(truth_result.zone_averages[scenario.target_zone_name]),
+        "zone_estimated": _round_zone_dict(estimated_result.zone_averages),
+        "zone_truth": _round_zone_dict(truth_result.zone_averages),
         "corrections": {
             metric: {
                 "bias": round(correction.bias, 6),
@@ -112,6 +120,38 @@ def evaluate_scenario(scenario_name: str) -> Dict:
             }
             for metric, correction in estimated_result.corrections.items()
         },
+    }
+
+
+def evaluate_window_matrix() -> Dict:
+    scenarios = build_window_matrix_scenarios()
+    rows: List[Dict] = []
+    for scenario in scenarios:
+        result = evaluate_scenario(scenario.name)
+        rows.append(
+            {
+                "name": result["name"],
+                "description": result["description"],
+                "metadata": result["metadata"],
+                "environment": result["environment"],
+                "target_zone": result["target_zone"],
+                "target_zone_estimated": result["target_zone_estimated"],
+                "window_zone_estimated": result["zone_estimated"]["window_zone"],
+                "center_zone_estimated": result["zone_estimated"]["center_zone"],
+                "door_side_zone_estimated": result["zone_estimated"]["door_side_zone"],
+                "field_mae": result["field_mae"],
+                "baseline_comparison": result["baseline_comparison"],
+            }
+        )
+
+    return {
+        "count": len(rows),
+        "dimensions": {
+            "seasons": _dimension_items(WINDOW_SEASON_ORDER, SEASON_PROFILES),
+            "weathers": _dimension_items(WINDOW_WEATHER_ORDER, WEATHER_PROFILES),
+            "times_of_day": _dimension_items(WINDOW_TIME_ORDER, TIME_OF_DAY_PROFILES),
+        },
+        "scenarios": rows,
     }
 
 
@@ -244,11 +284,37 @@ def learn_scenario_impacts(scenario_name: str) -> Dict:
 
 
 def _find_scenario(scenario_name: str) -> Scenario:
-    scenarios = {scenario.name: scenario for scenario in build_validation_scenarios()}
+    scenarios = {scenario.name: scenario for scenario in _all_scenarios()}
     if scenario_name not in scenarios:
         available = ", ".join(sorted(scenarios))
         raise ValueError(f"Unknown scenario '{scenario_name}'. Available scenarios: {available}")
     return scenarios[scenario_name]
+
+
+def _all_scenarios() -> List[Scenario]:
+    return build_validation_scenarios() + build_window_matrix_scenarios()
+
+
+def _scenario_metadata(scenario: Scenario) -> Dict:
+    return {
+        "name": scenario.name,
+        "description": scenario.description,
+        "target_zone": scenario.target_zone_name,
+        "metadata": scenario.metadata,
+        "devices": [
+            {
+                "name": device.name,
+                "kind": device.kind,
+                "activation": device.activation,
+                "position": _vector_to_dict(device.position),
+            }
+            for device in scenario.devices
+        ],
+    }
+
+
+def _dimension_items(keys, profiles) -> List[Dict]:
+    return [{"name": key, "label": str(profiles[key]["zh"])} for key in keys]
 
 
 def _simulate_truth(model: DigitalTwinModel, scenario: Scenario):
@@ -275,6 +341,10 @@ def _validate_point(scenario: Scenario, point: Vector3) -> None:
 
 def _round_metric_dict(values: Dict[str, float]) -> Dict[str, float]:
     return {key: round(value, 4) for key, value in values.items()}
+
+
+def _round_zone_dict(values: Dict[str, Dict[str, float]]) -> Dict[str, Dict[str, float]]:
+    return {zone_name: _round_metric_dict(metrics) for zone_name, metrics in values.items()}
 
 
 def _vector_to_dict(vector: Vector3) -> Dict[str, float]:

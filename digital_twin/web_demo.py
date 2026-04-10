@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 from .service import (
     compare_scenario_baseline,
     evaluate_scenario,
+    evaluate_window_matrix,
     learn_scenario_impacts,
     list_scenario_metadata,
     rank_scenario_actions,
@@ -227,6 +228,12 @@ INDEX_HTML = """<!doctype html>
         <div class="cards" id="zoneCards"></div>
       </section>
       <section class="panel">
+        <h2>Window Season/Weather/Time Matrix</h2>
+        <p class="status">Runs 48 window-only simulations: 4 time periods × 3 weather states × 4 seasons.</p>
+        <button class="secondary" onclick="loadWindowMatrix()">Run Window Matrix</button>
+        <div id="windowMatrix"></div>
+      </section>
+      <section class="panel">
         <h2>Recommendation Ranking</h2>
         <div id="recommendations"></div>
       </section>
@@ -270,6 +277,9 @@ INDEX_HTML = """<!doctype html>
       activeScenario = data.scenarios[0].name;
       select.value = activeScenario;
       await loadScenario();
+      loadWindowMatrix().catch(error => {
+        document.getElementById("windowMatrix").innerHTML = `<p class="status">${error.message}</p>`;
+      });
     }
 
     async function loadScenario() {
@@ -345,6 +355,27 @@ INDEX_HTML = """<!doctype html>
       `).join("");
     }
 
+    async function loadWindowMatrix() {
+      const container = document.getElementById("windowMatrix");
+      container.innerHTML = `<p class="status">Running 48 window scenarios...</p>`;
+      const data = await getJSON("/api/window_matrix");
+      container.innerHTML = table(
+        ["Season", "Weather", "Time", "Outdoor", "Window Zone", "Center Zone"],
+        data.scenarios.map(item => [
+          item.metadata.season_zh,
+          item.metadata.weather_zh,
+          item.metadata.time_of_day_zh,
+          [
+            `T: ${fmt(item.environment.outdoor_temperature)}`,
+            `H: ${fmt(item.environment.outdoor_humidity)}`,
+            `Sun: ${fmt(item.environment.sunlight_illuminance)}`
+          ].join("<br>"),
+          metrics.map(metric => `${labels[metric]}: ${fmt(item.window_zone_estimated[metric])}`).join("<br>"),
+          metrics.map(metric => `${labels[metric]}: ${fmt(item.center_zone_estimated[metric])}`).join("<br>")
+        ])
+      );
+    }
+
     async function samplePoint() {
       const x = document.getElementById("x").value;
       const y = document.getElementById("y").value;
@@ -378,6 +409,9 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/scenario":
                 self._send_json(evaluate_scenario(_query_name(parsed.query)))
+                return
+            if parsed.path == "/api/window_matrix":
+                self._send_json(evaluate_window_matrix())
                 return
             if parsed.path == "/api/rank_actions":
                 self._send_json(rank_scenario_actions(_query_name(parsed.query)))

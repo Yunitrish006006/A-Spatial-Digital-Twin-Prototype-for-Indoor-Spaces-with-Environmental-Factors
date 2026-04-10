@@ -8,6 +8,7 @@ class WebDemoTests(unittest.TestCase):
     def test_index_contains_core_sections(self) -> None:
         self.assertIn("IDW Baseline Comparison", INDEX_HTML)
         self.assertIn("Learned Non-Networked Appliance Impact", INDEX_HTML)
+        self.assertIn("Window Season/Weather/Time Matrix", INDEX_HTML)
         self.assertIn("MCP-Enabled Digital Twin Demo", INDEX_HTML)
 
     def test_query_name_defaults_to_idle(self) -> None:

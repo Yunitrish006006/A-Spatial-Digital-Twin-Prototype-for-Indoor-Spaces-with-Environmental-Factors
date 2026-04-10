@@ -2,7 +2,13 @@ import json
 import unittest
 
 from digital_twin.mcp_server import LocalMCPServer
-from digital_twin.service import evaluate_scenario, list_scenario_metadata, sample_scenario_point
+from digital_twin.service import (
+    evaluate_scenario,
+    evaluate_window_matrix,
+    list_scenario_metadata,
+    list_window_scenario_metadata,
+    sample_scenario_point,
+)
 
 
 class ServiceTests(unittest.TestCase):
@@ -12,11 +18,28 @@ class ServiceTests(unittest.TestCase):
         self.assertIn("idle", names)
         self.assertIn("all_active", names)
 
+    def test_list_window_scenarios_returns_48_cases(self) -> None:
+        scenarios = list_window_scenario_metadata()
+        names = {scenario["name"] for scenario in scenarios}
+        self.assertEqual(len(scenarios), 48)
+        self.assertIn("window_summer_sunny_noon", names)
+
     def test_evaluate_scenario_returns_errors_and_zone_values(self) -> None:
         result = evaluate_scenario("idle")
         self.assertEqual(result["name"], "idle")
         self.assertIn("field_mae", result)
         self.assertIn("target_zone_estimated", result)
+
+    def test_evaluate_window_scenario_returns_window_metadata(self) -> None:
+        result = evaluate_scenario("window_summer_sunny_noon")
+        self.assertEqual(result["name"], "window_summer_sunny_noon")
+        self.assertEqual(result["target_zone"], "window_zone")
+        self.assertEqual(result["metadata"]["season_zh"], "夏季")
+
+    def test_evaluate_window_matrix_returns_summary(self) -> None:
+        result = evaluate_window_matrix()
+        self.assertEqual(result["count"], 48)
+        self.assertEqual(len(result["scenarios"]), 48)
 
     def test_sample_point_returns_three_metrics(self) -> None:
         result = sample_scenario_point("light_only", x=3.0, y=2.0, z=1.5)
@@ -41,7 +64,16 @@ class MCPServerTests(unittest.TestCase):
         names = {tool["name"] for tool in response["result"]["tools"]}
         self.assertEqual(
             names,
-            {"list_scenarios", "run_scenario", "rank_actions", "sample_point", "compare_baseline", "learn_impacts"},
+            {
+                "list_scenarios",
+                "list_window_scenarios",
+                "run_scenario",
+                "rank_actions",
+                "sample_point",
+                "compare_baseline",
+                "learn_impacts",
+                "run_window_matrix",
+            },
         )
 
     def test_tool_call(self) -> None:
@@ -83,6 +115,19 @@ class MCPServerTests(unittest.TestCase):
         payload = json.loads(response["result"]["content"][0]["text"])
         self.assertEqual(payload["scenario"], "ac_only")
         self.assertGreater(len(payload["learned_device_impacts"]), 0)
+
+    def test_run_window_matrix_tool_call(self) -> None:
+        response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 6,
+                "method": "tools/call",
+                "params": {"name": "run_window_matrix", "arguments": {}},
+            }
+        )
+        payload = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(payload["count"], 48)
+        self.assertEqual(payload["scenarios"][0]["metadata"]["category"], "window_matrix")
 
 
 if __name__ == "__main__":

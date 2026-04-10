@@ -26,6 +26,8 @@
   核心模型、情境定義、決策排序與輸出工具。
 - `scripts/run_demo.py`
   執行完整模擬、校正、情境評估與 SVG/JSON/CSV 匯出。
+- `scripts/run_window_matrix.py`
+  執行窗戶在早上/中午/下午/晚上、陰天/晴天/雨天、春夏秋冬下的 48 組模擬。
 - `tests/`
   基本單元測試與行為驗證。
 - `docs/thesis_guide_zh.md`
@@ -36,6 +38,8 @@
   整理資工系碩士畢業條件、學位考試流程與口試文件 checklist。
 - `docs/baseline_and_learning_results_zh.md`
   整理 IDW baseline 比較與非連網裝置影響學習結果。
+- `docs/window_matrix_simulation_zh.md`
+  說明窗戶在時段、天氣、季節矩陣下的 48 組模擬設定與結果。
 - `docs/web_demo_zh.md`
   說明本地 web demo 的啟動方式與公開展示流程。
 
@@ -45,6 +49,12 @@
 
 ```bash
 python3 scripts/run_demo.py
+```
+
+執行 48 組窗戶時段/天氣/季節矩陣：
+
+```bash
+python3 scripts/run_window_matrix.py
 ```
 
 執行測試：
@@ -61,14 +71,16 @@ python3 -m unittest discover -s tests
 python3 scripts/run_mcp_server.py
 ```
 
-目前提供六個 MCP tools：
+目前提供八個 MCP tools：
 
 - `list_scenarios`
+- `list_window_scenarios`
 - `run_scenario`
 - `rank_actions`
 - `sample_point`
 - `compare_baseline`
 - `learn_impacts`
+- `run_window_matrix`
 
 詳細設定請見 `docs/mcp_service_zh.md`。
 
@@ -105,6 +117,8 @@ python3 scripts/run_web_demo.py
 
 - `validation_summary.json`
   各情境的場重建誤差、區域平均值、感測器校正結果與動作排序。
+- `window_matrix_summary.json`
+  窗戶在 4 個時段、3 種天氣、4 個季節下的 48 組三因子模擬結果。
 - `*.svg`
   每個情境在中間高度切片的溫度、濕度、亮度熱圖。
 - `*.csv`

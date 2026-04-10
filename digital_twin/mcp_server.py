@@ -5,8 +5,10 @@ from typing import Any, Dict, Optional
 from .service import (
     compare_scenario_baseline,
     evaluate_scenario,
+    evaluate_window_matrix,
     learn_scenario_impacts,
     list_scenario_metadata,
+    list_window_scenario_metadata,
     rank_scenario_actions,
     sample_scenario_point,
 )
@@ -21,6 +23,15 @@ TOOLS = [
     {
         "name": "list_scenarios",
         "description": "List built-in room digital twin validation scenarios.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "list_window_scenarios",
+        "description": "List the 48 window scenarios across morning/noon/afternoon/night, cloudy/sunny/rainy, and four seasons.",
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -102,6 +113,15 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "run_window_matrix",
+        "description": "Run all 48 window-only time/weather/season simulations and return target-zone estimates.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -147,6 +167,8 @@ class LocalMCPServer:
 
         if tool_name == "list_scenarios":
             payload = list_scenario_metadata()
+        elif tool_name == "list_window_scenarios":
+            payload = list_window_scenario_metadata()
         elif tool_name == "run_scenario":
             payload = evaluate_scenario(_required_string(arguments, "scenario_name"))
         elif tool_name == "rank_actions":
@@ -162,6 +184,8 @@ class LocalMCPServer:
             payload = compare_scenario_baseline(_required_string(arguments, "scenario_name"))
         elif tool_name == "learn_impacts":
             payload = learn_scenario_impacts(_required_string(arguments, "scenario_name"))
+        elif tool_name == "run_window_matrix":
+            payload = evaluate_window_matrix()
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
 

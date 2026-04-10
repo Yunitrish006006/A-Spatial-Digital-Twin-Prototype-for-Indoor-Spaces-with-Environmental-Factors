@@ -1,5 +1,4 @@
-from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List
 
 from .entities import (
@@ -33,6 +32,7 @@ class Scenario:
     comfort_target: ComfortTarget
     candidate_actions: List[Action]
     target_zone_name: str
+    metadata: Dict[str, str] = field(default_factory=dict)
 
 
 def build_standard_room() -> Room:
@@ -110,6 +110,131 @@ def build_standard_environment() -> Environment:
         outdoor_temperature=33.0,
         outdoor_humidity=74.0,
         sunlight_illuminance=32000.0,
+        daylight_factor=0.95,
+    )
+
+
+SEASON_PROFILES = {
+    "spring": {
+        "zh": "春季",
+        "indoor_temperature": 24.0,
+        "indoor_humidity": 63.0,
+        "outdoor_temperature": 23.0,
+        "outdoor_humidity": 68.0,
+        "sunlight_illuminance": 26000.0,
+    },
+    "summer": {
+        "zh": "夏季",
+        "indoor_temperature": 29.0,
+        "indoor_humidity": 70.0,
+        "outdoor_temperature": 33.0,
+        "outdoor_humidity": 76.0,
+        "sunlight_illuminance": 36000.0,
+    },
+    "autumn": {
+        "zh": "秋季",
+        "indoor_temperature": 25.0,
+        "indoor_humidity": 62.0,
+        "outdoor_temperature": 26.0,
+        "outdoor_humidity": 64.0,
+        "sunlight_illuminance": 28000.0,
+    },
+    "winter": {
+        "zh": "冬季",
+        "indoor_temperature": 19.0,
+        "indoor_humidity": 58.0,
+        "outdoor_temperature": 16.0,
+        "outdoor_humidity": 66.0,
+        "sunlight_illuminance": 19000.0,
+    },
+}
+
+
+WEATHER_PROFILES = {
+    "cloudy": {
+        "zh": "陰天",
+        "temperature_delta": 0.0,
+        "humidity_delta": 2.0,
+        "sunlight_factor": 0.35,
+    },
+    "sunny": {
+        "zh": "晴天",
+        "temperature_delta": 2.0,
+        "humidity_delta": -5.0,
+        "sunlight_factor": 1.0,
+    },
+    "rainy": {
+        "zh": "雨天",
+        "temperature_delta": -2.0,
+        "humidity_delta": 12.0,
+        "sunlight_factor": 0.08,
+    },
+}
+
+
+TIME_OF_DAY_PROFILES = {
+    "morning": {
+        "zh": "早上",
+        "temperature_delta": -1.5,
+        "sunlight_factor": 0.55,
+    },
+    "noon": {
+        "zh": "中午",
+        "temperature_delta": 2.0,
+        "sunlight_factor": 1.0,
+    },
+    "afternoon": {
+        "zh": "下午",
+        "temperature_delta": 1.0,
+        "sunlight_factor": 0.72,
+    },
+    "night": {
+        "zh": "晚上",
+        "temperature_delta": -3.0,
+        "sunlight_factor": 0.01,
+    },
+}
+
+
+WINDOW_SEASON_ORDER = ("spring", "summer", "autumn", "winter")
+WINDOW_WEATHER_ORDER = ("cloudy", "sunny", "rainy")
+WINDOW_TIME_ORDER = ("morning", "noon", "afternoon", "night")
+
+
+def build_window_matrix_room(season: str) -> Room:
+    profile = SEASON_PROFILES[season]
+    return Room(
+        name=f"window_matrix_{season}_room",
+        width=6.0,
+        length=4.0,
+        height=3.0,
+        base_temperature=float(profile["indoor_temperature"]),
+        base_humidity=float(profile["indoor_humidity"]),
+        base_illuminance=70.0,
+    )
+
+
+def build_window_matrix_environment(season: str, weather: str, time_of_day: str) -> Environment:
+    season_profile = SEASON_PROFILES[season]
+    weather_profile = WEATHER_PROFILES[weather]
+    time_profile = TIME_OF_DAY_PROFILES[time_of_day]
+
+    outdoor_temperature = (
+        float(season_profile["outdoor_temperature"])
+        + float(weather_profile["temperature_delta"])
+        + float(time_profile["temperature_delta"])
+    )
+    outdoor_humidity = float(season_profile["outdoor_humidity"]) + float(weather_profile["humidity_delta"])
+    sunlight_illuminance = (
+        float(season_profile["sunlight_illuminance"])
+        * float(weather_profile["sunlight_factor"])
+        * float(time_profile["sunlight_factor"])
+    )
+
+    return Environment(
+        outdoor_temperature=round(outdoor_temperature, 2),
+        outdoor_humidity=round(max(0.0, min(100.0, outdoor_humidity)), 2),
+        sunlight_illuminance=round(sunlight_illuminance, 2),
         daylight_factor=0.95,
     )
 
@@ -202,6 +327,56 @@ def build_validation_scenarios() -> List[Scenario]:
                 target_zone_name="center_zone",
             )
         )
+    return scenarios
+
+
+def build_window_matrix_scenarios() -> List[Scenario]:
+    comfort_target = build_comfort_target()
+    resolution = GridResolution(nx=10, ny=8, nz=4)
+    actions = build_candidate_actions()
+    truth_adjustments = [ActionEffect(device_name="window_main", power_scale=0.92)]
+
+    scenarios: List[Scenario] = []
+    for season in WINDOW_SEASON_ORDER:
+        room = build_window_matrix_room(season)
+        sensors = create_corner_sensors(room)
+        zones = build_standard_zones(room)
+        for weather in WINDOW_WEATHER_ORDER:
+            for time_of_day in WINDOW_TIME_ORDER:
+                devices = build_standard_devices()
+                for device in devices:
+                    device.activation = 0.7 if device.name == "window_main" else 0.0
+
+                environment = build_window_matrix_environment(season, weather, time_of_day)
+                season_label = str(SEASON_PROFILES[season]["zh"])
+                weather_label = str(WEATHER_PROFILES[weather]["zh"])
+                time_label = str(TIME_OF_DAY_PROFILES[time_of_day]["zh"])
+                scenarios.append(
+                    Scenario(
+                        name=f"window_{season}_{weather}_{time_of_day}",
+                        description=f"窗戶模擬：{season_label}／{weather_label}／{time_label}",
+                        room=room,
+                        environment=environment,
+                        devices=devices,
+                        sensors=sensors,
+                        zones=zones,
+                        resolution=resolution,
+                        elapsed_minutes=18.0,
+                        truth_adjustments=truth_adjustments,
+                        comfort_target=comfort_target,
+                        candidate_actions=actions,
+                        target_zone_name="window_zone",
+                        metadata={
+                            "category": "window_matrix",
+                            "season": season,
+                            "season_zh": season_label,
+                            "weather": weather,
+                            "weather_zh": weather_label,
+                            "time_of_day": time_of_day,
+                            "time_of_day_zh": time_label,
+                        },
+                    )
+                )
     return scenarios
 
 

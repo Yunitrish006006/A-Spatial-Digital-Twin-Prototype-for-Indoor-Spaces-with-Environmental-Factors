@@ -12,6 +12,7 @@
 - 查詢房間任意座標的 temperature、humidity、illuminance 估計值。
 - 比較本研究模型與 IDW baseline。
 - 學習非連網裝置啟用前後造成的環境影響係數。
+- 執行窗戶在時段、天氣、季節組合下的 48 組模擬矩陣。
 
 MCP 化後，模型不只是 Python script，而是可以被 AI client 當作外部工具呼叫。
 
@@ -30,6 +31,16 @@ python3 scripts/run_mcp_server.py
 ### `list_scenarios`
 
 列出內建的 8 組驗證情境。
+
+輸入：
+
+```json
+{}
+```
+
+### `list_window_scenarios`
+
+列出 48 組窗戶矩陣情境，包含早上/中午/下午/晚上、陰天/晴天/雨天、春夏秋冬。
 
 輸入：
 
@@ -100,6 +111,16 @@ python3 scripts/run_mcp_server.py
 }
 ```
 
+### `run_window_matrix`
+
+一次執行全部 48 組窗戶矩陣模擬，回傳每組情境的外部條件、窗戶區、中心區與門側區估計值。
+
+輸入：
+
+```json
+{}
+```
+
 ## 可用情境名稱
 
 - `idle`
@@ -111,6 +132,17 @@ python3 scripts/run_mcp_server.py
 - `ac_light`
 - `all_active`
 
+窗戶矩陣情境使用以下命名格式：
+
+```text
+window_<season>_<weather>_<time>
+```
+
+例如：
+
+- `window_summer_sunny_noon`
+- `window_winter_rainy_night`
+
 ## 本地手動測試
 
 可用下面的 JSON-RPC 訊息手動測試：
@@ -120,6 +152,7 @@ printf '%s\n' \
 '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual","version":"0.1"}}}' \
 '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
 '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rank_actions","arguments":{"scenario_name":"idle"}}}' \
+'{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"run_window_matrix","arguments":{}}}' \
 | python3 scripts/run_mcp_server.py
 ```
 
@@ -144,13 +177,12 @@ printf '%s\n' \
 
 - 目前是本地 stdio MCP server，不是遠端 HTTP MCP。
 - 尚未加入 OAuth 或使用者權限控制。
-- 模型情境仍是內建標準案例，尚未開放任意房間 JSON 輸入。
+- 模型情境仍是內建標準案例與窗戶矩陣案例，尚未開放任意房間 JSON 輸入。
 - 輸出以 JSON text content 為主，尚未提供 MCP resource 或圖片 resource。
 
 ## 後續可擴充方向
 
 1. 加入 `create_room_simulation` tool，讓 client 傳入自訂房間、設備與外部環境。
 2. 加入 `export_heatmap` tool，讓 MCP 回傳 SVG 熱圖檔案路徑或 resource。
-3. 加入 `export_heatmap` tool，讓 MCP 回傳 SVG 熱圖檔案路徑或 resource。
-4. 包成遠端 HTTP MCP server，部署到 Cloudflare Workers。
-5. 加入 OAuth，讓遠端 MCP 可安全被不同 client 使用。
+3. 包成遠端 HTTP MCP server，部署到 Cloudflare Workers。
+4. 加入 OAuth，讓遠端 MCP 可安全被不同 client 使用。

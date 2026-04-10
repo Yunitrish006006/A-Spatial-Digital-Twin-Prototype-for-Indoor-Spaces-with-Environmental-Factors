@@ -23,6 +23,9 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(find_scenario_name("請問冷氣情境"), "ac_only")
         self.assertEqual(find_scenario_name("全部設備全開"), "all_active")
 
+    def test_find_window_matrix_scenario_from_chinese_tokens(self) -> None:
+        self.assertEqual(find_scenario_name("夏季晴天中午窗戶結果"), "window_summer_sunny_noon")
+
     def test_heuristic_selects_rank_actions(self) -> None:
         selected = heuristic_tool_selection("idle 情境推薦什麼動作")
         self.assertEqual(selected["tool"], "rank_actions")
@@ -38,6 +41,15 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(selected["tool"], "learn_impacts")
         self.assertEqual(selected["arguments"]["scenario_name"], "ac_only")
 
+    def test_heuristic_selects_window_matrix(self) -> None:
+        selected = heuristic_tool_selection("幫我跑窗戶早上中午下午晚上陰天晴天雨天四季模擬")
+        self.assertEqual(selected["tool"], "run_window_matrix")
+
+    def test_heuristic_selects_specific_window_scenario(self) -> None:
+        selected = heuristic_tool_selection("夏季晴天中午窗戶結果")
+        self.assertEqual(selected["tool"], "run_scenario")
+        self.assertEqual(selected["arguments"]["scenario_name"], "window_summer_sunny_noon")
+
     def test_execute_rank_actions_tool(self) -> None:
         result = execute_tool("rank_actions", {"scenario_name": "idle"})
         self.assertEqual(result["scenario"], "idle")
@@ -47,6 +59,10 @@ class GemmaBridgeTests(unittest.TestCase):
         result = execute_tool("learn_impacts", {"scenario_name": "ac_only"})
         self.assertEqual(result["scenario"], "ac_only")
         self.assertGreater(len(result["learned_device_impacts"]), 0)
+
+    def test_execute_window_matrix_tool(self) -> None:
+        result = execute_tool("run_window_matrix", {})
+        self.assertEqual(result["count"], 48)
 
     def test_tool_output_is_json_serializable(self) -> None:
         result = execute_tool("sample_point", {"scenario_name": "light_only", "x": 3, "y": 2, "z": 1.5})

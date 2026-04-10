@@ -13,6 +13,7 @@ from digital_twin.scenarios import (
     build_standard_environment,
     build_standard_room,
     build_standard_zones,
+    build_window_matrix_scenarios,
 )
 from digital_twin.entities import ComfortTarget, GridResolution, create_corner_sensors
 
@@ -217,6 +218,21 @@ class DigitalTwinTests(unittest.TestCase):
             ),
         )
         self.assertEqual(recommendations[0].name, "turn_on_ac")
+
+    def test_window_matrix_builds_48_time_weather_season_cases(self) -> None:
+        scenarios = build_window_matrix_scenarios()
+        names = {scenario.name for scenario in scenarios}
+        self.assertEqual(len(scenarios), 48)
+        self.assertIn("window_summer_sunny_noon", names)
+        self.assertIn("window_winter_rainy_night", names)
+
+    def test_window_matrix_environment_profiles_are_ordered(self) -> None:
+        scenarios = {scenario.name: scenario for scenario in build_window_matrix_scenarios()}
+        sunny_noon = scenarios["window_summer_sunny_noon"]
+        rainy_night = scenarios["window_winter_rainy_night"]
+        self.assertGreater(sunny_noon.environment.sunlight_illuminance, rainy_night.environment.sunlight_illuminance)
+        self.assertGreater(sunny_noon.environment.outdoor_temperature, rainy_night.environment.outdoor_temperature)
+        self.assertGreater(rainy_night.environment.outdoor_humidity, sunny_noon.environment.outdoor_humidity)
 
 
 if __name__ == "__main__":
