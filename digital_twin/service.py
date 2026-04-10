@@ -155,6 +155,65 @@ def evaluate_window_matrix() -> Dict:
     }
 
 
+def get_scenario_volume(scenario_name: str) -> Dict:
+    model = DigitalTwinModel()
+    scenario = _find_scenario(scenario_name)
+    truth_result = _simulate_truth(model, scenario)
+    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
+    estimated_result = model.simulate(
+        room=scenario.room,
+        environment=scenario.environment,
+        devices=scenario.devices,
+        sensors=scenario.sensors,
+        zones=scenario.zones,
+        elapsed_minutes=scenario.elapsed_minutes,
+        resolution=scenario.resolution,
+        observed_sensors=observed_sensors,
+    )
+    field = estimated_result.field
+    points = []
+    for iz in range(field.resolution.nz):
+        for iy in range(field.resolution.ny):
+            for ix in range(field.resolution.nx):
+                point = field.point(ix, iy, iz)
+                index = field.index(ix, iy, iz)
+                points.append(
+                    {
+                        "x": round(point.x, 4),
+                        "y": round(point.y, 4),
+                        "z": round(point.z, 4),
+                        "temperature": round(field.values["temperature"][index], 4),
+                        "humidity": round(field.values["humidity"][index], 4),
+                        "illuminance": round(field.values["illuminance"][index], 4),
+                    }
+                )
+
+    return {
+        "scenario": scenario.name,
+        "description": scenario.description,
+        "room": {
+            "width": scenario.room.width,
+            "length": scenario.room.length,
+            "height": scenario.room.height,
+        },
+        "resolution": {
+            "nx": scenario.resolution.nx,
+            "ny": scenario.resolution.ny,
+            "nz": scenario.resolution.nz,
+        },
+        "devices": [
+            {
+                "name": device.name,
+                "kind": device.kind,
+                "activation": round(device.activation, 4),
+                "position": _vector_to_dict(device.position),
+            }
+            for device in scenario.devices
+        ],
+        "points": points,
+    }
+
+
 def rank_scenario_actions(scenario_name: str) -> Dict:
     model = DigitalTwinModel()
     scenario = _find_scenario(scenario_name)

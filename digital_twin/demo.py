@@ -7,7 +7,7 @@ from .entities import Sensor
 from .learning import learn_active_device_impacts_from_observations
 from .model import DigitalTwinModel, FieldGrid, METRICS
 from .recommendations import rank_actions
-from .render import ensure_directory, export_field_csv, export_json, export_svg_heatmap
+from .render import ensure_directory, export_field_csv, export_json, export_svg_heatmap, export_svg_volume_heatmap
 from .scenarios import apply_truth_adjustments, build_validation_scenarios
 
 
@@ -103,6 +103,13 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             middle_slice,
             f"{scenario.description} - Temperature",
         )
+        export_svg_volume_heatmap(
+            os.path.join(output_dir, f"{scenario.name}_temperature_3d.svg"),
+            estimated_result.field,
+            "temperature",
+            f"{scenario.description} - Temperature",
+            devices=scenario.devices,
+        )
         export_svg_heatmap(
             os.path.join(output_dir, f"{scenario.name}_humidity.svg"),
             estimated_result.field,
@@ -110,12 +117,26 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             middle_slice,
             f"{scenario.description} - Humidity",
         )
+        export_svg_volume_heatmap(
+            os.path.join(output_dir, f"{scenario.name}_humidity_3d.svg"),
+            estimated_result.field,
+            "humidity",
+            f"{scenario.description} - Humidity",
+            devices=scenario.devices,
+        )
         export_svg_heatmap(
             os.path.join(output_dir, f"{scenario.name}_illuminance.svg"),
             estimated_result.field,
             "illuminance",
             middle_slice,
             f"{scenario.description} - Illuminance",
+        )
+        export_svg_volume_heatmap(
+            os.path.join(output_dir, f"{scenario.name}_illuminance_3d.svg"),
+            estimated_result.field,
+            "illuminance",
+            f"{scenario.description} - Illuminance",
+            devices=scenario.devices,
         )
 
         summary["scenarios"].append(

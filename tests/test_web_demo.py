@@ -9,6 +9,8 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("IDW Baseline Comparison", INDEX_HTML)
         self.assertIn("Learned Non-Networked Appliance Impact", INDEX_HTML)
         self.assertIn("Window Season/Weather/Time Matrix", INDEX_HTML)
+        self.assertIn("Rotatable 3D Field Preview", INDEX_HTML)
+        self.assertIn("volumeCanvas", INDEX_HTML)
         self.assertIn("MCP-Enabled Digital Twin Demo", INDEX_HTML)
 
     def test_query_name_defaults_to_idle(self) -> None:

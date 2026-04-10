@@ -1,10 +1,13 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from digital_twin.baselines import build_idw_field
 from digital_twin.demo import compare_sensors, synthesize_sensor_observations
 from digital_twin.learning import learn_device_impact_from_sensor_delta
 from digital_twin.model import DigitalTwinModel
 from digital_twin.recommendations import rank_actions
+from digital_twin.render import export_svg_volume_heatmap
 from digital_twin.scenarios import (
     apply_truth_adjustments,
     build_candidate_actions,
@@ -233,6 +236,32 @@ class DigitalTwinTests(unittest.TestCase):
         self.assertGreater(sunny_noon.environment.sunlight_illuminance, rainy_night.environment.sunlight_illuminance)
         self.assertGreater(sunny_noon.environment.outdoor_temperature, rainy_night.environment.outdoor_temperature)
         self.assertGreater(rainy_night.environment.outdoor_humidity, sunny_noon.environment.outdoor_humidity)
+
+    def test_export_svg_volume_heatmap_writes_3d_svg(self) -> None:
+        result = self.model.simulate(
+            room=self.room,
+            environment=self.environment,
+            devices=self.devices,
+            sensors=self.sensors,
+            zones=self.zones,
+            elapsed_minutes=self.elapsed_minutes,
+            resolution=GridResolution(nx=4, ny=3, nz=2),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "temperature_3d.svg"
+            export_svg_volume_heatmap(
+                str(path),
+                result.field,
+                "temperature",
+                "Temperature 3D",
+                devices=build_standard_devices(),
+            )
+            content = path.read_text(encoding="utf-8")
+        self.assertIn("<svg", content)
+        self.assertIn("3D sampled field", content)
+        self.assertIn("ac_main", content)
+        self.assertIn("window_main", content)
+        self.assertIn("light_main", content)
 
 
 if __name__ == "__main__":

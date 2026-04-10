@@ -1,8 +1,10 @@
 import csv
 import json
 import os
-from typing import Dict, List, Tuple
+from html import escape
+from typing import Dict, List, Optional, Tuple
 
+from .entities import Device
 from .model import FieldGrid
 
 
@@ -86,6 +88,78 @@ def export_svg_heatmap(path: str, field: FieldGrid, metric: str, z_index: int, t
         handle.write("\n".join(parts))
 
 
+def export_svg_volume_heatmap(
+    path: str,
+    field: FieldGrid,
+    metric: str,
+    title: str,
+    devices: Optional[List[Device]] = None,
+) -> None:
+    values = field.values[metric]
+    minimum = min(values)
+    maximum = max(values)
+    width = 760
+    height = 560
+    legend_x = width - 86
+    legend_y = 96
+    legend_height = 330
+    usable_width = width - 190
+    usable_height = height - 140
+    nx = field.resolution.nx
+    ny = field.resolution.ny
+    nz = field.resolution.nz
+    x_step = min(usable_width / max(nx + ny + 2, 1), usable_height / max((nx + ny) * 0.55 + nz * 1.4, 1))
+    y_step = x_step * 0.58
+    z_step = x_step * 1.18
+    left_bound = 42.0
+    right_bound = legend_x - 48.0
+    top_bound = 86.0
+    bottom_bound = height - 58.0
+    x_span = (nx + ny - 2) * x_step
+    y_span = (nx + ny - 2) * y_step + (nz - 1) * z_step
+    origin_x = left_bound + (ny - 1) * x_step + max(0.0, (right_bound - left_bound - x_span) / 2.0)
+    origin_y = top_bound + (nz - 1) * z_step + max(0.0, (bottom_bound - top_bound - y_span) / 2.0)
+    point_radius = max(4.0, min(10.0, x_step * 0.28))
+
+    def project_index(ix: float, iy: float, iz: float) -> Tuple[float, float]:
+        return (
+            origin_x + (ix - iy) * x_step,
+            origin_y + (ix + iy) * y_step - iz * z_step,
+        )
+
+    parts: List[str] = [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="760" height="560" viewBox="0 0 760 560">',
+        '<rect width="100%" height="100%" fill="#fffdf7" />',
+        f'<text x="34" y="34" font-size="21" font-family="Helvetica, Arial, sans-serif" fill="#17211b">{escape(title)}</text>',
+        f'<text x="34" y="56" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#69776e">3D sampled field, min={minimum:.2f}, max={maximum:.2f}</text>',
+    ]
+
+    parts.extend(_room_wireframe(project_index, nx, ny, nz))
+
+    points = []
+    for iz in range(nz):
+        for iy in range(ny):
+            for ix in range(nx):
+                index = field.index(ix, iy, iz)
+                screen_x, screen_y = project_index(ix, iy, iz)
+                depth = ix + iy + iz * 0.8
+                points.append((depth, screen_x, screen_y, values[index]))
+
+    for _, screen_x, screen_y, value in sorted(points):
+        color = _value_to_color(value, minimum, maximum)
+        opacity = _value_to_opacity(value, minimum, maximum)
+        parts.append(
+            f'<circle cx="{screen_x:.2f}" cy="{screen_y:.2f}" r="{point_radius:.2f}" fill="{color}" fill-opacity="{opacity:.2f}" stroke="#20352b" stroke-opacity="0.22" stroke-width="0.7" />'
+        )
+
+    parts.extend(_device_marker_parts(project_index, field, devices or []))
+    parts.extend(_legend_parts(legend_x, legend_y, legend_height, minimum, maximum))
+    parts.append("</svg>")
+
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write("\n".join(parts))
+
+
 def _value_to_color(value: float, minimum: float, maximum: float) -> str:
     if maximum - minimum <= 1e-9:
         return "#cccccc"
@@ -101,6 +175,117 @@ def _value_to_color(value: float, minimum: float, maximum: float) -> str:
         local = (fraction - 0.5) / 0.5
     red, green, blue = _interpolate_rgb(start, end, local)
     return f"#{red:02x}{green:02x}{blue:02x}"
+
+
+def _value_to_opacity(value: float, minimum: float, maximum: float) -> float:
+    if maximum - minimum <= 1e-9:
+        return 0.78
+    fraction = (value - minimum) / (maximum - minimum)
+    return 0.48 + 0.44 * max(0.0, min(1.0, fraction))
+
+
+def _device_marker_parts(project_index, field: FieldGrid, devices: List[Device]) -> List[str]:
+    if not devices:
+        return []
+
+    parts = [
+        '<g id="device-markers">',
+        '<text x="34" y="78" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#17211b">Appliance positions</text>',
+    ]
+    for device in devices:
+        ix = _coordinate_to_grid_index(device.position.x, field.x_coords)
+        iy = _coordinate_to_grid_index(device.position.y, field.y_coords)
+        iz = _coordinate_to_grid_index(device.position.z, field.z_coords)
+        screen_x, screen_y = project_index(ix, iy, iz)
+        color = _device_color(device.kind)
+        label = escape(f"{device.name} ({device.kind}, {device.activation:.0%})")
+        parts.append(
+            f'<line x1="{screen_x:.2f}" y1="{screen_y + 12:.2f}" x2="{screen_x:.2f}" y2="{screen_y - 12:.2f}" stroke="#17211b" stroke-width="1.2" stroke-opacity="0.55" />'
+        )
+        parts.append(
+            f'<rect x="{screen_x - 8:.2f}" y="{screen_y - 8:.2f}" width="16" height="16" rx="3" fill="#fffdf7" stroke="#17211b" stroke-width="2.4" />'
+        )
+        parts.append(
+            f'<rect x="{screen_x - 5:.2f}" y="{screen_y - 5:.2f}" width="10" height="10" rx="2" fill="{color}" stroke="#ffffff" stroke-width="1.1" />'
+        )
+        parts.append(
+            f'<text x="{screen_x + 12:.2f}" y="{screen_y - 10:.2f}" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#17211b" stroke="#fffdf7" stroke-width="3" paint-order="stroke">{label}</text>'
+        )
+    parts.append("</g>")
+    return parts
+
+
+def _coordinate_to_grid_index(value: float, coords: List[float]) -> float:
+    if len(coords) <= 1 or abs(coords[-1] - coords[0]) <= 1e-9:
+        return 0.0
+    fraction = (value - coords[0]) / (coords[-1] - coords[0])
+    fraction = max(0.0, min(1.0, fraction))
+    return fraction * (len(coords) - 1)
+
+
+def _device_color(kind: str) -> str:
+    colors = {
+        "ac": "#2b5c7c",
+        "window": "#2f855a",
+        "light": "#c58b2d",
+    }
+    return colors.get(kind, "#b4552b")
+
+
+def _room_wireframe(project_index, nx: int, ny: int, nz: int) -> List[str]:
+    corners = {
+        "000": project_index(0, 0, 0),
+        "x00": project_index(nx - 1, 0, 0),
+        "0y0": project_index(0, ny - 1, 0),
+        "xy0": project_index(nx - 1, ny - 1, 0),
+        "00z": project_index(0, 0, nz - 1),
+        "x0z": project_index(nx - 1, 0, nz - 1),
+        "0yz": project_index(0, ny - 1, nz - 1),
+        "xyz": project_index(nx - 1, ny - 1, nz - 1),
+    }
+    edges = [
+        ("000", "x00"),
+        ("000", "0y0"),
+        ("x00", "xy0"),
+        ("0y0", "xy0"),
+        ("00z", "x0z"),
+        ("00z", "0yz"),
+        ("x0z", "xyz"),
+        ("0yz", "xyz"),
+        ("000", "00z"),
+        ("x00", "x0z"),
+        ("0y0", "0yz"),
+        ("xy0", "xyz"),
+    ]
+    parts = []
+    for start, end in edges:
+        x1, y1 = corners[start]
+        x2, y2 = corners[end]
+        parts.append(
+            f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke="#6f7f72" stroke-width="1.1" stroke-opacity="0.58" />'
+        )
+    parts.append('<text x="34" y="530" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#69776e">Each dot is one 3D grid sample. Labeled squares mark appliance positions.</text>')
+    return parts
+
+
+def _legend_parts(x: float, y: float, height: float, minimum: float, maximum: float) -> List[str]:
+    parts: List[str] = [
+        f'<text x="{x - 4:.2f}" y="{y - 18:.2f}" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#69776e">Value</text>'
+    ]
+    for step in range(100):
+        fraction = step / 99.0
+        rect_y = y + (1.0 - fraction) * height
+        color = _value_to_color(minimum + fraction * (maximum - minimum), minimum, maximum)
+        parts.append(
+            f'<rect x="{x:.2f}" y="{rect_y:.2f}" width="20" height="{height / 100.0 + 1:.2f}" fill="{color}" stroke="none" />'
+        )
+    parts.append(
+        f'<text x="{x + 28:.2f}" y="{y + 10:.2f}" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#17211b">{maximum:.1f}</text>'
+    )
+    parts.append(
+        f'<text x="{x + 28:.2f}" y="{y + height:.2f}" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#17211b">{minimum:.1f}</text>'
+    )
+    return parts
 
 
 def _interpolate_rgb(start: Tuple[int, int, int], end: Tuple[int, int, int], fraction: float) -> Tuple[int, int, int]:

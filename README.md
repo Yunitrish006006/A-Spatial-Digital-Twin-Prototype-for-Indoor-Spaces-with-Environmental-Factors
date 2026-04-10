@@ -111,6 +111,8 @@ python3 scripts/run_web_demo.py
 
 開啟 `http://127.0.0.1:8765`。詳細說明請見 `docs/web_demo_zh.md`。
 
+Web demo 內含可拖曳旋轉與縮放的 3D 三因子熱區預覽，並標示冷氣、窗戶與照明位置。
+
 ## 輸出結果
 
 執行後會在 `outputs/` 產生：
@@ -120,7 +122,7 @@ python3 scripts/run_web_demo.py
 - `window_matrix_summary.json`
   窗戶在 4 個時段、3 種天氣、4 個季節下的 48 組三因子模擬結果。
 - `*.svg`
-  每個情境在中間高度切片的溫度、濕度、亮度熱圖。
+  每個情境的 2D 中高度切片熱圖，另有 `*_3d.svg` 等角投影 3D 熱區圖並標示家電位置。
 - `*.csv`
   每個情境的 3D 採樣網格資料，可直接拿去做論文圖表。
 

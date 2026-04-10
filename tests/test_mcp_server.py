@@ -5,6 +5,7 @@ from digital_twin.mcp_server import LocalMCPServer
 from digital_twin.service import (
     evaluate_scenario,
     evaluate_window_matrix,
+    get_scenario_volume,
     list_scenario_metadata,
     list_window_scenario_metadata,
     sample_scenario_point,
@@ -46,6 +47,13 @@ class ServiceTests(unittest.TestCase):
         self.assertIn("temperature", result["values"])
         self.assertIn("humidity", result["values"])
         self.assertIn("illuminance", result["values"])
+
+    def test_get_scenario_volume_returns_points_and_devices(self) -> None:
+        result = get_scenario_volume("idle")
+        self.assertEqual(result["scenario"], "idle")
+        self.assertEqual(len(result["points"]), 10 * 8 * 4)
+        self.assertEqual({device["name"] for device in result["devices"]}, {"ac_main", "window_main", "light_main"})
+        self.assertIn("temperature", result["points"][0])
 
 
 class MCPServerTests(unittest.TestCase):

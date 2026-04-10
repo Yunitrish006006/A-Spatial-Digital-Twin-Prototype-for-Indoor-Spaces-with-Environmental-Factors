@@ -10,6 +10,7 @@ from .service import (
     compare_scenario_baseline,
     evaluate_scenario,
     evaluate_window_matrix,
+    get_scenario_volume,
     learn_scenario_impacts,
     list_scenario_metadata,
     rank_scenario_actions,
@@ -185,6 +186,30 @@ INDEX_HTML = """<!doctype html>
       border: 1px solid var(--line);
       background: white;
     }
+    .volume-toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+    .volume-toolbar label { margin-bottom: 6px; }
+    .volume-toolbar select { max-width: 260px; }
+    .volume-toolbar button {
+      width: auto;
+      min-width: 150px;
+      margin-top: 0;
+    }
+    .volume-canvas {
+      width: 100%;
+      height: 540px;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fffdf7;
+      cursor: grab;
+      touch-action: none;
+    }
+    .volume-canvas:active { cursor: grabbing; }
     pre {
       max-height: 320px;
       overflow: auto;
@@ -199,6 +224,9 @@ INDEX_HTML = """<!doctype html>
       main { grid-template-columns: 1fr; }
       aside { position: static; }
       .cards, .heatmaps { grid-template-columns: 1fr; }
+      .volume-toolbar { display: block; }
+      .volume-toolbar button { width: 100%; margin-top: 14px; }
+      .volume-canvas { height: 420px; }
     }
   </style>
 </head>
@@ -246,7 +274,21 @@ INDEX_HTML = """<!doctype html>
         <div id="impacts"></div>
       </section>
       <section class="panel">
-        <h2>Mid-Height Heatmaps</h2>
+        <h2>Rotatable 3D Field Preview</h2>
+        <p class="status">Drag to rotate, wheel or pinch-pad scroll to zoom. Colored squares mark appliance positions.</p>
+        <div class="volume-toolbar">
+          <div>
+            <label for="volumeMetric">Metric</label>
+            <select id="volumeMetric"></select>
+          </div>
+          <button class="secondary" onclick="resetVolumeView()">Reset View</button>
+        </div>
+        <canvas class="volume-canvas" id="volumeCanvas" width="960" height="540"></canvas>
+        <p class="status" id="volumeStatus">Loading 3D volume...</p>
+      </section>
+      <section class="panel">
+        <h2>3D SVG Snapshots</h2>
+        <p class="status">Static 3D sampled-field exports with appliance position markers. Run <code>python3 scripts/run_demo.py</code> after model changes to refresh SVG outputs.</p>
         <div class="heatmaps" id="heatmaps"></div>
       </section>
       <section class="panel">
@@ -258,7 +300,14 @@ INDEX_HTML = """<!doctype html>
   <script>
     const metrics = ["temperature", "humidity", "illuminance"];
     const labels = { temperature: "Temperature", humidity: "Humidity", illuminance: "Illuminance" };
+    const units = { temperature: "°C", humidity: "%", illuminance: "lx" };
+    const deviceColors = { ac: "#2b5c7c", window: "#2f855a", light: "#c58b2d" };
     let activeScenario = "idle";
+    let volumeData = null;
+    let volumeMetric = "temperature";
+    let volumeRotation = { pitch: -0.62, yaw: 0.72 };
+    let volumeZoom = 1.0;
+    let volumeDrag = null;
 
     async function getJSON(url) {
       const response = await fetch(url);
@@ -285,16 +334,18 @@ INDEX_HTML = """<!doctype html>
     async function loadScenario() {
       activeScenario = document.getElementById("scenario").value;
       document.getElementById("status").textContent = `Running ${activeScenario}...`;
-      const [scenario, ranking, baseline, impacts] = await Promise.all([
+      const [scenario, ranking, baseline, impacts, volume] = await Promise.all([
         getJSON(`/api/scenario?name=${encodeURIComponent(activeScenario)}`),
         getJSON(`/api/rank_actions?name=${encodeURIComponent(activeScenario)}`),
         getJSON(`/api/compare_baseline?name=${encodeURIComponent(activeScenario)}`),
-        getJSON(`/api/learn_impacts?name=${encodeURIComponent(activeScenario)}`)
+        getJSON(`/api/learn_impacts?name=${encodeURIComponent(activeScenario)}`),
+        getJSON(`/api/volume?name=${encodeURIComponent(activeScenario)}`)
       ]);
       renderZoneCards(scenario);
       renderRecommendations(ranking);
       renderBaseline(baseline);
       renderImpacts(impacts);
+      setVolumeData(volume);
       renderHeatmaps(activeScenario);
       await samplePoint();
       document.getElementById("status").textContent = `Loaded ${activeScenario}.`;
@@ -351,8 +402,225 @@ INDEX_HTML = """<!doctype html>
 
     function renderHeatmaps(name) {
       document.getElementById("heatmaps").innerHTML = metrics.map(metric => `
-        <img src="/outputs/${name}_${metric}.svg" alt="${name} ${metric} heatmap">
+        <img src="/outputs/${name}_${metric}_3d.svg" alt="${name} ${metric} 3D heatmap">
       `).join("");
+    }
+
+    function setupVolumeControls() {
+      const select = document.getElementById("volumeMetric");
+      select.innerHTML = metrics.map(metric => `<option value="${metric}">${labels[metric]}</option>`).join("");
+      select.value = volumeMetric;
+      select.addEventListener("change", () => {
+        volumeMetric = select.value;
+        drawVolume();
+      });
+
+      const canvas = document.getElementById("volumeCanvas");
+      canvas.addEventListener("pointerdown", event => {
+        volumeDrag = { x: event.clientX, y: event.clientY };
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener("pointermove", event => {
+        if (!volumeDrag) return;
+        const dx = event.clientX - volumeDrag.x;
+        const dy = event.clientY - volumeDrag.y;
+        volumeRotation.yaw += dx * 0.012;
+        volumeRotation.pitch = clamp(volumeRotation.pitch + dy * 0.012, -1.35, 1.1);
+        volumeDrag = { x: event.clientX, y: event.clientY };
+        drawVolume();
+      });
+      canvas.addEventListener("pointerup", event => {
+        volumeDrag = null;
+        canvas.releasePointerCapture(event.pointerId);
+      });
+      canvas.addEventListener("pointercancel", () => {
+        volumeDrag = null;
+      });
+      canvas.addEventListener("wheel", event => {
+        event.preventDefault();
+        volumeZoom = clamp(volumeZoom * (event.deltaY > 0 ? 0.92 : 1.08), 0.55, 2.2);
+        drawVolume();
+      }, { passive: false });
+      window.addEventListener("resize", drawVolume);
+    }
+
+    function setVolumeData(data) {
+      volumeData = data;
+      document.getElementById("volumeStatus").textContent = `${data.scenario}: ${data.points.length} samples, ${data.devices.length} appliance markers.`;
+      drawVolume();
+    }
+
+    function resetVolumeView() {
+      volumeRotation = { pitch: -0.62, yaw: 0.72 };
+      volumeZoom = 1.0;
+      drawVolume();
+    }
+
+    function drawVolume() {
+      const canvas = document.getElementById("volumeCanvas");
+      if (!canvas || !volumeData) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = "#fffdf7";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+
+      const projector = makeProjector(rect.width, rect.height, volumeData.room);
+      drawRoomBox(ctx, projector);
+      drawVolumePoints(ctx, projector);
+      drawDeviceMarkers(ctx, projector);
+      drawVolumeLegend(ctx, rect.width, volumeMetricRange(), volumeMetric);
+    }
+
+    function makeProjector(width, height, room) {
+      const scale = Math.min(width / 9.2, height / 6.3) * volumeZoom;
+      const center = { x: width * 0.48, y: height * 0.56 };
+      const yaw = volumeRotation.yaw;
+      const pitch = volumeRotation.pitch;
+      const cy = Math.cos(yaw);
+      const sy = Math.sin(yaw);
+      const cp = Math.cos(pitch);
+      const sp = Math.sin(pitch);
+      return function project(point) {
+        const x = point.x - room.width / 2;
+        const y = point.y - room.length / 2;
+        const z = point.z - room.height / 2;
+        const xr = x * cy - y * sy;
+        const yr = x * sy + y * cy;
+        const yp = yr * cp - z * sp;
+        const depth = yr * sp + z * cp;
+        return {
+          x: center.x + xr * scale,
+          y: center.y + yp * scale,
+          depth,
+        };
+      };
+    }
+
+    function drawRoomBox(ctx, project) {
+      const room = volumeData.room;
+      const corners = [
+        { x: 0, y: 0, z: 0 }, { x: room.width, y: 0, z: 0 },
+        { x: 0, y: room.length, z: 0 }, { x: room.width, y: room.length, z: 0 },
+        { x: 0, y: 0, z: room.height }, { x: room.width, y: 0, z: room.height },
+        { x: 0, y: room.length, z: room.height }, { x: room.width, y: room.length, z: room.height }
+      ].map(project);
+      const edges = [[0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7]];
+      ctx.strokeStyle = "rgba(82, 99, 86, 0.58)";
+      ctx.lineWidth = 1.2;
+      edges.forEach(([a, b]) => {
+        ctx.beginPath();
+        ctx.moveTo(corners[a].x, corners[a].y);
+        ctx.lineTo(corners[b].x, corners[b].y);
+        ctx.stroke();
+      });
+    }
+
+    function drawVolumePoints(ctx, project) {
+      const range = volumeMetricRange();
+      const points = volumeData.points.map(point => ({
+        ...point,
+        projected: project(point),
+      })).sort((a, b) => a.projected.depth - b.projected.depth);
+
+      points.forEach(point => {
+        const value = point[volumeMetric];
+        const fraction = metricFraction(value, range);
+        ctx.beginPath();
+        ctx.fillStyle = valueColor(fraction);
+        ctx.globalAlpha = 0.42 + 0.48 * fraction;
+        ctx.arc(point.projected.x, point.projected.y, 4.2 + 2.8 * fraction, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function drawDeviceMarkers(ctx, project) {
+      volumeData.devices.forEach(device => {
+        const projected = project(device.position);
+        const color = deviceColors[device.kind] || "#b4552b";
+        ctx.save();
+        ctx.translate(projected.x, projected.y);
+        ctx.fillStyle = "#fffdf7";
+        ctx.strokeStyle = "#17211b";
+        ctx.lineWidth = 2.4;
+        roundedRect(ctx, -9, -9, 18, 18, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = color;
+        roundedRect(ctx, -5.5, -5.5, 11, 11, 3);
+        ctx.fill();
+        ctx.restore();
+
+        const label = `${device.name} (${device.kind}, ${Math.round(device.activation * 100)}%)`;
+        ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+        const labelWidth = ctx.measureText(label).width;
+        ctx.fillStyle = "rgba(255, 253, 247, 0.86)";
+        roundedRect(ctx, projected.x + 12, projected.y - 24, labelWidth + 12, 20, 8);
+        ctx.fill();
+        ctx.fillStyle = "#17211b";
+        ctx.fillText(label, projected.x + 18, projected.y - 10);
+      });
+    }
+
+    function drawVolumeLegend(ctx, width, range, metric) {
+      const x = width - 112;
+      const y = 42;
+      const h = 190;
+      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.fillStyle = "#69776e";
+      ctx.fillText(`${labels[metric]} (${units[metric]})`, x - 38, y - 14);
+      for (let i = 0; i < h; i += 1) {
+        const fraction = 1 - i / h;
+        ctx.fillStyle = valueColor(fraction);
+        ctx.fillRect(x, y + i, 20, 1);
+      }
+      ctx.fillStyle = "#17211b";
+      ctx.fillText(range.max.toFixed(1), x + 28, y + 9);
+      ctx.fillText(range.min.toFixed(1), x + 28, y + h);
+    }
+
+    function volumeMetricRange() {
+      const values = volumeData.points.map(point => point[volumeMetric]);
+      return { min: Math.min(...values), max: Math.max(...values) };
+    }
+
+    function metricFraction(value, range) {
+      if (Math.abs(range.max - range.min) < 1e-9) return 0.5;
+      return clamp((value - range.min) / (range.max - range.min), 0, 1);
+    }
+
+    function valueColor(fraction) {
+      const stops = fraction < 0.5
+        ? [[49, 130, 189], [255, 244, 173], fraction / 0.5]
+        : [[255, 244, 173], [203, 24, 29], (fraction - 0.5) / 0.5];
+      const [start, end, local] = stops;
+      const rgb = start.map((value, index) => Math.round(value + (end[index] - value) * local));
+      return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+    }
+
+    function roundedRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
     }
 
     async function loadWindowMatrix() {
@@ -388,6 +656,7 @@ INDEX_HTML = """<!doctype html>
       return `<table><thead><tr>${headers.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     }
 
+    setupVolumeControls();
     loadScenarios().catch(error => {
       document.getElementById("status").textContent = error.message;
     });
@@ -412,6 +681,9 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/window_matrix":
                 self._send_json(evaluate_window_matrix())
+                return
+            if parsed.path == "/api/volume":
+                self._send_json(get_scenario_volume(_query_name(parsed.query)))
                 return
             if parsed.path == "/api/rank_actions":
                 self._send_json(rank_scenario_actions(_query_name(parsed.query)))
