@@ -27,7 +27,7 @@ advisor@example.com}
 \maketitle
 
 \begin{abstract}
-Indoor digital twins are often designed under the assumption that appliances are network-connected and can directly report their operating states. In ordinary rooms, however, many devices and environmental elements remain non-networked: a conventional air conditioner may not expose its actual output, a manual window cannot report its opening degree, and ordinary lights may not provide feedback beyond environmental changes. This paper presents a lightweight spatial digital twin prototype that learns the environmental impact of non-networked appliances from limited room sensors. The proposed prototype models a single room as three spatial fields: temperature, humidity, and illuminance. Eight corner sensor nodes are used to calibrate a physics-inspired appliance influence model through affine residual correction. The system further estimates active appliance impact coefficients from before-and-after sensor observations and ranks candidate control actions by target-zone comfort improvement. To support AI-agent access, the prototype exposes its simulation, point estimation, baseline comparison, impact learning, and window-matrix analysis through a local Model Context Protocol (MCP) server. The implementation includes a Python simulation backend, an inverse distance weighting baseline, a 48-case window simulation matrix, and an interactive rotatable 3D web demo. Simulation results show that the proposed appliance-aware model can provide interpretable field reconstruction and action recommendations under sparse sensing constraints.
+Indoor digital twins are often designed under the assumption that appliances are network-connected and can directly report their operating states. In ordinary rooms, however, many devices and environmental elements remain non-networked: a conventional air conditioner may not expose its actual output, a manual window cannot report its opening degree, and ordinary lights may not provide feedback beyond environmental changes. This paper presents a lightweight spatial digital twin prototype that learns the environmental impact of non-networked appliances from limited room sensors. The proposed prototype models a single room as three spatial fields: temperature, humidity, and illuminance. Eight corner sensor nodes are used to calibrate a physics-inspired appliance influence model through affine residual correction. The system further estimates active appliance impact coefficients from before-and-after sensor observations and ranks candidate control actions by target-zone comfort improvement. To support AI-agent access, the prototype exposes its simulation, point estimation, baseline comparison, impact learning, window-matrix analysis, and direct window-condition simulation through a local Model Context Protocol (MCP) server. The implementation includes a Python simulation backend, an inverse distance weighting baseline, a 48-case window simulation matrix, direct window input, and an interactive rotatable 3D web demo. Simulation results show that the proposed appliance-aware model can provide interpretable field reconstruction and action recommendations under sparse sensing constraints.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -48,7 +48,7 @@ The main contributions are as follows:
 \item A residual calibration procedure that uses eight corner sensors to correct field bias and first-order spatial gradients.
 \item A non-networked appliance impact learning procedure that estimates active device coefficients from before-and-after sensor observations.
 \item An MCP-enabled service interface and a local web demo with checkbox-based device activation and rotatable 3D visualization.
-\item A simulation study including eight appliance-combination scenarios, an inverse distance weighting (IDW) baseline, and a 48-case window matrix across time of day, weather, and season.
+\item A simulation study including eight appliance-combination scenarios, an inverse distance weighting (IDW) baseline, a 48-case window matrix across time of day, weather, and season, and a direct window-input mode for user-supplied outdoor conditions.
 \end{itemize}
 
 \section{Related Work}
@@ -146,10 +146,10 @@ Candidate actions are evaluated by simulating their resulting target-zone values
 The implementation is a zero-dependency Python prototype. The main modules define entities, scenarios, field simulation, learning, IDW baseline comparison, action ranking, service APIs, MCP server, and the web demo. The same service layer is shared by the MCP server, the Gemma/Ollama bridge, and the web interface.
 
 \subsection{MCP Service}
-The local MCP server exposes tools for listing scenarios, running a scenario, ranking actions, sampling a point, comparing against IDW, learning appliance impacts, listing window scenarios, and running the full window matrix. These tools allow MCP-compatible clients to access the digital twin without directly importing Python modules.
+The local MCP server exposes tools for listing scenarios, running a scenario, ranking actions, sampling a point, comparing against IDW, learning appliance impacts, listing window scenarios, running the full window matrix, and running a direct window simulation from user-supplied outdoor temperature, humidity, sunlight, and opening ratio. These tools allow MCP-compatible clients to access the digital twin without directly importing Python modules.
 
 \subsection{Interactive Web Demo}
-The web demo provides a rotatable 3D canvas visualization. The user can rotate and zoom the estimated field, switch the metric using checkbox controls, and toggle appliances using checkboxes. The air conditioner is displayed as a wall bar, the window as a wall rectangle, and the light as a point marker. The interface also displays target-zone estimates, recommendations, baseline comparison, impact learning results, point sampling, and the 48-case window matrix.
+The web demo provides a rotatable 3D canvas visualization. The user can rotate and zoom the estimated field, switch the metric using checkbox controls, and toggle appliances using checkboxes. The air conditioner is displayed as a wall bar, the window as a wall rectangle, and the light as a point marker. The interface also displays target-zone estimates, recommendations, baseline comparison, impact learning results, point sampling, the 48-case window matrix, and a direct window-input form.
 
 \section{Evaluation}
 \subsection{Standard Appliance Scenarios}
@@ -215,7 +215,7 @@ ac\_only & Illum. & 1.8393 & 1.3876 & -32.55\%\\
 For the air-conditioner-only scenario, the learned coefficient is negative for temperature and humidity and approximately zero for illuminance. For the light-only scenario, the learned coefficient is strongly positive for illuminance, weakly positive for temperature, and approximately zero for humidity. These directions match the intended physical interpretation of the appliances.
 
 \subsection{Window Time-Weather-Season Matrix}
-The window matrix contains 48 cases: four times of day, three weather states, and four seasons. This matrix evaluates the window as an environmental variable rather than a simple binary switch. Table~\ref{tab:window} shows representative cases.
+The window matrix contains 48 cases: four times of day, three weather states, and four seasons. This matrix evaluates the window as an environmental variable rather than a simple binary switch. In addition to the enumerated matrix, the system supports a direct window-input mode in which a user or external data source supplies outdoor temperature, outdoor humidity, sunlight illuminance, and the equivalent opening ratio. The direct mode uses the same influence function and sensor-calibration pipeline, but it avoids discretizing the outside condition into season, weather, and time categories. Table~\ref{tab:window} shows representative enumerated cases.
 
 \begin{table}[t]
 \caption{Representative Window Matrix Results}

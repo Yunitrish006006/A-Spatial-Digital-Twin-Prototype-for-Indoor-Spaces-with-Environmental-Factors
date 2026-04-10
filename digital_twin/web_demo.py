@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 from .service import (
     compare_scenario_baseline,
     evaluate_scenario,
+    evaluate_window_direct,
     evaluate_window_matrix,
     get_scenario_volume,
     learn_scenario_impacts,
@@ -314,6 +315,20 @@ INDEX_HTML = """<!doctype html>
         <div id="windowMatrix"></div>
       </section>
       <section class="panel">
+        <h2>Direct Window Input</h2>
+        <p class="status">Use this when the outside condition is known directly instead of selected from season/weather/time presets.</p>
+        <div class="form-grid">
+          <div><label for="directOutdoorTemperature">Outdoor °C</label><input id="directOutdoorTemperature" type="number" step="0.1" value="33"></div>
+          <div><label for="directOutdoorHumidity">Outdoor RH</label><input id="directOutdoorHumidity" type="number" step="0.1" value="74"></div>
+          <div><label for="directSunlight">Sunlight lx</label><input id="directSunlight" type="number" step="100" value="32000"></div>
+          <div><label for="directOpening">Opening</label><input id="directOpening" type="number" min="0" max="1" step="0.05" value="0.7"></div>
+          <div><label for="directIndoorTemperature">Indoor °C</label><input id="directIndoorTemperature" type="number" step="0.1" value="29"></div>
+          <div><label for="directIndoorHumidity">Indoor RH</label><input id="directIndoorHumidity" type="number" step="0.1" value="67"></div>
+        </div>
+        <button class="secondary" onclick="loadDirectWindow()">Run Direct Window Simulation</button>
+        <div id="windowDirectResult"></div>
+      </section>
+      <section class="panel">
         <h2>Recommendation Ranking</h2>
         <div id="recommendations"></div>
       </section>
@@ -381,6 +396,9 @@ INDEX_HTML = """<!doctype html>
       await loadScenario();
       loadWindowMatrix().catch(error => {
         document.getElementById("windowMatrix").innerHTML = `<p class="status">${error.message}</p>`;
+      });
+      loadDirectWindow().catch(error => {
+        document.getElementById("windowDirectResult").innerHTML = `<p class="status">${error.message}</p>`;
       });
     }
 
@@ -805,6 +823,38 @@ INDEX_HTML = """<!doctype html>
       );
     }
 
+    async function loadDirectWindow() {
+      const container = document.getElementById("windowDirectResult");
+      container.innerHTML = `<p class="status">Running direct window simulation...</p>`;
+      const params = new URLSearchParams({
+        outdoor_temperature: document.getElementById("directOutdoorTemperature").value,
+        outdoor_humidity: document.getElementById("directOutdoorHumidity").value,
+        sunlight_illuminance: document.getElementById("directSunlight").value,
+        opening_ratio: document.getElementById("directOpening").value,
+        indoor_temperature: document.getElementById("directIndoorTemperature").value,
+        indoor_humidity: document.getElementById("directIndoorHumidity").value
+      });
+      const data = await getJSON(`/api/window_direct?${params.toString()}`);
+      container.innerHTML = `
+        <p class="status">Direct input mode, window opening ${Math.round(data.input.opening_ratio * 100)}%, target zone: ${data.target_zone}</p>
+        ${table(
+          ["Input", "Window Zone", "Center Zone", "Door-Side Zone"],
+          [[
+            [
+              `Outdoor T: ${fmt(data.environment.outdoor_temperature)}`,
+              `Outdoor H: ${fmt(data.environment.outdoor_humidity)}`,
+              `Sun: ${fmt(data.environment.sunlight_illuminance)}`,
+              `Indoor T: ${fmt(data.input.indoor_temperature)}`,
+              `Indoor H: ${fmt(data.input.indoor_humidity)}`
+            ].join("<br>"),
+            metrics.map(metric => `${labels[metric]}: ${fmt(data.zone_estimated.window_zone[metric])}`).join("<br>"),
+            metrics.map(metric => `${labels[metric]}: ${fmt(data.zone_estimated.center_zone[metric])}`).join("<br>"),
+            metrics.map(metric => `${labels[metric]}: ${fmt(data.zone_estimated.door_side_zone[metric])}`).join("<br>")
+          ]]
+        )}
+      `;
+    }
+
     async function samplePoint() {
       const x = document.getElementById("x").value;
       const y = document.getElementById("y").value;
@@ -846,6 +896,19 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/window_matrix":
                 self._send_json(evaluate_window_matrix())
+                return
+            if parsed.path == "/api/window_direct":
+                query = parse_qs(parsed.query)
+                self._send_json(
+                    evaluate_window_direct(
+                        outdoor_temperature=_query_float(query, "outdoor_temperature", 33.0),
+                        outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
+                        sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
+                        opening_ratio=_query_float(query, "opening_ratio", 0.7),
+                        indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
+                        indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
+                    )
+                )
                 return
             if parsed.path == "/api/volume":
                 self._send_json(get_scenario_volume(_query_name(parsed.query), _query_device_overrides(parsed.query)))

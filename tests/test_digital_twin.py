@@ -12,6 +12,7 @@ from digital_twin.scenarios import (
     apply_truth_adjustments,
     build_candidate_actions,
     build_comfort_target,
+    build_direct_window_scenario,
     build_standard_devices,
     build_standard_environment,
     build_standard_room,
@@ -236,6 +237,25 @@ class DigitalTwinTests(unittest.TestCase):
         self.assertGreater(sunny_noon.environment.sunlight_illuminance, rainy_night.environment.sunlight_illuminance)
         self.assertGreater(sunny_noon.environment.outdoor_temperature, rainy_night.environment.outdoor_temperature)
         self.assertGreater(rainy_night.environment.outdoor_humidity, sunny_noon.environment.outdoor_humidity)
+
+    def test_direct_window_scenario_uses_supplied_environment(self) -> None:
+        scenario = build_direct_window_scenario(
+            outdoor_temperature=35.0,
+            outdoor_humidity=82.0,
+            sunlight_illuminance=18000.0,
+            opening_ratio=0.45,
+            indoor_temperature=28.0,
+            indoor_humidity=64.0,
+        )
+        self.assertEqual(scenario.name, "window_direct_input")
+        self.assertEqual(scenario.metadata["input_mode"], "direct")
+        self.assertEqual(scenario.environment.outdoor_temperature, 35.0)
+        self.assertEqual(scenario.environment.outdoor_humidity, 82.0)
+        self.assertEqual(scenario.environment.sunlight_illuminance, 18000.0)
+        activations = {device.name: device.activation for device in scenario.devices}
+        self.assertEqual(activations["window_main"], 0.45)
+        self.assertEqual(activations["ac_main"], 0.0)
+        self.assertEqual(activations["light_main"], 0.0)
 
     def test_export_svg_volume_heatmap_writes_3d_svg(self) -> None:
         result = self.model.simulate(

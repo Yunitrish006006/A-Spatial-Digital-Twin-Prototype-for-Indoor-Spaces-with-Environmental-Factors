@@ -8,6 +8,7 @@ from urllib.request import Request, urlopen
 from .service import (
     compare_scenario_baseline,
     evaluate_scenario,
+    evaluate_window_direct,
     evaluate_window_matrix,
     learn_scenario_impacts,
     list_scenario_metadata,
@@ -107,6 +108,17 @@ def available_tools() -> Dict[str, ToolFunction]:
         "compare_baseline": lambda arguments: compare_scenario_baseline(_required_string(arguments, "scenario_name")),
         "learn_impacts": lambda arguments: learn_scenario_impacts(_required_string(arguments, "scenario_name")),
         "run_window_matrix": lambda _arguments: evaluate_window_matrix(),
+        "run_window_direct": lambda arguments: evaluate_window_direct(
+            outdoor_temperature=_required_number(arguments, "outdoor_temperature"),
+            outdoor_humidity=_required_number(arguments, "outdoor_humidity"),
+            sunlight_illuminance=_required_number(arguments, "sunlight_illuminance"),
+            opening_ratio=_optional_number(arguments, "opening_ratio", 0.7),
+            indoor_temperature=_optional_nullable_number(arguments, "indoor_temperature"),
+            indoor_humidity=_optional_nullable_number(arguments, "indoor_humidity"),
+            base_illuminance=_optional_number(arguments, "base_illuminance", 70.0),
+            daylight_factor=_optional_number(arguments, "daylight_factor", 0.95),
+            elapsed_minutes=_optional_number(arguments, "elapsed_minutes", 18.0),
+        ),
         "none": lambda _arguments: {"message": "No tool was required."},
     }
 
@@ -126,7 +138,8 @@ def build_tool_selection_prompt(question: str) -> str:
 6. compare_baseline: 比較本研究模型與 IDW baseline。arguments={{"scenario_name":"情境名稱"}}
 7. learn_impacts: 從前後感測資料學習非連網裝置影響。arguments={{"scenario_name":"情境名稱"}}
 8. run_window_matrix: 執行全部 48 個窗戶矩陣模擬。arguments={{}}
-9. none: 不需要工具。
+9. run_window_direct: 直接提供窗戶外部條件並執行窗戶模擬。arguments={{"outdoor_temperature":數字,"outdoor_humidity":數字,"sunlight_illuminance":數字,"opening_ratio":0到1數字}}
+10. none: 不需要工具。
 
 可用情境名稱：
 {scenarios}
@@ -145,6 +158,9 @@ def build_tool_selection_prompt(question: str) -> str:
 def heuristic_tool_selection(question: str) -> Dict[str, Any]:
     lowered = question.lower()
     scenario = find_scenario_name(lowered) or "idle"
+    direct_window_arguments = _parse_direct_window_arguments(lowered)
+    if direct_window_arguments:
+        return {"tool": "run_window_direct", "arguments": direct_window_arguments}
 
     if _mentions_window_matrix(lowered):
         if _is_window_matrix_scenario(scenario) and any(
@@ -179,6 +195,39 @@ def heuristic_tool_selection(question: str) -> Dict[str, Any]:
         return {"tool": "run_scenario", "arguments": {"scenario_name": scenario}}
 
     return {"tool": "none", "answer": "這個問題沒有明確對應到目前的數位孿生工具。"}
+
+
+def _parse_direct_window_arguments(text: str) -> Optional[Dict[str, float]]:
+    direct_keywords = [
+        "直接",
+        "外部溫度",
+        "室外溫度",
+        "外面溫度",
+        "outdoor",
+        "sunlight",
+        "illuminance",
+        "lux",
+        "lx",
+        "開窗比例",
+    ]
+    if not (("窗戶" in text or "window" in text) and any(keyword in text for keyword in direct_keywords)):
+        return None
+    numbers = [float(item) for item in re.findall(r"[-+]?\d+(?:\.\d+)?", text)]
+    if len(numbers) < 3:
+        return None
+    arguments: Dict[str, float] = {
+        "outdoor_temperature": numbers[0],
+        "outdoor_humidity": numbers[1],
+        "sunlight_illuminance": numbers[2],
+    }
+    if len(numbers) >= 4:
+        opening_ratio = numbers[3] / 100.0 if numbers[3] > 1.0 else numbers[3]
+        arguments["opening_ratio"] = opening_ratio
+    if len(numbers) >= 5:
+        arguments["indoor_temperature"] = numbers[4]
+    if len(numbers) >= 6:
+        arguments["indoor_humidity"] = numbers[5]
+    return arguments
 
 
 def find_scenario_name(text: str) -> Optional[str]:
@@ -342,6 +391,18 @@ def _required_number(arguments: Dict[str, Any], key: str) -> float:
     if not isinstance(value, (int, float)):
         raise ValueError(f"'{key}' must be a number.")
     return float(value)
+
+
+def _optional_number(arguments: Dict[str, Any], key: str, default: float) -> float:
+    if key not in arguments:
+        return default
+    return _required_number(arguments, key)
+
+
+def _optional_nullable_number(arguments: Dict[str, Any], key: str) -> Optional[float]:
+    if key not in arguments:
+        return None
+    return _required_number(arguments, key)
 
 
 def build_parser() -> argparse.ArgumentParser:

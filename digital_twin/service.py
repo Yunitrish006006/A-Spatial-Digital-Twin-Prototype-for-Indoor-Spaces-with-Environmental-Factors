@@ -23,6 +23,7 @@ from .scenarios import (
     WINDOW_WEATHER_ORDER,
     Scenario,
     apply_truth_adjustments,
+    build_direct_window_scenario,
     build_validation_scenarios,
     build_window_matrix_scenarios,
 )
@@ -37,8 +38,46 @@ def list_window_scenario_metadata() -> List[Dict]:
 
 
 def evaluate_scenario(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
-    model = DigitalTwinModel()
     scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
+    return _evaluate_scenario_object(scenario)
+
+
+def evaluate_window_direct(
+    outdoor_temperature: float,
+    outdoor_humidity: float,
+    sunlight_illuminance: float,
+    opening_ratio: float = 0.7,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: float = 70.0,
+    daylight_factor: float = 0.95,
+    elapsed_minutes: float = 18.0,
+) -> Dict:
+    scenario = build_direct_window_scenario(
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        opening_ratio=opening_ratio,
+        indoor_temperature=indoor_temperature,
+        indoor_humidity=indoor_humidity,
+        base_illuminance=base_illuminance,
+        daylight_factor=daylight_factor,
+        elapsed_minutes=elapsed_minutes,
+    )
+    result = _evaluate_scenario_object(scenario)
+    result["input"] = {
+        "mode": "direct",
+        "opening_ratio": round(max(0.0, min(1.0, float(opening_ratio))), 4),
+        "indoor_temperature": scenario.room.base_temperature,
+        "indoor_humidity": scenario.room.base_humidity,
+        "base_illuminance": scenario.room.base_illuminance,
+        "elapsed_minutes": scenario.elapsed_minutes,
+    }
+    return result
+
+
+def _evaluate_scenario_object(scenario: Scenario) -> Dict:
+    model = DigitalTwinModel()
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     raw_nominal = model.simulate(

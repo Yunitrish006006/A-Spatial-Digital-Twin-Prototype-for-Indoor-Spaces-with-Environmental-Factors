@@ -13,6 +13,7 @@
 - 比較本研究模型與 IDW baseline。
 - 學習非連網裝置啟用前後造成的環境影響係數。
 - 執行窗戶在時段、天氣、季節組合下的 48 組模擬矩陣。
+- 直接提供窗戶外部條件，例如外部溫度、濕度、日照與開窗比例，立即估計三因子區域影響。
 
 MCP 化後，模型不只是 Python script，而是可以被 AI client 當作外部工具呼叫。
 
@@ -121,6 +122,23 @@ python3 scripts/run_mcp_server.py
 {}
 ```
 
+### `run_window_direct`
+
+不使用列舉矩陣，直接由使用者提供外部條件建立窗戶模擬。此工具適合接入實際天氣 API、手動輸入或其他非分類資料來源。
+
+輸入：
+
+```json
+{
+  "outdoor_temperature": 35.0,
+  "outdoor_humidity": 82.0,
+  "sunlight_illuminance": 18000.0,
+  "opening_ratio": 0.45,
+  "indoor_temperature": 28.0,
+  "indoor_humidity": 64.0
+}
+```
+
 ## 可用情境名稱
 
 - `idle`
@@ -153,6 +171,7 @@ printf '%s\n' \
 '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
 '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rank_actions","arguments":{"scenario_name":"idle"}}}' \
 '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"run_window_matrix","arguments":{}}}' \
+'{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"run_window_direct","arguments":{"outdoor_temperature":35,"outdoor_humidity":82,"sunlight_illuminance":18000,"opening_ratio":0.45}}}' \
 | python3 scripts/run_mcp_server.py
 ```
 
@@ -177,7 +196,7 @@ printf '%s\n' \
 
 - 目前是本地 stdio MCP server，不是遠端 HTTP MCP。
 - 尚未加入 OAuth 或使用者權限控制。
-- 模型情境仍是內建標準案例與窗戶矩陣案例，尚未開放任意房間 JSON 輸入。
+- 模型情境仍以內建標準案例、窗戶矩陣案例與窗戶 direct input 為主，尚未開放任意房間 JSON 輸入。
 - 輸出以 JSON text content 為主，尚未提供 MCP resource 或圖片 resource。
 
 ## 後續可擴充方向

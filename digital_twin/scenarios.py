@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .entities import (
     Action,
@@ -391,6 +391,61 @@ def build_window_matrix_scenarios() -> List[Scenario]:
                     )
                 )
     return scenarios
+
+
+def build_direct_window_scenario(
+    outdoor_temperature: float,
+    outdoor_humidity: float,
+    sunlight_illuminance: float,
+    opening_ratio: float = 0.7,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: float = 70.0,
+    daylight_factor: float = 0.95,
+    elapsed_minutes: float = 18.0,
+) -> Scenario:
+    room = build_standard_room()
+    room = Room(
+        name="direct_window_room",
+        width=room.width,
+        length=room.length,
+        height=room.height,
+        base_temperature=room.base_temperature if indoor_temperature is None else float(indoor_temperature),
+        base_humidity=room.base_humidity if indoor_humidity is None else max(0.0, min(100.0, float(indoor_humidity))),
+        base_illuminance=max(0.0, float(base_illuminance)),
+    )
+    sensors = create_corner_sensors(room)
+    zones = build_standard_zones(room)
+    devices = build_standard_devices()
+    activation = max(0.0, min(1.0, float(opening_ratio)))
+    for device in devices:
+        device.activation = activation if device.name == "window_main" else 0.0
+
+    environment = Environment(
+        outdoor_temperature=float(outdoor_temperature),
+        outdoor_humidity=max(0.0, min(100.0, float(outdoor_humidity))),
+        sunlight_illuminance=max(0.0, float(sunlight_illuminance)),
+        daylight_factor=max(0.0, float(daylight_factor)),
+    )
+    return Scenario(
+        name="window_direct_input",
+        description="窗戶直接輸入模擬：使用外部溫度、濕度、日照與開窗比例，不經列舉矩陣。",
+        room=room,
+        environment=environment,
+        devices=devices,
+        sensors=sensors,
+        zones=zones,
+        resolution=GridResolution(nx=10, ny=8, nz=4),
+        elapsed_minutes=max(0.0, float(elapsed_minutes)),
+        truth_adjustments=[ActionEffect(device_name="window_main", power_scale=0.92)],
+        comfort_target=build_comfort_target(),
+        candidate_actions=build_candidate_actions(),
+        target_zone_name="window_zone",
+        metadata={
+            "category": "window_direct_input",
+            "input_mode": "direct",
+        },
+    )
 
 
 def apply_truth_adjustments(devices: List[Device], adjustments: List[ActionEffect]) -> List[Device]:

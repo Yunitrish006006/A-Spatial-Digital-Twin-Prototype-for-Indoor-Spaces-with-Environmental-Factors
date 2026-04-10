@@ -4,6 +4,7 @@ import unittest
 from digital_twin.mcp_server import LocalMCPServer
 from digital_twin.service import (
     evaluate_scenario,
+    evaluate_window_direct,
     evaluate_window_matrix,
     get_scenario_volume,
     list_scenario_metadata,
@@ -41,6 +42,22 @@ class ServiceTests(unittest.TestCase):
         result = evaluate_window_matrix()
         self.assertEqual(result["count"], 48)
         self.assertEqual(len(result["scenarios"]), 48)
+
+    def test_evaluate_window_direct_returns_supplied_input(self) -> None:
+        result = evaluate_window_direct(
+            outdoor_temperature=35.0,
+            outdoor_humidity=82.0,
+            sunlight_illuminance=18000.0,
+            opening_ratio=0.45,
+            indoor_temperature=28.0,
+            indoor_humidity=64.0,
+        )
+        self.assertEqual(result["name"], "window_direct_input")
+        self.assertEqual(result["metadata"]["category"], "window_direct_input")
+        self.assertEqual(result["input"]["mode"], "direct")
+        self.assertEqual(result["input"]["opening_ratio"], 0.45)
+        self.assertEqual(result["environment"]["outdoor_temperature"], 35.0)
+        self.assertIn("window_zone", result["zone_estimated"])
 
     def test_sample_point_returns_three_metrics(self) -> None:
         result = sample_scenario_point("light_only", x=3.0, y=2.0, z=1.5)
@@ -92,6 +109,7 @@ class MCPServerTests(unittest.TestCase):
                 "compare_baseline",
                 "learn_impacts",
                 "run_window_matrix",
+                "run_window_direct",
             },
         )
 
@@ -147,6 +165,28 @@ class MCPServerTests(unittest.TestCase):
         payload = json.loads(response["result"]["content"][0]["text"])
         self.assertEqual(payload["count"], 48)
         self.assertEqual(payload["scenarios"][0]["metadata"]["category"], "window_matrix")
+
+    def test_run_window_direct_tool_call(self) -> None:
+        response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 7,
+                "method": "tools/call",
+                "params": {
+                    "name": "run_window_direct",
+                    "arguments": {
+                        "outdoor_temperature": 35.0,
+                        "outdoor_humidity": 82.0,
+                        "sunlight_illuminance": 18000.0,
+                        "opening_ratio": 0.45,
+                    },
+                },
+            }
+        )
+        payload = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(payload["name"], "window_direct_input")
+        self.assertEqual(payload["input"]["opening_ratio"], 0.45)
+        self.assertEqual(payload["target_zone"], "window_zone")
 
 
 if __name__ == "__main__":

@@ -45,6 +45,14 @@ class GemmaBridgeTests(unittest.TestCase):
         selected = heuristic_tool_selection("幫我跑窗戶早上中午下午晚上陰天晴天雨天四季模擬")
         self.assertEqual(selected["tool"], "run_window_matrix")
 
+    def test_heuristic_selects_direct_window_input(self) -> None:
+        selected = heuristic_tool_selection("窗戶直接用外部溫度35 濕度82 日照18000 開窗比例45% 模擬")
+        self.assertEqual(selected["tool"], "run_window_direct")
+        self.assertEqual(selected["arguments"]["outdoor_temperature"], 35.0)
+        self.assertEqual(selected["arguments"]["outdoor_humidity"], 82.0)
+        self.assertEqual(selected["arguments"]["sunlight_illuminance"], 18000.0)
+        self.assertEqual(selected["arguments"]["opening_ratio"], 0.45)
+
     def test_heuristic_selects_specific_window_scenario(self) -> None:
         selected = heuristic_tool_selection("夏季晴天中午窗戶結果")
         self.assertEqual(selected["tool"], "run_scenario")
@@ -63,6 +71,19 @@ class GemmaBridgeTests(unittest.TestCase):
     def test_execute_window_matrix_tool(self) -> None:
         result = execute_tool("run_window_matrix", {})
         self.assertEqual(result["count"], 48)
+
+    def test_execute_window_direct_tool(self) -> None:
+        result = execute_tool(
+            "run_window_direct",
+            {
+                "outdoor_temperature": 35.0,
+                "outdoor_humidity": 82.0,
+                "sunlight_illuminance": 18000.0,
+                "opening_ratio": 0.45,
+            },
+        )
+        self.assertEqual(result["name"], "window_direct_input")
+        self.assertEqual(result["input"]["opening_ratio"], 0.45)
 
     def test_tool_output_is_json_serializable(self) -> None:
         result = execute_tool("sample_point", {"scenario_name": "light_only", "x": 3, "y": 2, "z": 1.5})

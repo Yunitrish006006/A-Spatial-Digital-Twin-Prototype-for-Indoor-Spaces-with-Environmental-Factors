@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from .service import (
     compare_scenario_baseline,
     evaluate_scenario,
+    evaluate_window_direct,
     evaluate_window_matrix,
     learn_scenario_impacts,
     list_scenario_metadata,
@@ -122,6 +123,44 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "run_window_direct",
+        "description": "Run a window-only simulation from directly supplied outdoor temperature, humidity, sunlight, and opening ratio.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "outdoor_temperature": {"type": "number", "description": "Outdoor temperature in Celsius."},
+                "outdoor_humidity": {"type": "number", "description": "Outdoor relative humidity in percent."},
+                "sunlight_illuminance": {"type": "number", "description": "Outdoor sunlight illuminance in lux."},
+                "opening_ratio": {
+                    "type": "number",
+                    "description": "Equivalent window opening ratio from 0.0 to 1.0. Defaults to 0.7.",
+                },
+                "indoor_temperature": {
+                    "type": "number",
+                    "description": "Optional indoor baseline temperature in Celsius.",
+                },
+                "indoor_humidity": {
+                    "type": "number",
+                    "description": "Optional indoor baseline relative humidity in percent.",
+                },
+                "base_illuminance": {
+                    "type": "number",
+                    "description": "Optional indoor baseline illuminance in lux. Defaults to 70.",
+                },
+                "daylight_factor": {
+                    "type": "number",
+                    "description": "Optional daylight transmission factor. Defaults to 0.95.",
+                },
+                "elapsed_minutes": {
+                    "type": "number",
+                    "description": "Optional elapsed minutes after opening the window. Defaults to 18.",
+                },
+            },
+            "required": ["outdoor_temperature", "outdoor_humidity", "sunlight_illuminance"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -186,6 +225,18 @@ class LocalMCPServer:
             payload = learn_scenario_impacts(_required_string(arguments, "scenario_name"))
         elif tool_name == "run_window_matrix":
             payload = evaluate_window_matrix()
+        elif tool_name == "run_window_direct":
+            payload = evaluate_window_direct(
+                outdoor_temperature=_required_number(arguments, "outdoor_temperature"),
+                outdoor_humidity=_required_number(arguments, "outdoor_humidity"),
+                sunlight_illuminance=_required_number(arguments, "sunlight_illuminance"),
+                opening_ratio=_optional_number(arguments, "opening_ratio", 0.7),
+                indoor_temperature=_optional_nullable_number(arguments, "indoor_temperature"),
+                indoor_humidity=_optional_nullable_number(arguments, "indoor_humidity"),
+                base_illuminance=_optional_number(arguments, "base_illuminance", 70.0),
+                daylight_factor=_optional_number(arguments, "daylight_factor", 0.95),
+                elapsed_minutes=_optional_number(arguments, "elapsed_minutes", 18.0),
+            )
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
 
@@ -212,6 +263,18 @@ def _required_number(arguments: Dict[str, Any], key: str) -> float:
     if not isinstance(value, (int, float)):
         raise ValueError(f"'{key}' must be a number.")
     return float(value)
+
+
+def _optional_number(arguments: Dict[str, Any], key: str, default: float) -> float:
+    if key not in arguments:
+        return default
+    return _required_number(arguments, key)
+
+
+def _optional_nullable_number(arguments: Dict[str, Any], key: str) -> Optional[float]:
+    if key not in arguments:
+        return None
+    return _required_number(arguments, key)
 
 
 def serve_stdio() -> None:

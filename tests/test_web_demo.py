@@ -8,6 +8,8 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("IDW Baseline Comparison", INDEX_HTML)
         self.assertIn("Learned Non-Networked Appliance Impact", INDEX_HTML)
         self.assertIn("Window Season/Weather/Time Matrix", INDEX_HTML)
+        self.assertIn("Direct Window Input", INDEX_HTML)
+        self.assertIn("windowDirectResult", INDEX_HTML)
         self.assertIn("Rotatable 3D Field Preview", INDEX_HTML)
         self.assertIn("volumeCanvas", INDEX_HTML)
         self.assertIn("Device Toggles", INDEX_HTML)

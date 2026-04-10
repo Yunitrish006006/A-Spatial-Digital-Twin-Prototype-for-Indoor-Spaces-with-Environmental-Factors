@@ -83,6 +83,37 @@ run_window_matrix
 
 或在 web demo 中查看 `Window Season/Weather/Time Matrix` 表格。
 
+## 直接輸入模式
+
+除了列舉 48 組季節、天氣與時段組合，本系統也提供窗戶 direct input 模式。此模式適合使用者已經知道外部環境數值時，不需要先把資料轉成「春夏秋冬、陰晴雨、早中晚」分類，而是直接提供下列參數：
+
+- 外部溫度 `outdoor_temperature`
+- 外部相對濕度 `outdoor_humidity`
+- 外部日照照度 `sunlight_illuminance`
+- 開窗比例 `opening_ratio`
+- 可選的室內基準溫度與濕度
+
+MCP tool：
+
+```text
+run_window_direct
+```
+
+範例參數：
+
+```json
+{
+  "outdoor_temperature": 35.0,
+  "outdoor_humidity": 82.0,
+  "sunlight_illuminance": 18000.0,
+  "opening_ratio": 0.45,
+  "indoor_temperature": 28.0,
+  "indoor_humidity": 64.0
+}
+```
+
+這個 direct input 模式與列舉矩陣使用同一套窗戶影響函數、角落感測器校正與區域平均輸出，因此結果可直接與 `window_zone`、`center_zone`、`door_side_zone` 的矩陣結果比較。列舉模式適合論文敏感度分析，直接輸入模式適合展示實際場域或使用者指定條件下的即時計算。
+
 ## 初步結果範例
 
 目前產出的例子：

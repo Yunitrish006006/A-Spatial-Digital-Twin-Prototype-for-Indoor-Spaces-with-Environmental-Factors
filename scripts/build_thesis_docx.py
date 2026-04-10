@@ -31,7 +31,7 @@ def build_blocks() -> List[Block]:
             "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。模型將室內狀態定義為溫度、濕度與照度三個空間場，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的影響。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差擬合 affine 校正場，以修正背景場與設備影響函數之偏差。"
         ),
         paragraph(
-            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為提升系統可存取性，本研究將模型能力封裝為本地 Model Context Protocol（MCP）服務，提供情境查詢、模擬、座標估計、baseline 比較、影響學習與窗戶時段/天氣/季節矩陣模擬等工具。最後，本研究以 Python 原型、模擬案例、IDW baseline 比較、48 組窗戶矩陣與可旋轉 3D web demo 驗證模型之可解釋性與實作可行性。"
+            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為提升系統可存取性，本研究將模型能力封裝為本地 Model Context Protocol（MCP）服務，提供情境查詢、模擬、座標估計、baseline 比較、影響學習、窗戶時段/天氣/季節矩陣模擬與窗戶外部條件直接輸入模擬等工具。最後，本研究以 Python 原型、模擬案例、IDW baseline 比較、48 組窗戶矩陣、窗戶 direct input 與可旋轉 3D web demo 驗證模型之可解釋性與實作可行性。"
         ),
         paragraph("關鍵字：空間數位孿生、非連網家電、室內環境建模、溫度、濕度、照度、MCP、角落感測器。"),
         page_break(),
@@ -104,7 +104,7 @@ def build_blocks() -> List[Block]:
                 "建立非連網冷氣、窗戶與照明之參數化影響函數與影響學習流程。",
                 "提供目標區域導向的候選控制動作排序方法。",
                 "將模型封裝為 MCP tools，讓 AI client 能查詢情境、估計座標點與取得控制推薦。",
-                "提供可重現 Python 原型、48 組窗戶矩陣模擬與可旋轉 3D web demo。",
+                "提供可重現 Python 原型、48 組窗戶矩陣模擬、窗戶 direct input 模擬與可旋轉 3D web demo。",
             ]
         ),
         page_break(),
@@ -214,6 +214,7 @@ def build_blocks() -> List[Block]:
                 "compare_baseline：比較本研究模型與 IDW baseline。",
                 "learn_impacts：由前後感測資料學習非連網裝置影響。",
                 "run_window_matrix：執行全部 48 組窗戶矩陣模擬。",
+                "run_window_direct：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬。",
             ]
         ),
         heading("4.3 Gemma/Ollama Bridge", 2),
@@ -222,7 +223,7 @@ def build_blocks() -> List[Block]:
         ),
         heading("4.4 Web Demo", 2),
         paragraph(
-            "Web demo 以 idle 房間背景為基礎，透過 ac_main、window_main 與 light_main checkbox 組合設備狀態，不使用下拉式情境選單。3D 預覽可拖曳旋轉與縮放，並以牆面橫條標示冷氣、牆面矩形標示窗戶、點狀標記表示照明。Metric 亦以勾選式控制切換 temperature、humidity 與 illuminance。"
+            "Web demo 以 idle 房間背景為基礎，透過 ac_main、window_main 與 light_main checkbox 組合設備狀態，不使用下拉式情境選單。3D 預覽可拖曳旋轉與縮放，並以牆面橫條標示冷氣、牆面矩形標示窗戶、點狀標記表示照明。Metric 亦以勾選式控制切換 temperature、humidity 與 illuminance。窗戶展示除列舉矩陣外，另提供 direct input 表單，讓使用者直接輸入外部溫度、濕度、日照與開窗比例。"
         ),
         page_break(),
         heading("第五章 模擬案例與結果分析", 1),
@@ -252,9 +253,12 @@ def build_blocks() -> List[Block]:
         paragraph(
             "在 ac_only 情境中，模型學得冷氣對 temperature 的係數為負，對 humidity 的係數亦為負，對 illuminance 則接近零，符合冷氣降溫與弱除濕的模型假設。在 light_only 情境中，照明主要提升 illuminance，並帶來少量正向熱效應。這些結果顯示，即使裝置本身不回報狀態，仍可由環境感測變化估計其影響方向與相對強度。"
         ),
-        heading("5.5 窗戶時段、天氣與季節矩陣", 2),
+        heading("5.5 窗戶時段、天氣、季節矩陣與直接輸入", 2),
         paragraph(
             "本研究新增 48 組窗戶矩陣情境，組合 4 個時段、3 種天氣與 4 個季節。此矩陣可作為外部環境變數敏感度分析，用於說明窗戶在不同外部條件下對靠窗區與中心區的溫度、濕度與照度影響。"
+        ),
+        paragraph(
+            "除列舉矩陣外，系統亦支援窗戶 direct input 模式。使用者可直接提供外部溫度、外部濕度、外部日照照度、開窗比例，以及可選的室內基準溫濕度。此模式適合接入即時天氣資料、手動量測資料或使用者指定條件，不必先將外部條件離散化為季節、天氣與時段分類。"
         ),
         table(
             ["情境", "外部溫度", "外部濕度", "外部日照", "窗戶區照度"],
@@ -319,6 +323,7 @@ def build_blocks() -> List[Block]:
                 "3D 預覽可拖曳旋轉，滾輪縮放。",
                 "Metric checkbox 可切換 temperature、humidity 與 illuminance。",
                 "窗戶矩陣表格展示 48 組時段、天氣與季節組合。",
+                "Direct Window Input 表單可直接輸入外部溫度、濕度、日照與開窗比例。",
                 "Point Sample 可查詢任意座標的三因子估計值。",
             ]
         ),
