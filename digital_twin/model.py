@@ -314,6 +314,9 @@ class DigitalTwinModel:
         return {metric: 0.0 for metric in METRICS}
 
     def _influence_envelope(self, device: Device, point: Vector3, elapsed_minutes: float) -> float:
+        return self.influence_envelope(device, point, elapsed_minutes)
+
+    def influence_envelope(self, device: Device, point: Vector3, elapsed_minutes: float) -> float:
         dynamic_level = self._dynamic_activation(device, elapsed_minutes)
         if dynamic_level <= 0.0:
             return 0.0

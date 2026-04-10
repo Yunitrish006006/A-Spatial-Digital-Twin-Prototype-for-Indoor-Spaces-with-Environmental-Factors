@@ -39,7 +39,10 @@ class MCPServerTests(unittest.TestCase):
     def test_tools_list(self) -> None:
         response = self.server.handle_message({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         names = {tool["name"] for tool in response["result"]["tools"]}
-        self.assertEqual(names, {"list_scenarios", "run_scenario", "rank_actions", "sample_point"})
+        self.assertEqual(
+            names,
+            {"list_scenarios", "run_scenario", "rank_actions", "sample_point", "compare_baseline", "learn_impacts"},
+        )
 
     def test_tool_call(self) -> None:
         response = self.server.handle_message(
@@ -54,6 +57,32 @@ class MCPServerTests(unittest.TestCase):
         payload = json.loads(content)
         self.assertEqual(payload["scenario"], "idle")
         self.assertGreater(len(payload["recommendations"]), 0)
+
+    def test_compare_baseline_tool_call(self) -> None:
+        response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {"name": "compare_baseline", "arguments": {"scenario_name": "light_only"}},
+            }
+        )
+        payload = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(payload["scenario"], "light_only")
+        self.assertIn("comparison", payload)
+
+    def test_learn_impacts_tool_call(self) -> None:
+        response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tools/call",
+                "params": {"name": "learn_impacts", "arguments": {"scenario_name": "ac_only"}},
+            }
+        )
+        payload = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(payload["scenario"], "ac_only")
+        self.assertGreater(len(payload["learned_device_impacts"]), 0)
 
 
 if __name__ == "__main__":

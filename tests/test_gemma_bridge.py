@@ -28,10 +28,25 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(selected["tool"], "rank_actions")
         self.assertEqual(selected["arguments"]["scenario_name"], "idle")
 
+    def test_heuristic_selects_baseline_comparison(self) -> None:
+        selected = heuristic_tool_selection("light_only 跟 IDW baseline 誤差比較")
+        self.assertEqual(selected["tool"], "compare_baseline")
+        self.assertEqual(selected["arguments"]["scenario_name"], "light_only")
+
+    def test_heuristic_selects_impact_learning(self) -> None:
+        selected = heuristic_tool_selection("ac_only 學習非連網冷氣影響")
+        self.assertEqual(selected["tool"], "learn_impacts")
+        self.assertEqual(selected["arguments"]["scenario_name"], "ac_only")
+
     def test_execute_rank_actions_tool(self) -> None:
         result = execute_tool("rank_actions", {"scenario_name": "idle"})
         self.assertEqual(result["scenario"], "idle")
         self.assertGreater(len(result["recommendations"]), 0)
+
+    def test_execute_learn_impacts_tool(self) -> None:
+        result = execute_tool("learn_impacts", {"scenario_name": "ac_only"})
+        self.assertEqual(result["scenario"], "ac_only")
+        self.assertGreater(len(result["learned_device_impacts"]), 0)
 
     def test_tool_output_is_json_serializable(self) -> None:
         result = execute_tool("sample_point", {"scenario_name": "light_only", "x": 3, "y": 2, "z": 1.5})

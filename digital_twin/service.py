@@ -1,6 +1,15 @@
 from typing import Dict, List
+from copy import deepcopy
 
-from .demo import compare_fields, compare_sensors, compare_zone_averages, synthesize_sensor_observations
+from .baselines import build_idw_field, compute_zone_averages as compute_idw_zone_averages
+from .demo import (
+    compare_fields,
+    compare_model_to_idw,
+    compare_sensors,
+    compare_zone_averages,
+    learn_active_device_impacts,
+    synthesize_sensor_observations,
+)
 from .entities import Vector3
 from .model import DigitalTwinModel
 from .recommendations import rank_actions
@@ -41,6 +50,19 @@ def evaluate_scenario(scenario_name: str) -> Dict:
         elapsed_minutes=scenario.elapsed_minutes,
         resolution=scenario.resolution,
     )
+    before_devices = deepcopy(scenario.devices)
+    for device in before_devices:
+        device.activation = 0.0
+    before_result = model.simulate(
+        room=scenario.room,
+        environment=scenario.environment,
+        devices=before_devices,
+        sensors=scenario.sensors,
+        zones=scenario.zones,
+        elapsed_minutes=scenario.elapsed_minutes,
+        resolution=scenario.resolution,
+    )
+    before_observations = synthesize_sensor_observations(before_result.sensor_predictions, scenario.sensors)
     estimated_result = model.simulate(
         room=scenario.room,
         environment=scenario.environment,
@@ -51,13 +73,33 @@ def evaluate_scenario(scenario_name: str) -> Dict:
         resolution=scenario.resolution,
         observed_sensors=observed_sensors,
     )
+    idw_field = build_idw_field(
+        room=scenario.room,
+        sensors=scenario.sensors,
+        observed_sensors=observed_sensors,
+        resolution=scenario.resolution,
+    )
+    idw_zone_averages = compute_idw_zone_averages(idw_field, scenario.zones)
+    field_mae = compare_fields(estimated_result.field, truth_result.field)
+    idw_field_mae = compare_fields(idw_field, truth_result.field)
     return {
         "name": scenario.name,
         "description": scenario.description,
-        "field_mae": compare_fields(estimated_result.field, truth_result.field),
+        "field_mae": field_mae,
+        "idw_field_mae": idw_field_mae,
+        "idw_zone_mae": compare_zone_averages(idw_zone_averages, truth_result.zone_averages),
+        "baseline_comparison": compare_model_to_idw(field_mae, idw_field_mae),
         "zone_mae": compare_zone_averages(estimated_result.zone_averages, truth_result.zone_averages),
         "sensor_mae_before": compare_sensors(raw_nominal.sensor_predictions, observed_sensors),
         "sensor_mae_after": compare_sensors(estimated_result.sensor_predictions, observed_sensors),
+        "learned_device_impacts": learn_active_device_impacts(
+            model=model,
+            scenario_devices=scenario.devices,
+            sensors=scenario.sensors,
+            before_observations=before_observations,
+            after_observations=observed_sensors,
+            elapsed_minutes=scenario.elapsed_minutes,
+        ),
         "target_zone": scenario.target_zone_name,
         "target_zone_estimated": _round_metric_dict(estimated_result.zone_averages[scenario.target_zone_name]),
         "target_zone_truth": _round_metric_dict(truth_result.zone_averages[scenario.target_zone_name]),
@@ -135,6 +177,69 @@ def sample_scenario_point(scenario_name: str, x: float, y: float, z: float) -> D
         "scenario": scenario.name,
         "point": _vector_to_dict(point),
         "values": _round_metric_dict(values),
+    }
+
+
+def compare_scenario_baseline(scenario_name: str) -> Dict:
+    model = DigitalTwinModel()
+    scenario = _find_scenario(scenario_name)
+    truth_result = _simulate_truth(model, scenario)
+    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
+    estimated_result = model.simulate(
+        room=scenario.room,
+        environment=scenario.environment,
+        devices=scenario.devices,
+        sensors=scenario.sensors,
+        zones=scenario.zones,
+        elapsed_minutes=scenario.elapsed_minutes,
+        resolution=scenario.resolution,
+        observed_sensors=observed_sensors,
+    )
+    idw_field = build_idw_field(
+        room=scenario.room,
+        sensors=scenario.sensors,
+        observed_sensors=observed_sensors,
+        resolution=scenario.resolution,
+    )
+    model_mae = compare_fields(estimated_result.field, truth_result.field)
+    idw_mae = compare_fields(idw_field, truth_result.field)
+    return {
+        "scenario": scenario.name,
+        "model": "affine-corrected appliance influence field",
+        "baseline": "inverse distance weighting",
+        "comparison": compare_model_to_idw(model_mae, idw_mae),
+    }
+
+
+def learn_scenario_impacts(scenario_name: str) -> Dict:
+    model = DigitalTwinModel()
+    scenario = _find_scenario(scenario_name)
+    truth_result = _simulate_truth(model, scenario)
+    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
+    before_devices = deepcopy(scenario.devices)
+    for device in before_devices:
+        device.activation = 0.0
+    before_result = model.simulate(
+        room=scenario.room,
+        environment=scenario.environment,
+        devices=before_devices,
+        sensors=scenario.sensors,
+        zones=scenario.zones,
+        elapsed_minutes=scenario.elapsed_minutes,
+        resolution=scenario.resolution,
+    )
+    before_observations = synthesize_sensor_observations(before_result.sensor_predictions, scenario.sensors)
+    return {
+        "scenario": scenario.name,
+        "description": "Learn active non-networked appliance impact coefficients from before/after sensor observations.",
+        "learned_device_impacts": learn_active_device_impacts(
+            model=model,
+            scenario_devices=scenario.devices,
+            sensors=scenario.sensors,
+            before_observations=before_observations,
+            after_observations=observed_sensors,
+            elapsed_minutes=scenario.elapsed_minutes,
+        ),
     }
 
 

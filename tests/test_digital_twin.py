@@ -1,6 +1,8 @@
 import unittest
 
+from digital_twin.baselines import build_idw_field
 from digital_twin.demo import compare_sensors, synthesize_sensor_observations
+from digital_twin.learning import learn_device_impact_from_sensor_delta
 from digital_twin.model import DigitalTwinModel
 from digital_twin.recommendations import rank_actions
 from digital_twin.scenarios import (
@@ -138,6 +140,48 @@ class DigitalTwinTests(unittest.TestCase):
         self.assertLess(mae_after["temperature"], mae_before["temperature"])
         self.assertLess(mae_after["humidity"], mae_before["humidity"])
         self.assertLess(mae_after["illuminance"], mae_before["illuminance"])
+
+    def test_idw_baseline_builds_field(self) -> None:
+        observed = self.model.predict_sensors(
+            room=self.room,
+            environment=self.environment,
+            devices=self.devices,
+            sensors=self.sensors,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        field = build_idw_field(self.room, self.sensors, observed, self.resolution)
+        self.assertEqual(len(field.values["temperature"]), self.resolution.nx * self.resolution.ny * self.resolution.nz)
+        self.assertGreater(field.values["humidity"][0], 0.0)
+
+    def test_learn_device_impact_from_sensor_delta(self) -> None:
+        before = self.model.predict_sensors(
+            room=self.room,
+            environment=self.environment,
+            devices=self.devices,
+            sensors=self.sensors,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        devices = build_standard_devices()
+        ac_device = next(device for device in devices if device.name == "ac_main")
+        ac_device.activation = 0.85
+        after = self.model.predict_sensors(
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            sensors=self.sensors,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        learned = learn_device_impact_from_sensor_delta(
+            model=self.model,
+            device=ac_device,
+            sensors=self.sensors,
+            before_observations=before,
+            after_observations=after,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        self.assertLess(learned.metric_coefficients["temperature"], 0.0)
+        self.assertLess(learned.metric_coefficients["humidity"], 0.0)
+        self.assertAlmostEqual(learned.metric_coefficients["illuminance"], 0.0, delta=1e-6)
 
     def test_recommendations_prioritize_ac_in_hot_room(self) -> None:
         comfort = ComfortTarget(

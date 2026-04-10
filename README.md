@@ -34,6 +34,10 @@
   說明本研究要解決的非連網家電環境影響學習問題。
 - `docs/graduation_requirements_checklist_zh.md`
   整理資工系碩士畢業條件、學位考試流程與口試文件 checklist。
+- `docs/baseline_and_learning_results_zh.md`
+  整理 IDW baseline 比較與非連網裝置影響學習結果。
+- `docs/web_demo_zh.md`
+  說明本地 web demo 的啟動方式與公開展示流程。
 
 ## 快速開始
 
@@ -57,12 +61,14 @@ python3 -m unittest discover -s tests
 python3 scripts/run_mcp_server.py
 ```
 
-目前提供四個 MCP tools：
+目前提供六個 MCP tools：
 
 - `list_scenarios`
 - `run_scenario`
 - `rank_actions`
 - `sample_point`
+- `compare_baseline`
+- `learn_impacts`
 
 詳細設定請見 `docs/mcp_service_zh.md`。
 
@@ -81,6 +87,17 @@ python3 scripts/ask_gemma.py "idle 情境下建議做什麼動作？" --tool-onl
 ```
 
 詳細說明請見 `docs/gemma_ollama_bridge_zh.md`。
+
+## Web Demo
+
+本專案提供本地 web demo，可用於公開展示與口試說明：
+
+```bash
+python3 scripts/run_demo.py
+python3 scripts/run_web_demo.py
+```
+
+開啟 `http://127.0.0.1:8765`。詳細說明請見 `docs/web_demo_zh.md`。
 
 ## 輸出結果
 

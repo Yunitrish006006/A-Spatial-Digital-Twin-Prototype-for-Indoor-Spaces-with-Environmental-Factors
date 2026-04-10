@@ -3,7 +3,9 @@ import sys
 from typing import Any, Dict, Optional
 
 from .service import (
+    compare_scenario_baseline,
     evaluate_scenario,
+    learn_scenario_impacts,
     list_scenario_metadata,
     rank_scenario_actions,
     sample_scenario_point,
@@ -70,6 +72,36 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "compare_baseline",
+        "description": "Compare the appliance influence model against an inverse distance weighting baseline.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "scenario_name": {
+                    "type": "string",
+                    "description": "Scenario name to evaluate.",
+                }
+            },
+            "required": ["scenario_name"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "learn_impacts",
+        "description": "Learn active non-networked appliance impact coefficients from before/after sensor observations.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "scenario_name": {
+                    "type": "string",
+                    "description": "Scenario name with active appliances.",
+                }
+            },
+            "required": ["scenario_name"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -126,6 +158,10 @@ class LocalMCPServer:
                 y=_required_number(arguments, "y"),
                 z=_required_number(arguments, "z"),
             )
+        elif tool_name == "compare_baseline":
+            payload = compare_scenario_baseline(_required_string(arguments, "scenario_name"))
+        elif tool_name == "learn_impacts":
+            payload = learn_scenario_impacts(_required_string(arguments, "scenario_name"))
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
 

@@ -6,7 +6,9 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from .service import (
+    compare_scenario_baseline,
     evaluate_scenario,
+    learn_scenario_impacts,
     list_scenario_metadata,
     rank_scenario_actions,
     sample_scenario_point,
@@ -99,6 +101,8 @@ def available_tools() -> Dict[str, ToolFunction]:
             y=_required_number(arguments, "y"),
             z=_required_number(arguments, "z"),
         ),
+        "compare_baseline": lambda arguments: compare_scenario_baseline(_required_string(arguments, "scenario_name")),
+        "learn_impacts": lambda arguments: learn_scenario_impacts(_required_string(arguments, "scenario_name")),
         "none": lambda _arguments: {"message": "No tool was required."},
     }
 
@@ -113,7 +117,9 @@ def build_tool_selection_prompt(question: str) -> str:
 2. run_scenario: 執行情境。arguments={{"scenario_name":"情境名稱"}}
 3. rank_actions: 排序設備候選動作。arguments={{"scenario_name":"情境名稱"}}
 4. sample_point: 查詢座標估計值。arguments={{"scenario_name":"情境名稱","x":數字,"y":數字,"z":數字}}
-5. none: 不需要工具。
+5. compare_baseline: 比較本研究模型與 IDW baseline。arguments={{"scenario_name":"情境名稱"}}
+6. learn_impacts: 從前後感測資料學習非連網裝置影響。arguments={{"scenario_name":"情境名稱"}}
+7. none: 不需要工具。
 
 可用情境名稱：
 {scenarios}
@@ -140,6 +146,12 @@ def heuristic_tool_selection(question: str) -> Dict[str, Any]:
 
     if any(keyword in lowered for keyword in ["推薦", "排序", "action", "rank", "開冷氣", "開窗", "開燈"]):
         return {"tool": "rank_actions", "arguments": {"scenario_name": scenario}}
+
+    if any(keyword in lowered for keyword in ["baseline", "idw", "比較模型", "基準", "誤差比較"]):
+        return {"tool": "compare_baseline", "arguments": {"scenario_name": scenario}}
+
+    if any(keyword in lowered for keyword in ["學習", "影響", "非連網", "appliance impact", "learn"]):
+        return {"tool": "learn_impacts", "arguments": {"scenario_name": scenario}}
 
     if any(keyword in lowered for keyword in ["情境", "scenario", "有哪些"]):
         return {"tool": "list_scenarios", "arguments": {}}

@@ -66,6 +66,8 @@ Bridge 可呼叫與 MCP server 相同的核心能力：
 - `run_scenario`
 - `rank_actions`
 - `sample_point`
+- `compare_baseline`
+- `learn_impacts`
 
 ## 和 MCP server 的關係
 

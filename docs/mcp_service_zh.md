@@ -10,6 +10,8 @@
 - 執行情境並回傳重建誤差。
 - 取得冷氣、窗戶、照明等候選動作排序。
 - 查詢房間任意座標的 temperature、humidity、illuminance 估計值。
+- 比較本研究模型與 IDW baseline。
+- 學習非連網裝置啟用前後造成的環境影響係數。
 
 MCP 化後，模型不只是 Python script，而是可以被 AI client 當作外部工具呼叫。
 
@@ -74,6 +76,30 @@ python3 scripts/run_mcp_server.py
 }
 ```
 
+### `compare_baseline`
+
+比較本研究的 appliance influence model 與 IDW baseline。
+
+輸入：
+
+```json
+{
+  "scenario_name": "light_only"
+}
+```
+
+### `learn_impacts`
+
+從裝置啟用前後的感測器觀測差異，估計 active non-networked appliance 的影響係數。
+
+輸入：
+
+```json
+{
+  "scenario_name": "ac_only"
+}
+```
+
 ## 可用情境名稱
 
 - `idle`
@@ -125,6 +151,6 @@ printf '%s\n' \
 
 1. 加入 `create_room_simulation` tool，讓 client 傳入自訂房間、設備與外部環境。
 2. 加入 `export_heatmap` tool，讓 MCP 回傳 SVG 熱圖檔案路徑或 resource。
-3. 加入 `compare_baselines` tool，比較 affine correction 與 IDW baseline。
+3. 加入 `export_heatmap` tool，讓 MCP 回傳 SVG 熱圖檔案路徑或 resource。
 4. 包成遠端 HTTP MCP server，部署到 Cloudflare Workers。
 5. 加入 OAuth，讓遠端 MCP 可安全被不同 client 使用。
