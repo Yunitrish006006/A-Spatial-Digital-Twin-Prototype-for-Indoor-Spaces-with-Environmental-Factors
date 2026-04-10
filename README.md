@@ -45,6 +45,39 @@ python3 scripts/run_demo.py
 python3 -m unittest discover -s tests
 ```
 
+## MCP Server
+
+本專案也可以作為本地 stdio MCP server 使用：
+
+```bash
+python3 scripts/run_mcp_server.py
+```
+
+目前提供四個 MCP tools：
+
+- `list_scenarios`
+- `run_scenario`
+- `rank_actions`
+- `sample_point`
+
+詳細設定請見 `docs/mcp_service_zh.md`。
+
+## Gemma4 / Ollama Bridge
+
+若本機 Ollama 已安裝 `gemma4:26b`，可讓 Gemma 透過本專案的 Python bridge 使用同一套數位孿生工具：
+
+```bash
+python3 scripts/ask_gemma.py "idle 情境下建議做什麼動作？"
+```
+
+只查看工具選擇與原始工具輸出：
+
+```bash
+python3 scripts/ask_gemma.py "idle 情境下建議做什麼動作？" --tool-only
+```
+
+詳細說明請見 `docs/gemma_ollama_bridge_zh.md`。
+
 ## 輸出結果
 
 執行後會在 `outputs/` 產生：

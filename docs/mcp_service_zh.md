@@ -1,0 +1,130 @@
+# MCP 服務設計與使用方式
+
+本專案已加入一個本地 stdio MCP server，可讓支援 MCP 的 client 直接呼叫單房間數位孿生模型。
+
+## 為什麼適合做成 MCP
+
+本研究原型的核心能力很適合包成 MCP tools：
+
+- 查詢內建模擬情境。
+- 執行情境並回傳重建誤差。
+- 取得冷氣、窗戶、照明等候選動作排序。
+- 查詢房間任意座標的 temperature、humidity、illuminance 估計值。
+
+MCP 化後，模型不只是 Python script，而是可以被 AI client 當作外部工具呼叫。
+
+## 啟動方式
+
+在專案根目錄執行：
+
+```bash
+python3 scripts/run_mcp_server.py
+```
+
+此 server 使用 stdio transport，會從標準輸入讀取 JSON-RPC 訊息，並從標準輸出回傳 JSON-RPC 結果。
+
+## MCP Tools
+
+### `list_scenarios`
+
+列出內建的 8 組驗證情境。
+
+輸入：
+
+```json
+{}
+```
+
+### `run_scenario`
+
+執行指定情境，回傳場重建誤差、感測器校正前後誤差、目標區域估計值。
+
+輸入：
+
+```json
+{
+  "scenario_name": "idle"
+}
+```
+
+### `rank_actions`
+
+針對指定情境，依舒適度改善分數排序候選設備動作。
+
+輸入：
+
+```json
+{
+  "scenario_name": "idle"
+}
+```
+
+### `sample_point`
+
+估計指定座標的三個環境因素。
+
+輸入：
+
+```json
+{
+  "scenario_name": "light_only",
+  "x": 3.0,
+  "y": 2.0,
+  "z": 1.5
+}
+```
+
+## 可用情境名稱
+
+- `idle`
+- `ac_only`
+- `window_only`
+- `light_only`
+- `ac_window`
+- `window_light`
+- `ac_light`
+- `all_active`
+
+## 本地手動測試
+
+可用下面的 JSON-RPC 訊息手動測試：
+
+```bash
+printf '%s\n' \
+'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual","version":"0.1"}}}' \
+'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rank_actions","arguments":{"scenario_name":"idle"}}}' \
+| python3 scripts/run_mcp_server.py
+```
+
+## Claude Desktop 設定範例
+
+若 MCP client 支援 stdio server，可加入類似設定：
+
+```json
+{
+  "mcpServers": {
+    "single-room-spatial-digital-twin": {
+      "command": "python3",
+      "args": [
+        "/Volumes/DataExtended/school/scripts/run_mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+## 目前限制
+
+- 目前是本地 stdio MCP server，不是遠端 HTTP MCP。
+- 尚未加入 OAuth 或使用者權限控制。
+- 模型情境仍是內建標準案例，尚未開放任意房間 JSON 輸入。
+- 輸出以 JSON text content 為主，尚未提供 MCP resource 或圖片 resource。
+
+## 後續可擴充方向
+
+1. 加入 `create_room_simulation` tool，讓 client 傳入自訂房間、設備與外部環境。
+2. 加入 `export_heatmap` tool，讓 MCP 回傳 SVG 熱圖檔案路徑或 resource。
+3. 加入 `compare_baselines` tool，比較 affine correction 與 IDW baseline。
+4. 包成遠端 HTTP MCP server，部署到 Cloudflare Workers。
+5. 加入 OAuth，讓遠端 MCP 可安全被不同 client 使用。
