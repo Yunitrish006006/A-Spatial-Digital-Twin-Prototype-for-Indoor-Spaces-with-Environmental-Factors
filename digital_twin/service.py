@@ -1,4 +1,5 @@
-from typing import Dict, List
+from dataclasses import replace
+from typing import Dict, List, Optional
 from copy import deepcopy
 
 from .baselines import build_idw_field, compute_zone_averages as compute_idw_zone_averages
@@ -35,9 +36,9 @@ def list_window_scenario_metadata() -> List[Dict]:
     return [_scenario_metadata(scenario) for scenario in build_window_matrix_scenarios()]
 
 
-def evaluate_scenario(scenario_name: str) -> Dict:
+def evaluate_scenario(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
     model = DigitalTwinModel()
-    scenario = _find_scenario(scenario_name)
+    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     raw_nominal = model.simulate(
@@ -155,9 +156,9 @@ def evaluate_window_matrix() -> Dict:
     }
 
 
-def get_scenario_volume(scenario_name: str) -> Dict:
+def get_scenario_volume(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
     model = DigitalTwinModel()
-    scenario = _find_scenario(scenario_name)
+    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     estimated_result = model.simulate(
@@ -207,6 +208,7 @@ def get_scenario_volume(scenario_name: str) -> Dict:
                 "kind": device.kind,
                 "activation": round(device.activation, 4),
                 "position": _vector_to_dict(device.position),
+                "geometry": _device_geometry(device),
             }
             for device in scenario.devices
         ],
@@ -214,9 +216,9 @@ def get_scenario_volume(scenario_name: str) -> Dict:
     }
 
 
-def rank_scenario_actions(scenario_name: str) -> Dict:
+def rank_scenario_actions(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
     model = DigitalTwinModel()
-    scenario = _find_scenario(scenario_name)
+    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     ranked = rank_actions(
@@ -249,9 +251,15 @@ def rank_scenario_actions(scenario_name: str) -> Dict:
     }
 
 
-def sample_scenario_point(scenario_name: str, x: float, y: float, z: float) -> Dict:
+def sample_scenario_point(
+    scenario_name: str,
+    x: float,
+    y: float,
+    z: float,
+    device_overrides: Optional[Dict[str, float]] = None,
+) -> Dict:
     model = DigitalTwinModel()
-    scenario = _find_scenario(scenario_name)
+    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
     point = Vector3(x=x, y=y, z=z)
     _validate_point(scenario, point)
     truth_result = _simulate_truth(model, scenario)
@@ -279,9 +287,9 @@ def sample_scenario_point(scenario_name: str, x: float, y: float, z: float) -> D
     }
 
 
-def compare_scenario_baseline(scenario_name: str) -> Dict:
+def compare_scenario_baseline(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
     model = DigitalTwinModel()
-    scenario = _find_scenario(scenario_name)
+    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     estimated_result = model.simulate(
@@ -310,9 +318,9 @@ def compare_scenario_baseline(scenario_name: str) -> Dict:
     }
 
 
-def learn_scenario_impacts(scenario_name: str) -> Dict:
+def learn_scenario_impacts(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
     model = DigitalTwinModel()
-    scenario = _find_scenario(scenario_name)
+    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     before_devices = deepcopy(scenario.devices)
@@ -354,6 +362,19 @@ def _all_scenarios() -> List[Scenario]:
     return build_validation_scenarios() + build_window_matrix_scenarios()
 
 
+def _scenario_with_device_overrides(
+    scenario: Scenario,
+    device_overrides: Optional[Dict[str, float]],
+) -> Scenario:
+    if not device_overrides:
+        return scenario
+    devices = deepcopy(scenario.devices)
+    for device in devices:
+        if device.name in device_overrides:
+            device.activation = max(0.0, min(1.0, float(device_overrides[device.name])))
+    return replace(scenario, devices=devices)
+
+
 def _scenario_metadata(scenario: Scenario) -> Dict:
     return {
         "name": scenario.name,
@@ -366,10 +387,29 @@ def _scenario_metadata(scenario: Scenario) -> Dict:
                 "kind": device.kind,
                 "activation": device.activation,
                 "position": _vector_to_dict(device.position),
+                "geometry": _device_geometry(device),
             }
             for device in scenario.devices
         ],
     }
+
+
+def _device_geometry(device) -> Dict:
+    if device.kind == "ac":
+        return {
+            "shape": "wall_bar",
+            "plane": "x",
+            "width": float(device.metadata.get("surface_width", 1.2)),
+            "height": float(device.metadata.get("surface_height", 0.3)),
+        }
+    if device.kind == "window":
+        return {
+            "shape": "wall_rectangle",
+            "plane": "x",
+            "width": float(device.metadata.get("surface_width", 1.4)),
+            "height": float(device.metadata.get("surface_height", 1.1)),
+        }
+    return {"shape": "point"}
 
 
 def _dimension_items(keys, profiles) -> List[Dict]:

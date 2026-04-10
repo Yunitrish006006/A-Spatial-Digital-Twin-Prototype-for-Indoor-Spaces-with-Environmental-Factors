@@ -78,7 +78,13 @@ def build_standard_devices() -> List[Device]:
             power=1.0,
             activation=0.0,
             response_time_minutes=12.0,
-            metadata={"cooling_delta": 8.5, "drying_delta": 5.0, "direction_floor": 0.25},
+            metadata={
+                "cooling_delta": 8.5,
+                "drying_delta": 5.0,
+                "direction_floor": 0.25,
+                "surface_width": 1.35,
+                "surface_height": 0.32,
+            },
         ),
         Device(
             name="window_main",
@@ -89,7 +95,14 @@ def build_standard_devices() -> List[Device]:
             power=1.0,
             activation=0.0,
             response_time_minutes=2.0,
-            metadata={"thermal_exchange": 0.35, "humidity_exchange": 0.26, "solar_gain": 0.02, "direction_floor": 0.2},
+            metadata={
+                "thermal_exchange": 0.35,
+                "humidity_exchange": 0.26,
+                "solar_gain": 0.02,
+                "direction_floor": 0.2,
+                "surface_width": 1.55,
+                "surface_height": 1.25,
+            },
         ),
         Device(
             name="light_main",

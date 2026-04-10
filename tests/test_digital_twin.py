@@ -262,6 +262,7 @@ class DigitalTwinTests(unittest.TestCase):
         self.assertIn("ac_main", content)
         self.assertIn("window_main", content)
         self.assertIn("light_main", content)
+        self.assertIn("<polygon", content)
 
 
 if __name__ == "__main__":

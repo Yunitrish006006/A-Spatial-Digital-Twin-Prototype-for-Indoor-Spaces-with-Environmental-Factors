@@ -54,6 +54,17 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(len(result["points"]), 10 * 8 * 4)
         self.assertEqual({device["name"] for device in result["devices"]}, {"ac_main", "window_main", "light_main"})
         self.assertIn("temperature", result["points"][0])
+        ac = next(device for device in result["devices"] if device["name"] == "ac_main")
+        window = next(device for device in result["devices"] if device["name"] == "window_main")
+        self.assertEqual(ac["geometry"]["shape"], "wall_bar")
+        self.assertEqual(window["geometry"]["shape"], "wall_rectangle")
+
+    def test_device_overrides_change_volume_device_activation(self) -> None:
+        result = get_scenario_volume("idle", {"ac_main": 0.8, "window_main": 0.7, "light_main": 0.0})
+        activations = {device["name"]: device["activation"] for device in result["devices"]}
+        self.assertEqual(activations["ac_main"], 0.8)
+        self.assertEqual(activations["window_main"], 0.7)
+        self.assertEqual(activations["light_main"], 0.0)
 
 
 class MCPServerTests(unittest.TestCase):

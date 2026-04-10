@@ -1,0 +1,252 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{cite}
+\usepackage{url}
+
+\title{An MCP-Enabled Spatial Digital Twin for Learning Environmental Impacts of Non-Networked Appliances in a Single Room}
+
+\author{
+\IEEEauthorblockN{Yun-Yu Lin}
+\IEEEauthorblockA{
+Department of Computer Science and Information Engineering\\
+National Changhua University of Education\\
+Changhua, Taiwan\\
+email@example.com}
+\and
+\IEEEauthorblockN{Chang-Pei Yi}
+\IEEEauthorblockA{
+Department of Computer Science and Information Engineering\\
+National Changhua University of Education\\
+Changhua, Taiwan\\
+advisor@example.com}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Indoor digital twins are often designed under the assumption that appliances are network-connected and can directly report their operating states. In ordinary rooms, however, many devices and environmental elements remain non-networked: a conventional air conditioner may not expose its actual output, a manual window cannot report its opening degree, and ordinary lights may not provide feedback beyond environmental changes. This paper presents a lightweight spatial digital twin prototype that learns the environmental impact of non-networked appliances from limited room sensors. The proposed prototype models a single room as three spatial fields: temperature, humidity, and illuminance. Eight corner sensor nodes are used to calibrate a physics-inspired appliance influence model through affine residual correction. The system further estimates active appliance impact coefficients from before-and-after sensor observations and ranks candidate control actions by target-zone comfort improvement. To support AI-agent access, the prototype exposes its simulation, point estimation, baseline comparison, impact learning, and window-matrix analysis through a local Model Context Protocol (MCP) server. The implementation includes a Python simulation backend, an inverse distance weighting baseline, a 48-case window simulation matrix, and an interactive rotatable 3D web demo. Simulation results show that the proposed appliance-aware model can provide interpretable field reconstruction and action recommendations under sparse sensing constraints.
+\end{abstract}
+
+\begin{IEEEkeywords}
+spatial digital twin, indoor environment modeling, non-networked appliances, temperature, humidity, illuminance, Model Context Protocol, sparse sensing
+\end{IEEEkeywords}
+
+\section{Introduction}
+Smart homes and smart buildings increasingly rely on indoor environmental data to support comfort assessment, energy management, and device control. A practical system should not only know the value measured at a sensor, but also estimate environmental conditions at relevant regions such as the center of a room, a window-side zone, or an equipment-adjacent area. This is difficult because dense sensing is expensive and intrusive. In a typical room, only a small number of sensors can be installed, and their measurements are spatially sparse.
+
+A second practical limitation is that many appliances that influence the environment are not network-connected. Traditional air conditioners, manual windows, and ordinary lights may significantly affect temperature, humidity, and illuminance, but they may not expose state, output power, or operating parameters through an API. Therefore, a digital twin that depends only on connected-device telemetry may fail to represent a realistic room. The challenge is to infer how such non-networked appliances influence the room from environmental observations alone.
+
+This paper addresses the following research question: can a single-room spatial digital twin estimate temperature, humidity, and illuminance distributions, learn the impact of non-networked appliances from limited corner sensors, and expose the resulting capabilities as AI-agent-accessible tools? We propose a lightweight prototype that uses eight fixed corner sensors, parameterized appliance influence functions, affine sensor residual correction, and before-and-after impact learning.
+
+The main contributions are as follows:
+\begin{itemize}
+\item A lightweight single-room spatial digital twin that models temperature, humidity, and illuminance fields under sparse corner sensing.
+\item Parameterized influence functions for air conditioning, windows, and lighting, including a simplified dynamic response and distance attenuation.
+\item A residual calibration procedure that uses eight corner sensors to correct field bias and first-order spatial gradients.
+\item A non-networked appliance impact learning procedure that estimates active device coefficients from before-and-after sensor observations.
+\item An MCP-enabled service interface and a local web demo with checkbox-based device activation and rotatable 3D visualization.
+\item A simulation study including eight appliance-combination scenarios, an inverse distance weighting (IDW) baseline, and a 48-case window matrix across time of day, weather, and season.
+\end{itemize}
+
+\section{Related Work}
+\subsection{Indoor Digital Twins and Environmental Modeling}
+Digital twins provide computational representations of physical systems and are increasingly used in manufacturing, infrastructure, and smart buildings \cite{tao2019digitaltwin,fuller2020digitaltwin}. In buildings, a digital twin may integrate building geometry, sensors, equipment states, and control logic. However, many approaches assume access to either detailed building management systems or connected devices. This work focuses on a smaller but common scenario: a single room with limited sensors and appliances that may not report their states.
+
+Indoor thermal and comfort modeling can range from high-fidelity computational fluid dynamics to simplified resistance-capacitance models and empirical control models. High-fidelity simulation provides detailed flow patterns but requires more parameters and computational resources. Since the goal of this work is a deployable prototype rather than a CFD-grade simulator, we adopt physics-inspired influence fields with interpretable parameters.
+
+\subsection{Sparse Sensing and Spatial Interpolation}
+When only sparse sensor observations are available, interpolation is a common baseline. IDW estimates an unknown value using distance-weighted nearby observations and has been widely used for spatial approximation \cite{shepard1968two}. However, pure interpolation ignores the location, type, orientation, and expected effect of appliances. This paper compares the proposed appliance-aware field model against IDW to show the value of incorporating equipment influence structure.
+
+\subsection{Tool Interfaces for AI Systems}
+Recent AI systems increasingly use external tools to retrieve context, execute code, or call domain-specific services. MCP provides a standardized interface through which AI clients can access tools and resources exposed by external systems \cite{mcp2025}. In this work, MCP is not treated as a protocol contribution. Instead, it is used as a system integration layer that makes the spatial digital twin callable by AI clients.
+
+\section{System Overview}
+\subsection{Room and Sensor Configuration}
+The prototype considers a single rectangular room with width $6.0$ m, length $4.0$ m, and height $3.0$ m. The sensing configuration is fixed to eight corner nodes: four on the floor and four on the ceiling. Each node measures temperature, humidity, and illuminance.
+
+The room is divided into three evaluation zones: a window-side zone, a center zone, and a door-side zone. The standard target zone for most validation scenarios is the center zone, while the window matrix uses the window-side zone as the target to emphasize window effects.
+
+\subsection{Appliance Representation}
+Three appliance types are modeled:
+\begin{itemize}
+\item \textbf{Air conditioner}: primarily lowers temperature and weakly lowers humidity. In the visualization, it is represented as a horizontal wall bar.
+\item \textbf{Window}: exchanges heat and humidity with outdoor conditions and introduces daylight. In the visualization, it is represented as a wall rectangle rather than a point.
+\item \textbf{Light}: primarily increases illuminance and adds a small heat gain. In the visualization, it is represented as a point-like ceiling device.
+\end{itemize}
+
+The web demo uses checkbox controls for the three appliance states. The base room state is the idle scenario, and checked devices overwrite their activation levels. This design removes scenario drop-down selection and makes the user interface directly reflect appliance activation.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.93\linewidth}{
+\centering
+Corner sensor observations\\
+$\downarrow$\\
+Appliance influence field model\\
+$\downarrow$\\
+Affine residual correction\\
+$\downarrow$\\
+3-factor field estimation\\
+$\downarrow$\\
+Impact learning and action ranking\\
+$\downarrow$\\
+MCP tools and 3D web demo
+}}
+\caption{Overview of the proposed single-room spatial digital twin workflow.}
+\label{fig:architecture}
+\end{figure}
+
+\section{Proposed Method}
+\subsection{Three-Factor Spatial Field Model}
+The indoor state is represented using three fields:
+\begin{align}
+T(x,y,z,t) &: \text{temperature field},\\
+H(x,y,z,t) &: \text{humidity field},\\
+L(x,y,z,t) &: \text{illuminance field}.
+\end{align}
+For a metric $m \in \{T,H,L\}$, the estimated field is:
+\begin{equation}
+F_m(\mathbf{p},t) = B_m(\mathbf{p}) + \sum_j I_{j,m}(\mathbf{p},t) + C_m(\mathbf{p}),
+\end{equation}
+where $\mathbf{p}=(x,y,z)$, $B_m$ is the background field, $I_{j,m}$ is the influence of appliance $j$, and $C_m$ is a correction field fitted from sensor residuals.
+
+\subsection{Appliance Influence Envelope}
+Each appliance influence is modulated by an envelope:
+\begin{equation}
+E_j(\mathbf{p},t)=a_j(1-e^{-t/\tau_j})D_j(\mathbf{p})G_j(\mathbf{p}),
+\end{equation}
+where $a_j$ is the activation level, $\tau_j$ is the response time constant, $D_j$ is distance attenuation, and $G_j$ is a simplified directional gain. The exact parameters are appliance-specific. The air conditioner has negative coefficients for temperature and humidity, the window uses outdoor temperature, outdoor humidity, and sunlight as inputs, and the light has a positive illuminance gain with a small heat gain.
+
+\subsection{Corner Sensor Residual Correction}
+Let $\hat{y}_{i,m}$ be the predicted value at sensor $i$ for metric $m$, and let $y_{i,m}$ be the observed value. The residual is:
+\begin{equation}
+r_{i,m}=y_{i,m}-\hat{y}_{i,m}.
+\end{equation}
+The prototype fits an affine correction:
+\begin{equation}
+C_m(x,y,z)=\alpha_{0,m}+\alpha_{1,m}x+\alpha_{2,m}y+\alpha_{3,m}z.
+\end{equation}
+This correction cannot represent high-frequency turbulence or complex local reflections, but it can correct overall bias and first-order spatial gradients using only eight corner measurements.
+
+\subsection{Learning Non-Networked Appliance Impacts}
+For non-networked devices, the system estimates impact coefficients from before-and-after observations. Given sensor deltas $\Delta y_m$ and appliance envelopes collected into matrix $X$, the coefficient vector for metric $m$ is estimated by least squares:
+\begin{equation}
+\boldsymbol{\beta}_m = \arg\min_{\boldsymbol{\beta}}\|\Delta \mathbf{y}_m-X\boldsymbol{\beta}\|_2^2.
+\end{equation}
+For a single active device, the learned coefficient describes the direction and magnitude of its effect. For multiple active devices, the regression separates their contributions according to their spatial bases.
+
+\subsection{Action Ranking}
+Candidate actions are evaluated by simulating their resulting target-zone values. A weighted comfort penalty is computed from deviations from target temperature, humidity, and illuminance. Actions are ranked by the reduction in this penalty. The system does not perform closed-loop control; it outputs an interpretable recommendation order.
+
+\section{Implementation}
+\subsection{Python Prototype}
+The implementation is a zero-dependency Python prototype. The main modules define entities, scenarios, field simulation, learning, IDW baseline comparison, action ranking, service APIs, MCP server, and the web demo. The same service layer is shared by the MCP server, the Gemma/Ollama bridge, and the web interface.
+
+\subsection{MCP Service}
+The local MCP server exposes tools for listing scenarios, running a scenario, ranking actions, sampling a point, comparing against IDW, learning appliance impacts, listing window scenarios, and running the full window matrix. These tools allow MCP-compatible clients to access the digital twin without directly importing Python modules.
+
+\subsection{Interactive Web Demo}
+The web demo provides a rotatable 3D canvas visualization. The user can rotate and zoom the estimated field, switch the metric using checkbox controls, and toggle appliances using checkboxes. The air conditioner is displayed as a wall bar, the window as a wall rectangle, and the light as a point marker. The interface also displays target-zone estimates, recommendations, baseline comparison, impact learning results, point sampling, and the 48-case window matrix.
+
+\section{Evaluation}
+\subsection{Standard Appliance Scenarios}
+Eight standard scenarios were evaluated: idle, air conditioner only, window only, light only, air conditioner plus window, window plus light, air conditioner plus light, and all active. Table~\ref{tab:zone} summarizes representative target-zone estimates and best actions.
+
+\begin{table}[t]
+\caption{Representative Center-Zone Estimates and Best Ranked Actions}
+\label{tab:zone}
+\centering
+\begin{tabular}{|l|c|c|c|l|}
+\hline
+Scenario & Temp. & Hum. & Illum. & Best action\\
+\hline
+idle & 28.87 & 67.50 & 90.00 & ac\_and\_light\\
+ac\_only & 26.97 & 66.39 & 90.00 & turn\_on\_light\\
+window\_only & 29.14 & 67.85 & 208.41 & ac\_and\_light\\
+light\_only & 29.12 & 67.50 & 416.53 & turn\_on\_ac\\
+all\_active & 27.46 & 66.66 & 443.38 & turn\_on\_ac\\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Field Reconstruction Error}
+Across the eight validation scenarios, the average mean absolute error (MAE) was 0.0626 for temperature, 0.1867 for humidity, and 3.5248 for illuminance. Illuminance has the largest numerical MAE because its scale is larger and because it is more sensitive to device position and directionality.
+
+\begin{table}[t]
+\caption{Field Reconstruction Error Summary}
+\label{tab:mae}
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+Metric & Average MAE & Maximum MAE\\
+\hline
+Temperature & 0.0626 & 0.0789\\
+Humidity & 0.1867 & 0.1905\\
+Illuminance & 3.5248 & 5.4440\\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Comparison with IDW Baseline}
+Table~\ref{tab:idw} compares the proposed model with IDW for two scenarios. In the light-only scenario, the proposed model substantially reduces illuminance MAE because the light source location is explicitly modeled. In the air-conditioner-only scenario, IDW is slightly better for illuminance because no illumination device is active, showing that a simple interpolation baseline can be adequate when a metric is not affected by active equipment.
+
+\begin{table}[t]
+\caption{Representative IDW Baseline Comparison}
+\label{tab:idw}
+\centering
+\begin{tabular}{|l|l|c|c|c|}
+\hline
+Scenario & Metric & Model & IDW & Reduction\\
+\hline
+light\_only & Temp. & 0.0493 & 0.1592 & 69.03\%\\
+light\_only & Hum. & 0.1839 & 0.5104 & 63.97\%\\
+light\_only & Illum. & 5.4440 & 106.7814 & 94.90\%\\
+ac\_only & Temp. & 0.0779 & 0.7613 & 89.77\%\\
+ac\_only & Hum. & 0.1905 & 0.7245 & 73.71\%\\
+ac\_only & Illum. & 1.8393 & 1.3876 & -32.55\%\\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Learning Appliance Impact Coefficients}
+For the air-conditioner-only scenario, the learned coefficient is negative for temperature and humidity and approximately zero for illuminance. For the light-only scenario, the learned coefficient is strongly positive for illuminance, weakly positive for temperature, and approximately zero for humidity. These directions match the intended physical interpretation of the appliances.
+
+\subsection{Window Time-Weather-Season Matrix}
+The window matrix contains 48 cases: four times of day, three weather states, and four seasons. This matrix evaluates the window as an environmental variable rather than a simple binary switch. Table~\ref{tab:window} shows representative cases.
+
+\begin{table}[t]
+\caption{Representative Window Matrix Results}
+\label{tab:window}
+\centering
+\scriptsize
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+Case & $T_o$ & $H_o$ & Sun & $L_w$\\
+\hline
+summer-sun-noon & 37.0 & 71.0 & 36000.0 & 223.90\\
+winter-rain-night & 11.0 & 78.0 & 15.2 & 68.90\\
+spring-cloud-morn. & 21.5 & 70.0 & 5005.0 & 90.39\\
+\hline
+\end{tabular}
+\end{table}
+
+The summer sunny noon case produces the highest daylight input among the representative examples, while the winter rainy night case contributes almost no sunlight and shifts the window-side zone toward colder and more humid outdoor conditions.
+
+\section{Discussion}
+The results suggest that an appliance-aware field model can be more informative than pure interpolation under sparse sensing. The prototype is intentionally lightweight: it does not attempt CFD-grade airflow modeling, full wall thermal mass modeling, or detailed optical rendering. This tradeoff makes the method easier to implement and explain, but it also limits physical fidelity.
+
+The humidity component is modeled using a simplified first-order coupling with the air conditioner and window. Therefore, humidity results should be interpreted as secondary evidence compared with temperature and illuminance. In addition, the current evaluation uses simulated observations with deterministic perturbations rather than long-term real deployment data. Future work should include physical ESP32-based measurements to calibrate and validate the learned coefficients.
+
+\section{Conclusion}
+This paper presented an MCP-enabled spatial digital twin prototype for learning environmental impacts of non-networked appliances in a single room. The prototype estimates temperature, humidity, and illuminance fields from sparse corner sensors, models appliance effects through interpretable influence functions, learns impact coefficients from before-and-after observations, ranks candidate control actions, and exposes the system through MCP tools and an interactive 3D web demo. The simulation study demonstrates that the proposed approach can provide interpretable estimates and recommendations under sparse sensing constraints. Future work will focus on real sensor deployment, custom room input, remote MCP deployment, and closed-loop control.
+
+\section*{Acknowledgment}
+The authors thank the Department of Computer Science and Information Engineering, National Changhua University of Education, for supporting the thesis prototype development. This section should be revised according to the target IEEE venue policy.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

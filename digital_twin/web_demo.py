@@ -20,6 +20,7 @@ from .service import (
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUTS = ROOT / "outputs"
+DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
 
 
 INDEX_HTML = """<!doctype html>
@@ -120,6 +121,58 @@ INDEX_HTML = """<!doctype html>
       cursor: pointer;
     }
     button.secondary { background: var(--blue); }
+    .device-controls {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .device-toggle {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 11px 12px;
+      background: #fffdf7;
+    }
+    .device-toggle input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--forest);
+    }
+    .device-toggle span {
+      display: block;
+      font: 800 0.88rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .device-toggle small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font: 0.78rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .metric-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .metric-toggle {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #fffdf7;
+      font: 800 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      cursor: pointer;
+    }
+    .metric-toggle input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue);
+    }
     .form-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -193,7 +246,6 @@ INDEX_HTML = """<!doctype html>
       margin-bottom: 14px;
     }
     .volume-toolbar label { margin-bottom: 6px; }
-    .volume-toolbar select { max-width: 260px; }
     .volume-toolbar button {
       width: auto;
       min-width: 150px;
@@ -238,10 +290,10 @@ INDEX_HTML = """<!doctype html>
   </header>
   <main>
     <aside class="panel">
-      <label for="scenario">Scenario</label>
-      <select id="scenario"></select>
-      <button onclick="loadScenario()">Run Scenario</button>
-      <button class="secondary" onclick="loadScenario()">Refresh Outputs</button>
+      <label>Device Toggles</label>
+      <div class="device-controls" id="deviceControls"></div>
+      <button onclick="loadScenario()">Run Simulation</button>
+      <button class="secondary" onclick="resetDeviceControls()">Clear Devices</button>
       <div class="form-grid">
         <div><label for="x">X</label><input id="x" type="number" step="0.1" value="3"></div>
         <div><label for="y">Y</label><input id="y" type="number" step="0.1" value="2"></div>
@@ -278,8 +330,8 @@ INDEX_HTML = """<!doctype html>
         <p class="status">Drag to rotate, wheel or pinch-pad scroll to zoom. Colored squares mark appliance positions.</p>
         <div class="volume-toolbar">
           <div>
-            <label for="volumeMetric">Metric</label>
-            <select id="volumeMetric"></select>
+            <label>Metric</label>
+            <div class="metric-controls" id="metricControls"></div>
           </div>
           <button class="secondary" onclick="resetVolumeView()">Reset View</button>
         </div>
@@ -302,7 +354,9 @@ INDEX_HTML = """<!doctype html>
     const labels = { temperature: "Temperature", humidity: "Humidity", illuminance: "Illuminance" };
     const units = { temperature: "°C", humidity: "%", illuminance: "lx" };
     const deviceColors = { ac: "#2b5c7c", window: "#2f855a", light: "#c58b2d" };
+    const deviceDefaultActivation = { ac_main: 0.8, window_main: 0.7, light_main: 0.8 };
     let activeScenario = "idle";
+    let scenarioMetadata = {};
     let volumeData = null;
     let volumeMetric = "temperature";
     let volumeRotation = { pitch: -0.62, yaw: 0.72 };
@@ -321,10 +375,9 @@ INDEX_HTML = """<!doctype html>
 
     async function loadScenarios() {
       const data = await getJSON("/api/scenarios");
-      const select = document.getElementById("scenario");
-      select.innerHTML = data.scenarios.map(item => `<option value="${item.name}">${item.name} — ${item.description}</option>`).join("");
-      activeScenario = data.scenarios[0].name;
-      select.value = activeScenario;
+      scenarioMetadata = Object.fromEntries(data.scenarios.map(item => [item.name, item]));
+      activeScenario = scenarioMetadata.idle ? "idle" : data.scenarios[0].name;
+      syncDeviceControlsFromScenario(activeScenario);
       await loadScenario();
       loadWindowMatrix().catch(error => {
         document.getElementById("windowMatrix").innerHTML = `<p class="status">${error.message}</p>`;
@@ -332,14 +385,14 @@ INDEX_HTML = """<!doctype html>
     }
 
     async function loadScenario() {
-      activeScenario = document.getElementById("scenario").value;
-      document.getElementById("status").textContent = `Running ${activeScenario}...`;
+      document.getElementById("status").textContent = "Running checkbox-defined simulation...";
+      const query = scenarioQuery();
       const [scenario, ranking, baseline, impacts, volume] = await Promise.all([
-        getJSON(`/api/scenario?name=${encodeURIComponent(activeScenario)}`),
-        getJSON(`/api/rank_actions?name=${encodeURIComponent(activeScenario)}`),
-        getJSON(`/api/compare_baseline?name=${encodeURIComponent(activeScenario)}`),
-        getJSON(`/api/learn_impacts?name=${encodeURIComponent(activeScenario)}`),
-        getJSON(`/api/volume?name=${encodeURIComponent(activeScenario)}`)
+        getJSON(`/api/scenario?${query}`),
+        getJSON(`/api/rank_actions?${query}`),
+        getJSON(`/api/compare_baseline?${query}`),
+        getJSON(`/api/learn_impacts?${query}`),
+        getJSON(`/api/volume?${query}`)
       ]);
       renderZoneCards(scenario);
       renderRecommendations(ranking);
@@ -348,7 +401,54 @@ INDEX_HTML = """<!doctype html>
       setVolumeData(volume);
       renderHeatmaps(activeScenario);
       await samplePoint();
-      document.getElementById("status").textContent = `Loaded ${activeScenario}.`;
+      document.getElementById("status").textContent = "Loaded checkbox-defined simulation.";
+    }
+
+    function syncDeviceControlsFromScenario(name) {
+      const scenario = scenarioMetadata[name];
+      const container = document.getElementById("deviceControls");
+      if (!scenario) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = scenario.devices.map(device => {
+        const activeLevel = device.activation > 0 ? device.activation : (deviceDefaultActivation[device.name] || 1.0);
+        const checked = device.activation > 0 ? "checked" : "";
+        const shape = device.geometry?.shape === "wall_bar" ? "bar" : (device.geometry?.shape === "wall_rectangle" ? "surface" : "point");
+        return `
+          <label class="device-toggle">
+            <input type="checkbox" data-device="${device.name}" data-activation="${activeLevel}" ${checked}>
+            <span>${device.name}<small>${device.kind}, ${shape}, ${Math.round(activeLevel * 100)}% when checked</small></span>
+          </label>
+        `;
+      }).join("");
+      container.querySelectorAll("input[type='checkbox']").forEach(input => {
+        input.addEventListener("change", () => loadScenario());
+      });
+    }
+
+    function resetDeviceControls() {
+      document.querySelectorAll("#deviceControls input[type='checkbox']").forEach(input => {
+        input.checked = false;
+      });
+      loadScenario();
+    }
+
+    function scenarioQuery() {
+      const params = new URLSearchParams({ name: activeScenario });
+      Object.entries(deviceOverrides()).forEach(([name, value]) => {
+        params.set(name, String(value));
+      });
+      return params.toString();
+    }
+
+    function deviceOverrides() {
+      const overrides = {};
+      document.querySelectorAll("#deviceControls input[type='checkbox']").forEach(input => {
+        const activation = Number(input.dataset.activation || "1");
+        overrides[input.dataset.device] = input.checked ? activation : 0.0;
+      });
+      return overrides;
     }
 
     function renderZoneCards(data) {
@@ -407,12 +507,25 @@ INDEX_HTML = """<!doctype html>
     }
 
     function setupVolumeControls() {
-      const select = document.getElementById("volumeMetric");
-      select.innerHTML = metrics.map(metric => `<option value="${metric}">${labels[metric]}</option>`).join("");
-      select.value = volumeMetric;
-      select.addEventListener("change", () => {
-        volumeMetric = select.value;
-        drawVolume();
+      const container = document.getElementById("metricControls");
+      container.innerHTML = metrics.map(metric => `
+        <label class="metric-toggle">
+          <input type="checkbox" data-metric="${metric}" ${metric === volumeMetric ? "checked" : ""}>
+          <span>${labels[metric]}</span>
+        </label>
+      `).join("");
+      container.querySelectorAll("input[type='checkbox']").forEach(input => {
+        input.addEventListener("change", () => {
+          if (!input.checked) {
+            input.checked = true;
+            return;
+          }
+          volumeMetric = input.dataset.metric;
+          container.querySelectorAll("input[type='checkbox']").forEach(other => {
+            if (other !== input) other.checked = false;
+          });
+          drawVolume();
+        });
       });
 
       const canvas = document.getElementById("volumeCanvas");
@@ -543,6 +656,10 @@ INDEX_HTML = """<!doctype html>
 
     function drawDeviceMarkers(ctx, project) {
       volumeData.devices.forEach(device => {
+        if (["wall_rectangle", "wall_bar"].includes(device.geometry?.shape)) {
+          drawWallSurface(ctx, project, device);
+          return;
+        }
         const projected = project(device.position);
         const color = deviceColors[device.kind] || "#b4552b";
         ctx.save();
@@ -567,6 +684,42 @@ INDEX_HTML = """<!doctype html>
         ctx.fillStyle = "#17211b";
         ctx.fillText(label, projected.x + 18, projected.y - 10);
       });
+    }
+
+    function drawWallSurface(ctx, project, device) {
+      const width = device.geometry.width || 1.4;
+      const height = device.geometry.height || 1.1;
+      const center = device.position;
+      const color = deviceColors[device.kind] || "#b4552b";
+      const yMin = clamp(center.y - width / 2, 0, volumeData.room.length);
+      const yMax = clamp(center.y + width / 2, 0, volumeData.room.length);
+      const zMin = clamp(center.z - height / 2, 0, volumeData.room.height);
+      const zMax = clamp(center.z + height / 2, 0, volumeData.room.height);
+      const corners = [
+        project({ x: center.x, y: yMin, z: zMin }),
+        project({ x: center.x, y: yMax, z: zMin }),
+        project({ x: center.x, y: yMax, z: zMax }),
+        project({ x: center.x, y: yMin, z: zMax })
+      ];
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      corners.slice(1).forEach(point => ctx.lineTo(point.x, point.y));
+      ctx.closePath();
+      ctx.fillStyle = colorWithAlpha(color, 0.24);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.fill();
+      ctx.stroke();
+
+      const projected = project(center);
+      const label = `${device.name} (${device.kind}, ${Math.round(device.activation * 100)}%)`;
+      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+      const labelWidth = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(255, 253, 247, 0.88)";
+      roundedRect(ctx, projected.x + 12, projected.y - 24, labelWidth + 12, 20, 8);
+      ctx.fill();
+      ctx.fillStyle = "#17211b";
+      ctx.fillText(label, projected.x + 18, projected.y - 10);
     }
 
     function drawVolumeLegend(ctx, width, range, metric) {
@@ -603,6 +756,14 @@ INDEX_HTML = """<!doctype html>
       const [start, end, local] = stops;
       const rgb = start.map((value, index) => Math.round(value + (end[index] - value) * local));
       return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+    }
+
+    function colorWithAlpha(hex, alpha) {
+      const value = hex.replace("#", "");
+      const red = parseInt(value.slice(0, 2), 16);
+      const green = parseInt(value.slice(2, 4), 16);
+      const blue = parseInt(value.slice(4, 6), 16);
+      return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
     }
 
     function roundedRect(ctx, x, y, width, height, radius) {
@@ -648,7 +809,11 @@ INDEX_HTML = """<!doctype html>
       const x = document.getElementById("x").value;
       const y = document.getElementById("y").value;
       const z = document.getElementById("z").value;
-      const data = await getJSON(`/api/sample?name=${encodeURIComponent(activeScenario)}&x=${x}&y=${y}&z=${z}`);
+      const params = new URLSearchParams(scenarioQuery());
+      params.set("x", x);
+      params.set("y", y);
+      params.set("z", z);
+      const data = await getJSON(`/api/sample?${params.toString()}`);
       document.getElementById("sample").textContent = JSON.stringify(data, null, 2);
     }
 
@@ -677,22 +842,22 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"scenarios": list_scenario_metadata()})
                 return
             if parsed.path == "/api/scenario":
-                self._send_json(evaluate_scenario(_query_name(parsed.query)))
+                self._send_json(evaluate_scenario(_query_name(parsed.query), _query_device_overrides(parsed.query)))
                 return
             if parsed.path == "/api/window_matrix":
                 self._send_json(evaluate_window_matrix())
                 return
             if parsed.path == "/api/volume":
-                self._send_json(get_scenario_volume(_query_name(parsed.query)))
+                self._send_json(get_scenario_volume(_query_name(parsed.query), _query_device_overrides(parsed.query)))
                 return
             if parsed.path == "/api/rank_actions":
-                self._send_json(rank_scenario_actions(_query_name(parsed.query)))
+                self._send_json(rank_scenario_actions(_query_name(parsed.query), _query_device_overrides(parsed.query)))
                 return
             if parsed.path == "/api/compare_baseline":
-                self._send_json(compare_scenario_baseline(_query_name(parsed.query)))
+                self._send_json(compare_scenario_baseline(_query_name(parsed.query), _query_device_overrides(parsed.query)))
                 return
             if parsed.path == "/api/learn_impacts":
-                self._send_json(learn_scenario_impacts(_query_name(parsed.query)))
+                self._send_json(learn_scenario_impacts(_query_name(parsed.query), _query_device_overrides(parsed.query)))
                 return
             if parsed.path == "/api/sample":
                 query = parse_qs(parsed.query)
@@ -702,6 +867,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         x=_query_float(query, "x", 3.0),
                         y=_query_float(query, "y", 2.0),
                         z=_query_float(query, "z", 1.5),
+                        device_overrides=_query_device_overrides(parsed.query),
                     )
                 )
                 return
@@ -755,6 +921,15 @@ def _query_float(query: Dict[str, list], key: str, default: float) -> float:
         return float(query.get(key, [default])[0])
     except (TypeError, ValueError):
         return default
+
+
+def _query_device_overrides(query_string: str) -> Dict[str, float]:
+    query = parse_qs(query_string)
+    overrides: Dict[str, float] = {}
+    for name in DEVICE_OVERRIDE_NAMES:
+        if name in query:
+            overrides[name] = _query_float(query, name, 0.0)
+    return overrides
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8765) -> Tuple[str, int]:

@@ -193,6 +193,9 @@ def _device_marker_parts(project_index, field: FieldGrid, devices: List[Device])
         '<text x="34" y="78" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#17211b">Appliance positions</text>',
     ]
     for device in devices:
+        if device.kind in ("ac", "window"):
+            parts.extend(_wall_surface_marker_parts(project_index, field, device))
+            continue
         ix = _coordinate_to_grid_index(device.position.x, field.x_coords)
         iy = _coordinate_to_grid_index(device.position.y, field.y_coords)
         iz = _coordinate_to_grid_index(device.position.z, field.z_coords)
@@ -213,6 +216,43 @@ def _device_marker_parts(project_index, field: FieldGrid, devices: List[Device])
         )
     parts.append("</g>")
     return parts
+
+
+def _wall_surface_marker_parts(project_index, field: FieldGrid, device: Device) -> List[str]:
+    width = float(device.metadata.get("surface_width", 1.4))
+    height = float(device.metadata.get("surface_height", 1.1))
+    center = device.position
+    color = _device_color(device.kind)
+    y_min = max(field.y_coords[0], center.y - width / 2.0)
+    y_max = min(field.y_coords[-1], center.y + width / 2.0)
+    z_min = max(field.z_coords[0], center.z - height / 2.0)
+    z_max = min(field.z_coords[-1], center.z + height / 2.0)
+    corners = [
+        (center.x, y_min, z_min),
+        (center.x, y_max, z_min),
+        (center.x, y_max, z_max),
+        (center.x, y_min, z_max),
+    ]
+    projected = [
+        project_index(
+            _coordinate_to_grid_index(x, field.x_coords),
+            _coordinate_to_grid_index(y, field.y_coords),
+            _coordinate_to_grid_index(z, field.z_coords),
+        )
+        for x, y, z in corners
+    ]
+    polygon = " ".join(f"{x:.2f},{y:.2f}" for x, y in projected)
+    label_x, label_y = project_index(
+        _coordinate_to_grid_index(center.x, field.x_coords),
+        _coordinate_to_grid_index(center.y, field.y_coords),
+        _coordinate_to_grid_index(center.z, field.z_coords),
+    )
+    label = escape(f"{device.name} ({device.kind}, {device.activation:.0%})")
+    return [
+        f'<polygon points="{polygon}" fill="{color}" fill-opacity="0.22" stroke="{color}" stroke-width="3" />',
+        f'<circle cx="{label_x:.2f}" cy="{label_y:.2f}" r="4.5" fill="{color}" stroke="#fffdf7" stroke-width="1.4" />',
+        f'<text x="{label_x + 12:.2f}" y="{label_y - 10:.2f}" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#17211b" stroke="#fffdf7" stroke-width="3" paint-order="stroke">{label}</text>',
+    ]
 
 
 def _coordinate_to_grid_index(value: float, coords: List[float]) -> float:
