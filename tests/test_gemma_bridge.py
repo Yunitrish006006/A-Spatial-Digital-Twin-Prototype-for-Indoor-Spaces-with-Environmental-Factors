@@ -63,6 +63,17 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(result["scenario"], "idle")
         self.assertGreater(len(result["recommendations"]), 0)
 
+    def test_execute_run_scenario_tool_with_ac_overrides(self) -> None:
+        cool = execute_tool(
+            "run_scenario",
+            {"scenario_name": "idle", "ac_main": 0.85, "ac_mode": "cool", "ac_target_temperature": 20.0},
+        )
+        heat = execute_tool(
+            "run_scenario",
+            {"scenario_name": "idle", "ac_main": 0.85, "ac_mode": "heat", "ac_target_temperature": 33.0},
+        )
+        self.assertLess(cool["target_zone_estimated"]["temperature"], heat["target_zone_estimated"]["temperature"])
+
     def test_execute_learn_impacts_tool(self) -> None:
         result = execute_tool("learn_impacts", {"scenario_name": "ac_only"})
         self.assertEqual(result["scenario"], "ac_only")

@@ -19,7 +19,7 @@ from digital_twin.scenarios import (
     build_standard_zones,
     build_window_matrix_scenarios,
 )
-from digital_twin.entities import ComfortTarget, GridResolution, create_corner_sensors
+from digital_twin.entities import ComfortTarget, GridResolution, Vector3, create_corner_sensors
 
 
 class DigitalTwinTests(unittest.TestCase):
@@ -75,6 +75,150 @@ class DigitalTwinTests(unittest.TestCase):
             on_result.zone_averages["center_zone"]["temperature"],
             off_result.zone_averages["center_zone"]["temperature"],
         )
+
+    def test_ac_heat_mode_raises_temperature_relative_to_cool_mode(self) -> None:
+        point = Vector3(3.9, 2.0, 1.5)
+        cool_devices = build_standard_devices()
+        cool_ac = next(device for device in cool_devices if device.name == "ac_main")
+        cool_ac.activation = 0.85
+        cool_ac.metadata.update({"ac_mode": "cool", "target_temperature": 20.0})
+        heat_devices = build_standard_devices()
+        heat_ac = next(device for device in heat_devices if device.name == "ac_main")
+        heat_ac.activation = 0.85
+        heat_ac.metadata.update({"ac_mode": "heat", "target_temperature": 33.0})
+
+        cool_values = self.model.sample_point(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=cool_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        heat_values = self.model.sample_point(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=heat_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        self.assertLess(cool_values["temperature"], heat_values["temperature"])
+
+    def test_ac_dry_mode_reduces_humidity_more_than_cool_mode(self) -> None:
+        point = Vector3(3.9, 2.0, 1.5)
+        cool_devices = build_standard_devices()
+        cool_ac = next(device for device in cool_devices if device.name == "ac_main")
+        cool_ac.activation = 0.85
+        cool_ac.metadata.update({"ac_mode": "cool", "target_temperature": 24.0})
+        dry_devices = build_standard_devices()
+        dry_ac = next(device for device in dry_devices if device.name == "ac_main")
+        dry_ac.activation = 0.85
+        dry_ac.metadata.update({"ac_mode": "dry", "target_temperature": 24.0})
+
+        cool_values = self.model.sample_point(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=cool_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        dry_values = self.model.sample_point(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=dry_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        self.assertLess(dry_values["humidity"], cool_values["humidity"])
+
+    def test_ac_horizontal_angle_biases_lateral_cooling(self) -> None:
+        north_point = Vector3(4.0, 3.1, 1.4)
+        south_point = Vector3(4.0, 0.9, 1.4)
+
+        right_devices = build_standard_devices()
+        right_ac = next(device for device in right_devices if device.name == "ac_main")
+        right_ac.activation = 0.85
+        right_ac.metadata.update({"ac_mode": "cool", "horizontal_mode": "fixed", "horizontal_angle_deg": 45.0})
+
+        left_devices = build_standard_devices()
+        left_ac = next(device for device in left_devices if device.name == "ac_main")
+        left_ac.activation = 0.85
+        left_ac.metadata.update({"ac_mode": "cool", "horizontal_mode": "fixed", "horizontal_angle_deg": -45.0})
+
+        right_north = self.model.sample_point(
+            point=north_point,
+            room=self.room,
+            environment=self.environment,
+            devices=right_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        right_south = self.model.sample_point(
+            point=south_point,
+            room=self.room,
+            environment=self.environment,
+            devices=right_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        left_north = self.model.sample_point(
+            point=north_point,
+            room=self.room,
+            environment=self.environment,
+            devices=left_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        left_south = self.model.sample_point(
+            point=south_point,
+            room=self.room,
+            environment=self.environment,
+            devices=left_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        self.assertLess(right_north["temperature"], right_south["temperature"])
+        self.assertLess(left_south["temperature"], left_north["temperature"])
+
+    def test_ac_vertical_angle_biases_downward_cooling(self) -> None:
+        low_point = Vector3(4.0, 2.0, 0.6)
+        high_point = Vector3(4.0, 2.0, 2.3)
+
+        shallow_devices = build_standard_devices()
+        shallow_ac = next(device for device in shallow_devices if device.name == "ac_main")
+        shallow_ac.activation = 0.85
+        shallow_ac.metadata.update({"ac_mode": "cool", "vertical_mode": "fixed", "vertical_angle_deg": 5.0})
+
+        steep_devices = build_standard_devices()
+        steep_ac = next(device for device in steep_devices if device.name == "ac_main")
+        steep_ac.activation = 0.85
+        steep_ac.metadata.update({"ac_mode": "cool", "vertical_mode": "fixed", "vertical_angle_deg": 35.0})
+
+        shallow_low = self.model.sample_point(
+            point=low_point,
+            room=self.room,
+            environment=self.environment,
+            devices=shallow_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        shallow_high = self.model.sample_point(
+            point=high_point,
+            room=self.room,
+            environment=self.environment,
+            devices=shallow_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        steep_low = self.model.sample_point(
+            point=low_point,
+            room=self.room,
+            environment=self.environment,
+            devices=steep_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        steep_high = self.model.sample_point(
+            point=high_point,
+            room=self.room,
+            environment=self.environment,
+            devices=steep_devices,
+            elapsed_minutes=self.elapsed_minutes,
+        )
+        self.assertLess(steep_low["temperature"], shallow_low["temperature"])
+        self.assertGreater(steep_high["temperature"], shallow_high["temperature"])
 
     def test_light_increases_center_illuminance(self) -> None:
         off_result = self.model.simulate(

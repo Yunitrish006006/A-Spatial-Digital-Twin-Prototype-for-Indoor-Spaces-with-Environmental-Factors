@@ -1,6 +1,12 @@
 import unittest
 
-from digital_twin.web_demo import INDEX_HTML, _query_device_overrides, _query_float, _query_name
+from digital_twin.web_demo import (
+    INDEX_HTML,
+    _query_device_metadata_overrides,
+    _query_device_overrides,
+    _query_float,
+    _query_name,
+)
 
 
 class WebDemoTests(unittest.TestCase):
@@ -15,6 +21,12 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("Device Toggles", INDEX_HTML)
         self.assertIn("deviceControls", INDEX_HTML)
         self.assertIn("metricControls", INDEX_HTML)
+        self.assertIn("Window Controls", INDEX_HTML)
+        self.assertIn("sidebar-form-grid", INDEX_HTML)
+        self.assertIn("AC Mode", INDEX_HTML)
+        self.assertIn("acTargetTemperature", INDEX_HTML)
+        self.assertIn("Left / Right Swing", INDEX_HTML)
+        self.assertIn("Up / Down Swing", INDEX_HTML)
         self.assertNotIn("<select", INDEX_HTML)
         self.assertIn("MCP-Enabled Digital Twin Demo", INDEX_HTML)
 
@@ -31,6 +43,18 @@ class WebDemoTests(unittest.TestCase):
         self.assertEqual(overrides["ac_main"], 0.8)
         self.assertEqual(overrides["window_main"], 0.0)
         self.assertEqual(overrides["light_main"], 1.0)
+
+    def test_query_device_metadata_overrides(self) -> None:
+        overrides = _query_device_metadata_overrides(
+            "name=idle&ac_mode=heat&ac_target_temperature=40&ac_horizontal_mode=swing"
+            "&ac_horizontal_angle_deg=90&ac_vertical_mode=fixed&ac_vertical_angle_deg=-10"
+        )
+        self.assertEqual(overrides["ac_main"]["ac_mode"], "heat")
+        self.assertEqual(overrides["ac_main"]["target_temperature"], 33.0)
+        self.assertEqual(overrides["ac_main"]["horizontal_mode"], "swing")
+        self.assertEqual(overrides["ac_main"]["horizontal_angle_deg"], 60.0)
+        self.assertEqual(overrides["ac_main"]["vertical_mode"], "fixed")
+        self.assertEqual(overrides["ac_main"]["vertical_angle_deg"], 0.0)
 
 
 if __name__ == "__main__":

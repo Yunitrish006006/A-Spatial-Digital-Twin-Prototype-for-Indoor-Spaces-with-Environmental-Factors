@@ -59,6 +59,17 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result["environment"]["outdoor_temperature"], 35.0)
         self.assertIn("window_zone", result["zone_estimated"])
 
+    def test_ac_metadata_override_changes_zone_estimate(self) -> None:
+        cool = evaluate_scenario(
+            "ac_only",
+            device_metadata_overrides={"ac_main": {"ac_mode": "cool", "target_temperature": 20.0}},
+        )
+        heat = evaluate_scenario(
+            "ac_only",
+            device_metadata_overrides={"ac_main": {"ac_mode": "heat", "target_temperature": 33.0}},
+        )
+        self.assertLess(cool["target_zone_estimated"]["temperature"], heat["target_zone_estimated"]["temperature"])
+
     def test_sample_point_returns_three_metrics(self) -> None:
         result = sample_scenario_point("light_only", x=3.0, y=2.0, z=1.5)
         self.assertIn("temperature", result["values"])
@@ -84,6 +95,27 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(activations["ac_main"], 0.8)
         self.assertEqual(activations["window_main"], 0.7)
         self.assertEqual(activations["light_main"], 0.0)
+
+    def test_get_scenario_volume_returns_ac_metadata_overrides(self) -> None:
+        result = get_scenario_volume(
+            "idle",
+            {"ac_main": 0.85},
+            {
+                "ac_main": {
+                    "ac_mode": "dry",
+                    "target_temperature": 22.0,
+                    "horizontal_mode": "swing",
+                    "vertical_mode": "fixed",
+                    "vertical_angle_deg": 25.0,
+                }
+            },
+        )
+        ac = next(device for device in result["devices"] if device["name"] == "ac_main")
+        self.assertEqual(ac["metadata"]["ac_mode"], "dry")
+        self.assertEqual(ac["metadata"]["target_temperature"], 22.0)
+        self.assertEqual(ac["metadata"]["horizontal_mode"], "swing")
+        self.assertEqual(ac["metadata"]["vertical_mode"], "fixed")
+        self.assertEqual(ac["metadata"]["vertical_angle_deg"], 25.0)
 
 
 class MCPServerTests(unittest.TestCase):
@@ -128,6 +160,43 @@ class MCPServerTests(unittest.TestCase):
         payload = json.loads(content)
         self.assertEqual(payload["scenario"], "idle")
         self.assertGreater(len(payload["recommendations"]), 0)
+
+    def test_run_scenario_tool_call_accepts_ac_overrides(self) -> None:
+        cool_response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 31,
+                "method": "tools/call",
+                "params": {
+                    "name": "run_scenario",
+                    "arguments": {
+                        "scenario_name": "idle",
+                        "ac_main": 0.85,
+                        "ac_mode": "cool",
+                        "ac_target_temperature": 20.0,
+                    },
+                },
+            }
+        )
+        heat_response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 32,
+                "method": "tools/call",
+                "params": {
+                    "name": "run_scenario",
+                    "arguments": {
+                        "scenario_name": "idle",
+                        "ac_main": 0.85,
+                        "ac_mode": "heat",
+                        "ac_target_temperature": 33.0,
+                    },
+                },
+            }
+        )
+        cool_payload = json.loads(cool_response["result"]["content"][0]["text"])
+        heat_payload = json.loads(heat_response["result"]["content"][0]["text"])
+        self.assertLess(cool_payload["target_zone_estimated"]["temperature"], heat_payload["target_zone_estimated"]["temperature"])
 
     def test_compare_baseline_tool_call(self) -> None:
         response = self.server.handle_message(

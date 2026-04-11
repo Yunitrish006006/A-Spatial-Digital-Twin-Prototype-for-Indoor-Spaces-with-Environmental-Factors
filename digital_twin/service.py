@@ -37,8 +37,12 @@ def list_window_scenario_metadata() -> List[Dict]:
     return [_scenario_metadata(scenario) for scenario in build_window_matrix_scenarios()]
 
 
-def evaluate_scenario(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
-    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
+def evaluate_scenario(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     return _evaluate_scenario_object(scenario)
 
 
@@ -201,9 +205,13 @@ def evaluate_window_matrix() -> Dict:
     }
 
 
-def get_scenario_volume(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
+def get_scenario_volume(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     estimated_result = model.simulate(
@@ -256,6 +264,7 @@ def get_scenario_volume(scenario_name: str, device_overrides: Optional[Dict[str,
                 "calibrated_power_scale": round(float(device.metadata.get("calibrated_power_scale", 1.0)), 4),
                 "position": _vector_to_dict(device.position),
                 "geometry": _device_geometry(device),
+                "metadata": _device_metadata(device),
             }
             for device in estimated_result.calibrated_devices
         ],
@@ -263,9 +272,13 @@ def get_scenario_volume(scenario_name: str, device_overrides: Optional[Dict[str,
     }
 
 
-def rank_scenario_actions(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
+def rank_scenario_actions(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     ranked = rank_actions(
@@ -304,28 +317,31 @@ def sample_scenario_point(
     y: float,
     z: float,
     device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
 ) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     point = Vector3(x=x, y=y, z=z)
     _validate_point(scenario, point)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
-    corrections = model.fit_corrections(
+    estimated_result = model.simulate(
         room=scenario.room,
         environment=scenario.environment,
         devices=scenario.devices,
         sensors=scenario.sensors,
-        observed_sensors=observed_sensors,
+        zones=scenario.zones,
         elapsed_minutes=scenario.elapsed_minutes,
+        resolution=scenario.resolution,
+        observed_sensors=observed_sensors,
     )
     values = model.sample_point(
         point=point,
         room=scenario.room,
         environment=scenario.environment,
-        devices=scenario.devices,
+        devices=estimated_result.calibrated_devices,
         elapsed_minutes=scenario.elapsed_minutes,
-        corrections=corrections,
+        corrections=estimated_result.corrections,
     )
     return {
         "scenario": scenario.name,
@@ -334,9 +350,13 @@ def sample_scenario_point(
     }
 
 
-def compare_scenario_baseline(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
+def compare_scenario_baseline(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     estimated_result = model.simulate(
@@ -365,9 +385,13 @@ def compare_scenario_baseline(scenario_name: str, device_overrides: Optional[Dic
     }
 
 
-def learn_scenario_impacts(scenario_name: str, device_overrides: Optional[Dict[str, float]] = None) -> Dict:
+def learn_scenario_impacts(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_device_overrides(_find_scenario(scenario_name), device_overrides)
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     before_devices = deepcopy(scenario.devices)
@@ -409,16 +433,19 @@ def _all_scenarios() -> List[Scenario]:
     return build_validation_scenarios() + build_window_matrix_scenarios()
 
 
-def _scenario_with_device_overrides(
+def _scenario_with_overrides(
     scenario: Scenario,
     device_overrides: Optional[Dict[str, float]],
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]],
 ) -> Scenario:
-    if not device_overrides:
+    if not device_overrides and not device_metadata_overrides:
         return scenario
     devices = deepcopy(scenario.devices)
     for device in devices:
-        if device.name in device_overrides:
+        if device_overrides and device.name in device_overrides:
             device.activation = max(0.0, min(1.0, float(device_overrides[device.name])))
+        if device_metadata_overrides and device.name in device_metadata_overrides:
+            device.metadata.update(deepcopy(device_metadata_overrides[device.name]))
     return replace(scenario, devices=devices)
 
 
@@ -435,6 +462,7 @@ def _scenario_metadata(scenario: Scenario) -> Dict:
                 "activation": device.activation,
                 "position": _vector_to_dict(device.position),
                 "geometry": _device_geometry(device),
+                "metadata": _device_metadata(device),
             }
             for device in scenario.devices
         ],
@@ -470,6 +498,12 @@ def _device_power_calibration(devices) -> List[Dict]:
         }
         for device in devices
     ]
+
+
+def _device_metadata(device) -> Dict[str, object]:
+    metadata = deepcopy(device.metadata)
+    metadata.pop("calibrated_power_scale", None)
+    return metadata
 
 
 def _dimension_items(keys, profiles) -> List[Dict]:

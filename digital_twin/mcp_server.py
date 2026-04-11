@@ -18,6 +18,48 @@ from .service import (
 SERVER_NAME = "single-room-spatial-digital-twin"
 SERVER_VERSION = "0.1.0"
 DEFAULT_PROTOCOL_VERSION = "2024-11-05"
+DEVICE_OVERRIDE_KEYS = ("ac_main", "window_main", "light_main")
+AC_MODE_OPTIONS = {"cool", "dry", "heat", "fan"}
+AC_SWING_OPTIONS = {"fixed", "swing"}
+
+SCENARIO_OVERRIDE_PROPERTIES = {
+    "ac_main": {
+        "type": "number",
+        "description": "Optional AC activation override from 0.0 to 1.0.",
+    },
+    "window_main": {
+        "type": "number",
+        "description": "Optional window activation override from 0.0 to 1.0.",
+    },
+    "light_main": {
+        "type": "number",
+        "description": "Optional lighting activation override from 0.0 to 1.0.",
+    },
+    "ac_mode": {
+        "type": "string",
+        "description": "Optional AC mode: cool, dry, heat, or fan.",
+    },
+    "ac_target_temperature": {
+        "type": "number",
+        "description": "Optional AC target temperature in Celsius, clamped to 20 to 33.",
+    },
+    "ac_horizontal_mode": {
+        "type": "string",
+        "description": "Optional AC left/right mode: fixed or swing.",
+    },
+    "ac_horizontal_angle_deg": {
+        "type": "number",
+        "description": "Optional fixed left/right angle in degrees, clamped to -60 to 60.",
+    },
+    "ac_vertical_mode": {
+        "type": "string",
+        "description": "Optional AC up/down mode: fixed or swing.",
+    },
+    "ac_vertical_angle_deg": {
+        "type": "number",
+        "description": "Optional fixed up/down angle in degrees, clamped to 0 to 40.",
+    },
+}
 
 
 TOOLS = [
@@ -48,7 +90,8 @@ TOOLS = [
                 "scenario_name": {
                     "type": "string",
                     "description": "Scenario name, for example idle, ac_only, window_only, light_only, or all_active.",
-                }
+                },
+                **SCENARIO_OVERRIDE_PROPERTIES,
             },
             "required": ["scenario_name"],
             "additionalProperties": False,
@@ -63,7 +106,8 @@ TOOLS = [
                 "scenario_name": {
                     "type": "string",
                     "description": "Scenario name to evaluate.",
-                }
+                },
+                **SCENARIO_OVERRIDE_PROPERTIES,
             },
             "required": ["scenario_name"],
             "additionalProperties": False,
@@ -79,6 +123,7 @@ TOOLS = [
                 "x": {"type": "number", "description": "X coordinate in meters."},
                 "y": {"type": "number", "description": "Y coordinate in meters."},
                 "z": {"type": "number", "description": "Z coordinate in meters."},
+                **SCENARIO_OVERRIDE_PROPERTIES,
             },
             "required": ["scenario_name", "x", "y", "z"],
             "additionalProperties": False,
@@ -93,7 +138,8 @@ TOOLS = [
                 "scenario_name": {
                     "type": "string",
                     "description": "Scenario name to evaluate.",
-                }
+                },
+                **SCENARIO_OVERRIDE_PROPERTIES,
             },
             "required": ["scenario_name"],
             "additionalProperties": False,
@@ -108,7 +154,8 @@ TOOLS = [
                 "scenario_name": {
                     "type": "string",
                     "description": "Scenario name with active appliances.",
-                }
+                },
+                **SCENARIO_OVERRIDE_PROPERTIES,
             },
             "required": ["scenario_name"],
             "additionalProperties": False,
@@ -209,20 +256,38 @@ class LocalMCPServer:
         elif tool_name == "list_window_scenarios":
             payload = list_window_scenario_metadata()
         elif tool_name == "run_scenario":
-            payload = evaluate_scenario(_required_string(arguments, "scenario_name"))
+            payload = evaluate_scenario(
+                _required_string(arguments, "scenario_name"),
+                _device_overrides(arguments),
+                _device_metadata_overrides(arguments),
+            )
         elif tool_name == "rank_actions":
-            payload = rank_scenario_actions(_required_string(arguments, "scenario_name"))
+            payload = rank_scenario_actions(
+                _required_string(arguments, "scenario_name"),
+                _device_overrides(arguments),
+                _device_metadata_overrides(arguments),
+            )
         elif tool_name == "sample_point":
             payload = sample_scenario_point(
                 scenario_name=_required_string(arguments, "scenario_name"),
                 x=_required_number(arguments, "x"),
                 y=_required_number(arguments, "y"),
                 z=_required_number(arguments, "z"),
+                device_overrides=_device_overrides(arguments),
+                device_metadata_overrides=_device_metadata_overrides(arguments),
             )
         elif tool_name == "compare_baseline":
-            payload = compare_scenario_baseline(_required_string(arguments, "scenario_name"))
+            payload = compare_scenario_baseline(
+                _required_string(arguments, "scenario_name"),
+                _device_overrides(arguments),
+                _device_metadata_overrides(arguments),
+            )
         elif tool_name == "learn_impacts":
-            payload = learn_scenario_impacts(_required_string(arguments, "scenario_name"))
+            payload = learn_scenario_impacts(
+                _required_string(arguments, "scenario_name"),
+                _device_overrides(arguments),
+                _device_metadata_overrides(arguments),
+            )
         elif tool_name == "run_window_matrix":
             payload = evaluate_window_matrix()
         elif tool_name == "run_window_direct":
@@ -275,6 +340,53 @@ def _optional_nullable_number(arguments: Dict[str, Any], key: str) -> Optional[f
     if key not in arguments:
         return None
     return _required_number(arguments, key)
+
+
+def _device_overrides(arguments: Dict[str, Any]) -> Dict[str, float]:
+    overrides: Dict[str, float] = {}
+    for key in DEVICE_OVERRIDE_KEYS:
+        if key in arguments:
+            overrides[key] = max(0.0, min(1.0, _required_number(arguments, key)))
+    return overrides
+
+
+def _device_metadata_overrides(arguments: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    ac_metadata: Dict[str, Any] = {}
+
+    ac_mode = arguments.get("ac_mode")
+    if ac_mode is not None:
+        if not isinstance(ac_mode, str) or ac_mode not in AC_MODE_OPTIONS:
+            raise ValueError("'ac_mode' must be one of cool, dry, heat, or fan.")
+        ac_metadata["ac_mode"] = ac_mode
+
+    horizontal_mode = arguments.get("ac_horizontal_mode")
+    if horizontal_mode is not None:
+        if not isinstance(horizontal_mode, str) or horizontal_mode not in AC_SWING_OPTIONS:
+            raise ValueError("'ac_horizontal_mode' must be 'fixed' or 'swing'.")
+        ac_metadata["horizontal_mode"] = horizontal_mode
+
+    vertical_mode = arguments.get("ac_vertical_mode")
+    if vertical_mode is not None:
+        if not isinstance(vertical_mode, str) or vertical_mode not in AC_SWING_OPTIONS:
+            raise ValueError("'ac_vertical_mode' must be 'fixed' or 'swing'.")
+        ac_metadata["vertical_mode"] = vertical_mode
+
+    if "ac_target_temperature" in arguments:
+        ac_metadata["target_temperature"] = max(20.0, min(33.0, _required_number(arguments, "ac_target_temperature")))
+    if "ac_horizontal_angle_deg" in arguments:
+        ac_metadata["horizontal_angle_deg"] = max(
+            -60.0,
+            min(60.0, _required_number(arguments, "ac_horizontal_angle_deg")),
+        )
+    if "ac_vertical_angle_deg" in arguments:
+        ac_metadata["vertical_angle_deg"] = max(
+            0.0,
+            min(40.0, _required_number(arguments, "ac_vertical_angle_deg")),
+        )
+
+    if not ac_metadata:
+        return {}
+    return {"ac_main": ac_metadata}
 
 
 def serve_stdio() -> None:

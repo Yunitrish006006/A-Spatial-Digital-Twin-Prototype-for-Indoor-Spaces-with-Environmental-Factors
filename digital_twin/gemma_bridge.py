@@ -20,6 +20,9 @@ from .service import (
 
 DEFAULT_MODEL = "gemma4:26b"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
+DEVICE_OVERRIDE_KEYS = ("ac_main", "window_main", "light_main")
+AC_MODE_OPTIONS = {"cool", "dry", "heat", "fan"}
+AC_SWING_OPTIONS = {"fixed", "swing"}
 
 
 ToolFunction = Callable[[Dict[str, Any]], Dict[str, Any]]
@@ -97,16 +100,34 @@ def available_tools() -> Dict[str, ToolFunction]:
     return {
         "list_scenarios": lambda _arguments: {"scenarios": list_scenario_metadata()},
         "list_window_scenarios": lambda _arguments: {"scenarios": list_window_scenario_metadata()},
-        "run_scenario": lambda arguments: evaluate_scenario(_required_string(arguments, "scenario_name")),
-        "rank_actions": lambda arguments: rank_scenario_actions(_required_string(arguments, "scenario_name")),
+        "run_scenario": lambda arguments: evaluate_scenario(
+            _required_string(arguments, "scenario_name"),
+            _device_overrides(arguments),
+            _device_metadata_overrides(arguments),
+        ),
+        "rank_actions": lambda arguments: rank_scenario_actions(
+            _required_string(arguments, "scenario_name"),
+            _device_overrides(arguments),
+            _device_metadata_overrides(arguments),
+        ),
         "sample_point": lambda arguments: sample_scenario_point(
             scenario_name=_required_string(arguments, "scenario_name"),
             x=_required_number(arguments, "x"),
             y=_required_number(arguments, "y"),
             z=_required_number(arguments, "z"),
+            device_overrides=_device_overrides(arguments),
+            device_metadata_overrides=_device_metadata_overrides(arguments),
         ),
-        "compare_baseline": lambda arguments: compare_scenario_baseline(_required_string(arguments, "scenario_name")),
-        "learn_impacts": lambda arguments: learn_scenario_impacts(_required_string(arguments, "scenario_name")),
+        "compare_baseline": lambda arguments: compare_scenario_baseline(
+            _required_string(arguments, "scenario_name"),
+            _device_overrides(arguments),
+            _device_metadata_overrides(arguments),
+        ),
+        "learn_impacts": lambda arguments: learn_scenario_impacts(
+            _required_string(arguments, "scenario_name"),
+            _device_overrides(arguments),
+            _device_metadata_overrides(arguments),
+        ),
         "run_window_matrix": lambda _arguments: evaluate_window_matrix(),
         "run_window_direct": lambda arguments: evaluate_window_direct(
             outdoor_temperature=_required_number(arguments, "outdoor_temperature"),
@@ -132,11 +153,11 @@ def build_tool_selection_prompt(question: str) -> str:
 可用工具：
 1. list_scenarios: 列出內建情境。arguments={{}}
 2. list_window_scenarios: 列出 48 個窗戶時段/天氣/季節情境。arguments={{}}
-3. run_scenario: 執行情境。arguments={{"scenario_name":"情境名稱"}}
-4. rank_actions: 排序設備候選動作。arguments={{"scenario_name":"情境名稱"}}
-5. sample_point: 查詢座標估計值。arguments={{"scenario_name":"情境名稱","x":數字,"y":數字,"z":數字}}
-6. compare_baseline: 比較本研究模型與 IDW baseline。arguments={{"scenario_name":"情境名稱"}}
-7. learn_impacts: 從前後感測資料學習非連網裝置影響。arguments={{"scenario_name":"情境名稱"}}
+3. run_scenario: 執行情境。arguments={{"scenario_name":"情境名稱","ac_main":0到1,"window_main":0到1,"light_main":0到1,"ac_mode":"cool|dry|heat|fan","ac_target_temperature":20到33,"ac_horizontal_mode":"fixed|swing","ac_horizontal_angle_deg":-60到60,"ac_vertical_mode":"fixed|swing","ac_vertical_angle_deg":0到40}}
+4. rank_actions: 排序設備候選動作。arguments 與 run_scenario 相同。
+5. sample_point: 查詢座標估計值。arguments={{"scenario_name":"情境名稱","x":數字,"y":數字,"z":數字}}，也可附加 run_scenario 的可選冷氣與設備參數。
+6. compare_baseline: 比較本研究模型與 IDW baseline。arguments 與 run_scenario 相同。
+7. learn_impacts: 從前後感測資料學習非連網裝置影響。arguments 與 run_scenario 相同。
 8. run_window_matrix: 執行全部 48 個窗戶矩陣模擬。arguments={{}}
 9. run_window_direct: 直接提供窗戶外部條件並執行窗戶模擬。arguments={{"outdoor_temperature":數字,"outdoor_humidity":數字,"sunlight_illuminance":數字,"opening_ratio":0到1數字}}
 10. none: 不需要工具。
@@ -228,6 +249,53 @@ def _parse_direct_window_arguments(text: str) -> Optional[Dict[str, float]]:
     if len(numbers) >= 6:
         arguments["indoor_humidity"] = numbers[5]
     return arguments
+
+
+def _device_overrides(arguments: Dict[str, Any]) -> Dict[str, float]:
+    overrides: Dict[str, float] = {}
+    for key in DEVICE_OVERRIDE_KEYS:
+        if key in arguments:
+            overrides[key] = max(0.0, min(1.0, _required_number(arguments, key)))
+    return overrides
+
+
+def _device_metadata_overrides(arguments: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    ac_metadata: Dict[str, Any] = {}
+
+    ac_mode = arguments.get("ac_mode")
+    if ac_mode is not None:
+        if not isinstance(ac_mode, str) or ac_mode not in AC_MODE_OPTIONS:
+            raise ValueError("'ac_mode' must be one of cool, dry, heat, or fan.")
+        ac_metadata["ac_mode"] = ac_mode
+
+    horizontal_mode = arguments.get("ac_horizontal_mode")
+    if horizontal_mode is not None:
+        if not isinstance(horizontal_mode, str) or horizontal_mode not in AC_SWING_OPTIONS:
+            raise ValueError("'ac_horizontal_mode' must be 'fixed' or 'swing'.")
+        ac_metadata["horizontal_mode"] = horizontal_mode
+
+    vertical_mode = arguments.get("ac_vertical_mode")
+    if vertical_mode is not None:
+        if not isinstance(vertical_mode, str) or vertical_mode not in AC_SWING_OPTIONS:
+            raise ValueError("'ac_vertical_mode' must be 'fixed' or 'swing'.")
+        ac_metadata["vertical_mode"] = vertical_mode
+
+    if "ac_target_temperature" in arguments:
+        ac_metadata["target_temperature"] = max(20.0, min(33.0, _required_number(arguments, "ac_target_temperature")))
+    if "ac_horizontal_angle_deg" in arguments:
+        ac_metadata["horizontal_angle_deg"] = max(
+            -60.0,
+            min(60.0, _required_number(arguments, "ac_horizontal_angle_deg")),
+        )
+    if "ac_vertical_angle_deg" in arguments:
+        ac_metadata["vertical_angle_deg"] = max(
+            0.0,
+            min(40.0, _required_number(arguments, "ac_vertical_angle_deg")),
+        )
+
+    if not ac_metadata:
+        return {}
+    return {"ac_main": ac_metadata}
 
 
 def find_scenario_name(text: str) -> Optional[str]:

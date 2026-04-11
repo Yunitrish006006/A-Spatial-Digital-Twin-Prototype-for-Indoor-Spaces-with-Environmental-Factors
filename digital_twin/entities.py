@@ -58,7 +58,7 @@ class Device:
     power: float = 1.0
     activation: float = 0.0
     response_time_minutes: float = 5.0
-    metadata: Dict[str, float] = field(default_factory=dict)
+    metadata: Dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -86,7 +86,7 @@ class ActionEffect:
     device_name: str
     activation: Optional[float] = None
     power_scale: float = 1.0
-    metadata_updates: Dict[str, float] = field(default_factory=dict)
+    metadata_updates: Dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

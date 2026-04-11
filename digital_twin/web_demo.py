@@ -22,6 +22,8 @@ from .service import (
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUTS = ROOT / "outputs"
 DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
+AC_MODE_OPTIONS = ("cool", "dry", "heat", "fan")
+AC_SWING_OPTIONS = ("fixed", "swing")
 
 
 INDEX_HTML = """<!doctype html>
@@ -91,6 +93,8 @@ INDEX_HTML = """<!doctype html>
       align-self: start;
       position: sticky;
       top: 18px;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
       padding: 20px;
     }
     label {
@@ -173,6 +177,52 @@ INDEX_HTML = """<!doctype html>
       width: 16px;
       height: 16px;
       accent-color: var(--blue);
+    }
+    .metric-toggle.disabled {
+      opacity: 0.46;
+      cursor: default;
+    }
+    .control-group {
+      margin-top: 16px;
+    }
+    .sidebar-section + .sidebar-section {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(223, 209, 184, 0.8);
+    }
+    .sidebar-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .sidebar-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .sidebar-actions button {
+      margin-top: 0;
+    }
+    .slider-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    input[type="range"] {
+      padding: 0;
+      accent-color: var(--clay);
+    }
+    .slider-readout {
+      min-width: 72px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #fffdf7;
+      color: var(--ink);
+      text-align: center;
+      font: 800 0.82rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
     }
     .form-grid {
       display: grid;
@@ -275,7 +325,12 @@ INDEX_HTML = """<!doctype html>
     .status { color: var(--muted); margin-top: 12px; line-height: 1.5; }
     @media (max-width: 920px) {
       main { grid-template-columns: 1fr; }
-      aside { position: static; }
+      aside {
+        position: static;
+        max-height: none;
+        overflow: visible;
+      }
+      .sidebar-form-grid { grid-template-columns: 1fr; }
       .cards, .heatmaps { grid-template-columns: 1fr; }
       .volume-toolbar { display: block; }
       .volume-toolbar button { width: 100%; margin-top: 14px; }
@@ -291,16 +346,64 @@ INDEX_HTML = """<!doctype html>
   </header>
   <main>
     <aside class="panel">
-      <label>Device Toggles</label>
-      <div class="device-controls" id="deviceControls"></div>
-      <button onclick="loadScenario()">Run Simulation</button>
-      <button class="secondary" onclick="resetDeviceControls()">Clear Devices</button>
-      <div class="form-grid">
-        <div><label for="x">X</label><input id="x" type="number" step="0.1" value="3"></div>
-        <div><label for="y">Y</label><input id="y" type="number" step="0.1" value="2"></div>
-        <div><label for="z">Z</label><input id="z" type="number" step="0.1" value="1.5"></div>
+      <div class="sidebar-section">
+        <label>Device Toggles</label>
+        <div class="device-controls" id="deviceControls"></div>
       </div>
-      <button onclick="samplePoint()">Sample Point</button>
+      <div class="sidebar-section">
+        <label>AC Controls</label>
+        <div class="control-group">
+          <label>AC Mode</label>
+          <div class="metric-controls" id="acModeControls"></div>
+        </div>
+        <div class="control-group">
+          <label>AC Temperature</label>
+          <div class="slider-row">
+            <input id="acTargetTemperature" type="range" min="20" max="33" step="1" value="24">
+            <div class="slider-readout" id="acTargetTemperatureValue">24°C</div>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Left / Right Swing</label>
+          <div class="metric-controls" id="acHorizontalModeControls"></div>
+          <div class="metric-controls" id="acHorizontalAngleControls"></div>
+        </div>
+        <div class="control-group">
+          <label>Up / Down Swing</label>
+          <div class="metric-controls" id="acVerticalModeControls"></div>
+          <div class="metric-controls" id="acVerticalAngleControls"></div>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <label>Window Controls</label>
+        <p class="status">Direct outdoor conditions and batch window simulations stay pinned here while result tables remain on the right.</p>
+        <div class="sidebar-form-grid">
+          <div><label for="directOutdoorTemperature">Outdoor °C</label><input id="directOutdoorTemperature" type="number" step="0.1" value="33"></div>
+          <div><label for="directOutdoorHumidity">Outdoor RH</label><input id="directOutdoorHumidity" type="number" step="0.1" value="74"></div>
+          <div><label for="directSunlight">Sunlight lx</label><input id="directSunlight" type="number" step="100" value="32000"></div>
+          <div><label for="directOpening">Opening</label><input id="directOpening" type="number" min="0" max="1" step="0.05" value="0.7"></div>
+          <div><label for="directIndoorTemperature">Indoor °C</label><input id="directIndoorTemperature" type="number" step="0.1" value="29"></div>
+          <div><label for="directIndoorHumidity">Indoor RH</label><input id="directIndoorHumidity" type="number" step="0.1" value="67"></div>
+        </div>
+        <div class="sidebar-actions">
+          <button class="secondary" onclick="loadDirectWindow()">Run Direct Window Simulation</button>
+          <button class="secondary" onclick="loadWindowMatrix()">Run Window Matrix</button>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <label>Scenario Controls</label>
+        <button onclick="loadScenario()">Run Simulation</button>
+        <button class="secondary" onclick="resetDeviceControls()">Clear Devices</button>
+      </div>
+      <div class="sidebar-section">
+        <label>Point Sample</label>
+        <div class="sidebar-form-grid">
+          <div><label for="x">X</label><input id="x" type="number" step="0.1" value="3"></div>
+          <div><label for="y">Y</label><input id="y" type="number" step="0.1" value="2"></div>
+          <div><label for="z">Z</label><input id="z" type="number" step="0.1" value="1.5"></div>
+        </div>
+        <button onclick="samplePoint()">Sample Point</button>
+      </div>
       <p class="status" id="status">Loading scenarios...</p>
     </aside>
     <div class="content">
@@ -310,22 +413,12 @@ INDEX_HTML = """<!doctype html>
       </section>
       <section class="panel">
         <h2>Window Season/Weather/Time Matrix</h2>
-        <p class="status">Runs 48 window-only simulations: 4 time periods × 3 weather states × 4 seasons.</p>
-        <button class="secondary" onclick="loadWindowMatrix()">Run Window Matrix</button>
+        <p class="status">Runs 48 window-only simulations: 4 time periods × 3 weather states × 4 seasons. Trigger the simulation from the fixed left sidebar.</p>
         <div id="windowMatrix"></div>
       </section>
       <section class="panel">
         <h2>Direct Window Input</h2>
-        <p class="status">Use this when the outside condition is known directly instead of selected from season/weather/time presets.</p>
-        <div class="form-grid">
-          <div><label for="directOutdoorTemperature">Outdoor °C</label><input id="directOutdoorTemperature" type="number" step="0.1" value="33"></div>
-          <div><label for="directOutdoorHumidity">Outdoor RH</label><input id="directOutdoorHumidity" type="number" step="0.1" value="74"></div>
-          <div><label for="directSunlight">Sunlight lx</label><input id="directSunlight" type="number" step="100" value="32000"></div>
-          <div><label for="directOpening">Opening</label><input id="directOpening" type="number" min="0" max="1" step="0.05" value="0.7"></div>
-          <div><label for="directIndoorTemperature">Indoor °C</label><input id="directIndoorTemperature" type="number" step="0.1" value="29"></div>
-          <div><label for="directIndoorHumidity">Indoor RH</label><input id="directIndoorHumidity" type="number" step="0.1" value="67"></div>
-        </div>
-        <button class="secondary" onclick="loadDirectWindow()">Run Direct Window Simulation</button>
+        <p class="status">Use the fixed left sidebar to edit outdoor window conditions, then read the resulting zone estimates here.</p>
         <div id="windowDirectResult"></div>
       </section>
       <section class="panel">
@@ -370,6 +463,10 @@ INDEX_HTML = """<!doctype html>
     const units = { temperature: "°C", humidity: "%", illuminance: "lx" };
     const deviceColors = { ac: "#2b5c7c", window: "#2f855a", light: "#c58b2d" };
     const deviceDefaultActivation = { ac_main: 0.8, window_main: 0.7, light_main: 0.8 };
+    const acModeLabels = { cool: "Cool", dry: "Dry", heat: "Heat", fan: "Fan" };
+    const acSwingLabels = { fixed: "Fixed", swing: "Swing" };
+    const acHorizontalAngles = [-45, -20, 0, 20, 45];
+    const acVerticalAngles = [5, 15, 25, 35];
     let activeScenario = "idle";
     let scenarioMetadata = {};
     let volumeData = null;
@@ -393,6 +490,7 @@ INDEX_HTML = """<!doctype html>
       scenarioMetadata = Object.fromEntries(data.scenarios.map(item => [item.name, item]));
       activeScenario = scenarioMetadata.idle ? "idle" : data.scenarios[0].name;
       syncDeviceControlsFromScenario(activeScenario);
+      syncAcControlsFromScenario(activeScenario);
       await loadScenario();
       loadWindowMatrix().catch(error => {
         document.getElementById("windowMatrix").innerHTML = `<p class="status">${error.message}</p>`;
@@ -445,6 +543,63 @@ INDEX_HTML = """<!doctype html>
       });
     }
 
+    function syncAcControlsFromScenario(name) {
+      const scenario = scenarioMetadata[name];
+      const acDevice = scenario?.devices?.find(device => device.name === "ac_main");
+      const metadata = acDevice?.metadata || {};
+
+      renderRadioGroup("acModeControls", "acMode", Object.keys(acModeLabels), metadata.ac_mode || "cool", acModeLabels);
+      renderRadioGroup("acHorizontalModeControls", "acHorizontalMode", ["fixed", "swing"], metadata.horizontal_mode || "fixed", acSwingLabels);
+      renderRadioGroup(
+        "acHorizontalAngleControls",
+        "acHorizontalAngle",
+        acHorizontalAngles.map(String),
+        String(Math.round(Number(metadata.horizontal_angle_deg ?? 0))),
+        null,
+        value => `${value}°`
+      );
+      renderRadioGroup("acVerticalModeControls", "acVerticalMode", ["fixed", "swing"], metadata.vertical_mode || "fixed", acSwingLabels);
+      renderRadioGroup(
+        "acVerticalAngleControls",
+        "acVerticalAngle",
+        acVerticalAngles.map(String),
+        String(Math.round(Number(metadata.vertical_angle_deg ?? 15))),
+        null,
+        value => `${value}°`
+      );
+
+      const slider = document.getElementById("acTargetTemperature");
+      slider.value = String(Math.round(Number(metadata.target_temperature ?? 24)));
+      syncAcTemperatureReadout();
+
+      document.querySelectorAll("#acModeControls input, #acHorizontalModeControls input, #acHorizontalAngleControls input, #acVerticalModeControls input, #acVerticalAngleControls input")
+        .forEach(input => input.addEventListener("change", () => {
+          syncAcAngleControlState();
+          loadScenario();
+        }));
+      slider.addEventListener("input", syncAcTemperatureReadout);
+      slider.addEventListener("change", () => loadScenario());
+      syncAcAngleControlState();
+    }
+
+    function renderRadioGroup(containerId, name, options, selected, labelsMap = null, formatter = null) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = options.map(option => {
+        const label = formatter ? formatter(option) : (labelsMap ? labelsMap[option] : option);
+        return `
+          <label class="metric-toggle">
+            <input type="radio" name="${name}" value="${option}" ${String(option) === String(selected) ? "checked" : ""}>
+            <span>${label}</span>
+          </label>
+        `;
+      }).join("");
+    }
+
+    function syncAcTemperatureReadout() {
+      const value = document.getElementById("acTargetTemperature").value;
+      document.getElementById("acTargetTemperatureValue").textContent = `${value}°C`;
+    }
+
     function resetDeviceControls() {
       document.querySelectorAll("#deviceControls input[type='checkbox']").forEach(input => {
         input.checked = false;
@@ -457,6 +612,9 @@ INDEX_HTML = """<!doctype html>
       Object.entries(deviceOverrides()).forEach(([name, value]) => {
         params.set(name, String(value));
       });
+      Object.entries(acSettings()).forEach(([name, value]) => {
+        params.set(name, String(value));
+      });
       return params.toString();
     }
 
@@ -467,6 +625,38 @@ INDEX_HTML = """<!doctype html>
         overrides[input.dataset.device] = input.checked ? activation : 0.0;
       });
       return overrides;
+    }
+
+    function acSettings() {
+      return {
+        ac_mode: selectedChoice("acMode", "cool"),
+        ac_target_temperature: Number(document.getElementById("acTargetTemperature").value || "24"),
+        ac_horizontal_mode: selectedChoice("acHorizontalMode", "fixed"),
+        ac_horizontal_angle_deg: Number(selectedChoice("acHorizontalAngle", "0")),
+        ac_vertical_mode: selectedChoice("acVerticalMode", "fixed"),
+        ac_vertical_angle_deg: Number(selectedChoice("acVerticalAngle", "15"))
+      };
+    }
+
+    function selectedChoice(name, fallback) {
+      return document.querySelector(`input[name='${name}']:checked`)?.value || fallback;
+    }
+
+    function syncAcAngleControlState() {
+      const horizontalFixed = selectedChoice("acHorizontalMode", "fixed") === "fixed";
+      const verticalFixed = selectedChoice("acVerticalMode", "fixed") === "fixed";
+      setRadioGroupDisabled("acHorizontalAngleControls", !horizontalFixed);
+      setRadioGroupDisabled("acVerticalAngleControls", !verticalFixed);
+    }
+
+    function setRadioGroupDisabled(containerId, disabled) {
+      const container = document.getElementById(containerId);
+      container.querySelectorAll("label.metric-toggle").forEach(label => {
+        label.classList.toggle("disabled", disabled);
+      });
+      container.querySelectorAll("input").forEach(input => {
+        input.disabled = disabled;
+      });
     }
 
     function renderZoneCards(data) {
@@ -693,7 +883,7 @@ INDEX_HTML = """<!doctype html>
         ctx.fill();
         ctx.restore();
 
-        const label = `${device.name} (${device.kind}, ${Math.round(device.activation * 100)}%)`;
+        const label = deviceLabel(device);
         ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
         const labelWidth = ctx.measureText(label).width;
         ctx.fillStyle = "rgba(255, 253, 247, 0.86)";
@@ -730,7 +920,7 @@ INDEX_HTML = """<!doctype html>
       ctx.stroke();
 
       const projected = project(center);
-      const label = `${device.name} (${device.kind}, ${Math.round(device.activation * 100)}%)`;
+      const label = deviceLabel(device);
       ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
       const labelWidth = ctx.measureText(label).width;
       ctx.fillStyle = "rgba(255, 253, 247, 0.88)";
@@ -800,6 +990,18 @@ INDEX_HTML = """<!doctype html>
 
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
+    }
+
+    function deviceLabel(device) {
+      if (device.kind !== "ac") {
+        return `${device.name} (${device.kind}, ${Math.round(device.activation * 100)}%)`;
+      }
+      const meta = device.metadata || {};
+      const mode = String(meta.ac_mode || "cool").toUpperCase();
+      const target = Math.round(Number(meta.target_temperature || 24));
+      const lr = meta.horizontal_mode === "swing" ? "LR swing" : `LR ${Math.round(Number(meta.horizontal_angle_deg || 0))}°`;
+      const ud = meta.vertical_mode === "swing" ? "UD swing" : `UD ${Math.round(Number(meta.vertical_angle_deg || 15))}°`;
+      return `${device.name} (${mode} ${target}°C, ${lr}, ${ud})`;
     }
 
     async function loadWindowMatrix() {
@@ -892,7 +1094,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"scenarios": list_scenario_metadata()})
                 return
             if parsed.path == "/api/scenario":
-                self._send_json(evaluate_scenario(_query_name(parsed.query), _query_device_overrides(parsed.query)))
+                self._send_json(
+                    evaluate_scenario(
+                        _query_name(parsed.query),
+                        _query_device_overrides(parsed.query),
+                        _query_device_metadata_overrides(parsed.query),
+                    )
+                )
                 return
             if parsed.path == "/api/window_matrix":
                 self._send_json(evaluate_window_matrix())
@@ -911,16 +1119,40 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 )
                 return
             if parsed.path == "/api/volume":
-                self._send_json(get_scenario_volume(_query_name(parsed.query), _query_device_overrides(parsed.query)))
+                self._send_json(
+                    get_scenario_volume(
+                        _query_name(parsed.query),
+                        _query_device_overrides(parsed.query),
+                        _query_device_metadata_overrides(parsed.query),
+                    )
+                )
                 return
             if parsed.path == "/api/rank_actions":
-                self._send_json(rank_scenario_actions(_query_name(parsed.query), _query_device_overrides(parsed.query)))
+                self._send_json(
+                    rank_scenario_actions(
+                        _query_name(parsed.query),
+                        _query_device_overrides(parsed.query),
+                        _query_device_metadata_overrides(parsed.query),
+                    )
+                )
                 return
             if parsed.path == "/api/compare_baseline":
-                self._send_json(compare_scenario_baseline(_query_name(parsed.query), _query_device_overrides(parsed.query)))
+                self._send_json(
+                    compare_scenario_baseline(
+                        _query_name(parsed.query),
+                        _query_device_overrides(parsed.query),
+                        _query_device_metadata_overrides(parsed.query),
+                    )
+                )
                 return
             if parsed.path == "/api/learn_impacts":
-                self._send_json(learn_scenario_impacts(_query_name(parsed.query), _query_device_overrides(parsed.query)))
+                self._send_json(
+                    learn_scenario_impacts(
+                        _query_name(parsed.query),
+                        _query_device_overrides(parsed.query),
+                        _query_device_metadata_overrides(parsed.query),
+                    )
+                )
                 return
             if parsed.path == "/api/sample":
                 query = parse_qs(parsed.query)
@@ -931,6 +1163,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         y=_query_float(query, "y", 2.0),
                         z=_query_float(query, "z", 1.5),
                         device_overrides=_query_device_overrides(parsed.query),
+                        device_metadata_overrides=_query_device_metadata_overrides(parsed.query),
                     )
                 )
                 return
@@ -993,6 +1226,34 @@ def _query_device_overrides(query_string: str) -> Dict[str, float]:
         if name in query:
             overrides[name] = _query_float(query, name, 0.0)
     return overrides
+
+
+def _query_device_metadata_overrides(query_string: str) -> Dict[str, Dict[str, object]]:
+    query = parse_qs(query_string)
+    ac_metadata: Dict[str, object] = {}
+
+    ac_mode = query.get("ac_mode", [None])[0]
+    if ac_mode in AC_MODE_OPTIONS:
+        ac_metadata["ac_mode"] = ac_mode
+
+    horizontal_mode = query.get("ac_horizontal_mode", [None])[0]
+    if horizontal_mode in AC_SWING_OPTIONS:
+        ac_metadata["horizontal_mode"] = horizontal_mode
+
+    vertical_mode = query.get("ac_vertical_mode", [None])[0]
+    if vertical_mode in AC_SWING_OPTIONS:
+        ac_metadata["vertical_mode"] = vertical_mode
+
+    if "ac_target_temperature" in query:
+        ac_metadata["target_temperature"] = max(20.0, min(33.0, _query_float(query, "ac_target_temperature", 24.0)))
+    if "ac_horizontal_angle_deg" in query:
+        ac_metadata["horizontal_angle_deg"] = max(-60.0, min(60.0, _query_float(query, "ac_horizontal_angle_deg", 0.0)))
+    if "ac_vertical_angle_deg" in query:
+        ac_metadata["vertical_angle_deg"] = max(0.0, min(40.0, _query_float(query, "ac_vertical_angle_deg", 15.0)))
+
+    if not ac_metadata:
+        return {}
+    return {"ac_main": ac_metadata}
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8765) -> Tuple[str, int]:
