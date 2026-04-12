@@ -3,6 +3,7 @@ import unittest
 
 from digital_twin.mcp_server import LocalMCPServer
 from digital_twin.service import (
+    compare_scenario_baseline,
     evaluate_scenario,
     evaluate_window_direct,
     evaluate_window_direct_dashboard,
@@ -10,8 +11,10 @@ from digital_twin.service import (
     get_scenario_volume,
     get_scenario_timeline,
     get_window_direct_timeline,
+    learn_scenario_impacts,
     list_scenario_metadata,
     list_window_scenario_metadata,
+    rank_scenario_actions,
     sample_window_direct_point,
     sample_scenario_point,
 )
@@ -35,6 +38,12 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result["name"], "idle")
         self.assertIn("field_mae", result)
         self.assertIn("target_zone_estimated", result)
+        self.assertIn("estimator", result)
+
+    def test_evaluate_scenario_can_request_hybrid_estimator(self) -> None:
+        result = evaluate_scenario("idle", use_hybrid_residual=True)
+        self.assertTrue(result["estimator"]["requested"])
+        self.assertIn("label", result["estimator"])
 
     def test_evaluate_window_scenario_returns_window_metadata(self) -> None:
         result = evaluate_scenario("window_summer_sunny_noon")
@@ -147,6 +156,7 @@ class ServiceTests(unittest.TestCase):
         result = get_scenario_timeline("ac_only", elapsed_minutes=45.0, duration_minutes=60.0, steps=7)
         self.assertEqual(result["scenario"], "ac_only")
         self.assertEqual(len(result["points"]), 7)
+        self.assertIn("estimator", result)
         self.assertGreater(
             result["points"][0]["target_zone_values"]["temperature"],
             result["points"][-1]["target_zone_values"]["temperature"],
@@ -174,6 +184,7 @@ class ServiceTests(unittest.TestCase):
     def test_get_scenario_volume_returns_points_and_devices(self) -> None:
         result = get_scenario_volume("idle")
         self.assertEqual(result["scenario"], "idle")
+        self.assertIn("estimator", result)
         resolution = result["resolution"]
         self.assertEqual(len(result["points"]), resolution["nx"] * resolution["ny"] * resolution["nz"])
         self.assertEqual(resolution, {"nx": 16, "ny": 12, "nz": 6})
@@ -211,6 +222,20 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(ac["metadata"]["horizontal_mode"], "swing")
         self.assertEqual(ac["metadata"]["vertical_mode"], "fixed")
         self.assertEqual(ac["metadata"]["vertical_angle_deg"], 25.0)
+
+    def test_sample_point_supports_hybrid_estimator_flag(self) -> None:
+        result = sample_scenario_point("light_only", x=3.0, y=2.0, z=1.5, use_hybrid_residual=True)
+        self.assertTrue(result["estimator"]["requested"])
+        self.assertIn("temperature", result["values"])
+
+    def test_rank_actions_supports_hybrid_estimator_flag(self) -> None:
+        result = rank_scenario_actions("idle", use_hybrid_residual=True)
+        self.assertTrue(result["estimator"]["requested"])
+
+    def test_learn_impacts_reports_estimator_note(self) -> None:
+        result = learn_scenario_impacts("ac_only", use_hybrid_residual=True)
+        self.assertTrue(result["estimator"]["requested"])
+        self.assertIn("observation-driven", result["estimator_note"])
 
 
 class MCPServerTests(unittest.TestCase):

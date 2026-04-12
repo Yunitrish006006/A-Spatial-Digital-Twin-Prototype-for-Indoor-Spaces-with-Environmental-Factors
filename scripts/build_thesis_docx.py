@@ -28,7 +28,7 @@ def build_blocks() -> List[Block]:
             "智慧建築與智慧居家系統通常需要掌握室內環境狀態，才能支援舒適度評估、能源管理與設備控制。然而，實際場域中仍有許多會影響環境的家電或環境裝置並沒有連網能力，也沒有 API 可直接回報自身狀態或運轉功率。例如傳統冷氣、手動窗戶與一般照明雖會改變室內環境，卻不一定能被系統直接讀取。若系統僅依賴智慧裝置回報，便難以建立完整且可用於控制決策的室內環境模型。"
         ),
         paragraph(
-            "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。模型將室內狀態定義為溫度、濕度與照度三個空間場，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的影響。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差進行主動設備 power scale 校準與 trilinear residual correction，以修正背景場與設備影響函數之偏差。"
+            "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。模型將室內狀態定義為溫度、濕度與照度三個空間場，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的影響。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差進行主動設備 power scale 校準與 trilinear residual correction，以修正背景場與設備影響函數之偏差。在此基礎上，本研究另加入 hybrid residual neural network 延伸模組，以小型多層感知器學習主模型的剩餘誤差，而不直接取代原本的可解釋物理啟發式結構。"
         ),
         paragraph(
             "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為提升系統可存取性，本研究將模型能力封裝為本地 Model Context Protocol（MCP）服務，提供情境查詢、模擬、座標估計、baseline 比較、影響學習、窗戶時段/天氣/季節矩陣模擬與窗戶外部條件直接輸入模擬等工具。最後，本研究以 Python 原型、模擬案例、IDW baseline 比較、48 組窗戶矩陣、窗戶 direct input 與可旋轉 3D web demo 驗證模型之可解釋性與實作可行性。"
@@ -40,7 +40,7 @@ def build_blocks() -> List[Block]:
             "Smart building and smart home systems require an understanding of indoor environmental conditions to support comfort assessment, energy management, and device control. However, many appliances and environmental elements in real rooms are not network-connected and cannot directly report their states or operating power. Conventional air conditioners, manual windows, and ordinary lights may significantly affect indoor temperature, humidity, and illuminance, yet remain invisible to API-based control systems."
         ),
         paragraph(
-            "This thesis proposes an MCP-enabled lightweight spatial digital twin prototype for a single room. The proposed model represents the room state as three environmental fields: temperature, humidity, and illuminance. Parameterized influence functions are used to describe the effects of air conditioning, windows, and lighting, while eight corner sensor nodes are used to calibrate active device power scales and estimated fields through a trilinear residual correction model. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, and ranks candidate control actions according to target-zone comfort improvement."
+            "This thesis proposes an MCP-enabled lightweight spatial digital twin prototype for a single room. The proposed model represents the room state as three environmental fields: temperature, humidity, and illuminance. Parameterized influence functions are used to describe the effects of air conditioning, windows, and lighting, while eight corner sensor nodes are used to calibrate active device power scales and estimated fields through a trilinear residual correction model. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, ranks candidate control actions according to target-zone comfort improvement, and extends the base estimator with an optional hybrid residual neural correction layer."
         ),
         paragraph(
             "The prototype is implemented in Python and exposed through a local Model Context Protocol server, enabling AI clients to query scenarios, estimate point-level environmental states, compare against an IDW baseline, learn appliance impacts, and run a 48-case window simulation matrix across time of day, weather, and season. Simulation results and an interactive rotatable 3D web demo demonstrate the feasibility and interpretability of the proposed approach."
@@ -185,7 +185,19 @@ def build_blocks() -> List[Block]:
         heading("3.6 非連網裝置影響學習", 2),
         paragraph("對非連網裝置，系統不依賴裝置 API，而是由啟用前後的感測器變化估計影響係數。流程如下："),
         code("before sensor observations\n→ after sensor observations\n→ sensor delta\n→ device spatial basis\n→ least-squares impact coefficient learning"),
-        heading("3.7 控制動作排序", 2),
+        heading("3.7 Hybrid Residual Neural Network 延伸", 2),
+        paragraph(
+            "雖然主模型已具有可解釋的 bulk + local field 結構，但在設備交互作用、局部照度分布或窗邊複合邊界條件下，仍可能存在系統性殘差。為此，本研究不以純黑盒神經網路取代主模型，而是加入 hybrid residual neural network 作為第二層修正器："
+        ),
+        code("F_v^hybrid(x, y, z, t) = F_v(x, y, z, t) + R_v(x, y, z, t; θ_v)"),
+        paragraph("其中 `F_v` 為第三章前述的 reduced-order 主模型，`R_v` 則由小型多層感知器近似其殘差。訓練目標定義為："),
+        code("R_v*(x, y, z, t) = F_v^truth(x, y, z, t) - F_v(x, y, z, t)"),
+        paragraph("其損失函數可表示為："),
+        code("L(θ_v) = (1 / N) Σ_i ||R_v*(p_i, t_i) - R_v(p_i, t_i; θ_v)||^2 + λ||θ_v||^2"),
+        paragraph(
+            "本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。此設計的目的在於保留主模型可解釋性，同時以資料驅動方式修正其剩餘誤差。"
+        ),
+        heading("3.8 控制動作排序", 2),
         paragraph(
             "本研究不做閉環控制，而是對候選控制動作進行排序。系統針對每個候選動作模擬目標區域的三因子值，並依舒適度目標計算改善分數。若房間偏熱，冷氣動作通常獲得較高排序；若照度不足，照明動作通常獲得較高排序。"
         ),
@@ -193,7 +205,7 @@ def build_blocks() -> List[Block]:
         heading("第四章 系統實作與 MCP 服務", 1),
         heading("4.1 Python 原型", 2),
         paragraph(
-            "本研究原型以 Python 實作，核心模組包含 entities、model、scenarios、learning、baselines、recommendations、service、mcp_server 與 web_demo。系統採零外部依賴設計，方便在本地環境快速執行與展示。"
+            "本研究原型以 Python 實作，核心模組包含 entities、model、scenarios、learning、hybrid_residual、baselines、recommendations、service、mcp_server 與 web_demo。系統採零外部依賴設計，方便在本地環境快速執行與展示。"
         ),
         table(
             ["模組", "功能"],
@@ -202,6 +214,7 @@ def build_blocks() -> List[Block]:
                 ["model.py", "建立三因子場、設備影響函數與感測器校正"],
                 ["scenarios.py", "定義標準情境與窗戶矩陣情境"],
                 ["learning.py", "由前後感測資料學習非連網裝置影響係數"],
+                ["hybrid_residual.py", "訓練與套用 hybrid residual neural network"],
                 ["baselines.py", "建立 IDW baseline"],
                 ["service.py", "提供 MCP、Gemma bridge 與 web demo 共用服務介面"],
                 ["web_demo.py", "提供本地可旋轉 3D web demo"],
@@ -228,7 +241,7 @@ def build_blocks() -> List[Block]:
         ),
         heading("4.4 Web Demo", 2),
         paragraph(
-            "Web demo 以 idle 房間背景為基礎，透過 ac_main、window_main 與 light_main checkbox 組合設備狀態，不使用下拉式情境選單。3D 預覽可拖曳旋轉與縮放，並以牆面橫條標示冷氣、牆面矩形標示窗戶、點狀標記表示照明。Metric 亦以勾選式控制切換 temperature、humidity 與 illuminance。左側固定欄位提供 Indoor Baseline 設定，使室內基準溫度、濕度與照度可直接調整；窗戶區則保留季節、天氣與時段 preset，並允許使用者手動覆寫外部溫度與開窗比例。互動式 3D 預覽上方另提供時間軸與播放控制，可觀察系統從啟動到接近準穩態的過程。"
+            "Web demo 以 idle 房間背景為基礎，透過 ac_main、window_main 與 light_main checkbox 組合設備狀態，不使用下拉式情境選單。3D 預覽可拖曳旋轉與縮放，並以牆面橫條標示冷氣、牆面矩形標示窗戶、點狀標記表示照明。Metric 亦以勾選式控制切換 temperature、humidity 與 illuminance。左側固定欄位提供 Indoor Baseline 設定，使室內基準溫度、濕度與照度可直接調整；窗戶區則保留季節、天氣與時段 preset，並允許使用者手動覆寫外部溫度與開窗比例。互動式 3D 預覽上方另提供時間軸與播放控制，可觀察系統從啟動到接近準穩態的過程。最新版本的 Web UI 另外提供 estimator toggle，可在主模型與 hybrid residual corrected field 之間切換，並同步更新 target zone、recommendation ranking、baseline comparison、impact panel、3D volume、point sample 與 timeline。"
         ),
         page_break(),
         heading("第五章 模擬案例與結果分析", 1),
@@ -273,7 +286,14 @@ def build_blocks() -> List[Block]:
                 ["window_spring_cloudy_morning", "21.5", "70.0", "5005.0", "92.3808"],
             ],
         ),
-        heading("5.6 可旋轉 3D 展示", 2),
+        heading("5.6 Hybrid Residual Neural Network 結果", 2),
+        paragraph(
+            "在目前預設的 held-out 測試設定下，hybrid residual neural network 以 6 個情境作為訓練資料，並以 `light_only` 與 `all_active` 作為測試情境。結果顯示，若將 hybrid residual correction 套用於主模型輸出，field MAE 可由 temperature `0.0473`、humidity `0.1764`、illuminance `2.3727`，分別降至 `0.0026`、`0.0043` 與 `0.2357`。對應改善比例約為溫度 `94.50%`、濕度 `97.56%` 與照度 `90.07%`。"
+        ),
+        paragraph(
+            "此結果說明，將神經網路定位為殘差修正層，而非直接取代主模型，可在保留設備影響函數、時間響應與感測器校正可解釋性的前提下，進一步降低 held-out 情境的空間重建誤差。不過此結果仍建立於模擬資料與既定情境分割下，未來仍需以真實量測資料重新訓練與驗證。"
+        ),
+        heading("5.7 可旋轉 3D 展示", 2),
         paragraph(
             "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
         ),
@@ -281,7 +301,7 @@ def build_blocks() -> List[Block]:
         heading("第六章 結論與未來工作", 1),
         heading("6.1 結論", 2),
         paragraph(
-            "本研究建立一個 MCP-enabled 單房間三因子空間數位孿生原型，針對非連網家電或環境裝置對 temperature、humidity 與 illuminance 造成的影響進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計。"
+            "本研究建立一個 MCP-enabled 單房間三因子空間數位孿生原型，針對非連網家電或環境裝置對 temperature、humidity 與 illuminance 造成的影響進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計；進一步加入 hybrid residual neural correction 後，held-out 情境的場重建誤差可再顯著下降。"
         ),
         paragraph(
             "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並用於更準確的控制動作推薦。"
@@ -305,6 +325,7 @@ def build_blocks() -> List[Block]:
                 "將 MCP server 擴充為遠端 HTTP MCP，並加入權限控管。",
                 "進一步研究閉環控制，將推薦排序延伸為實際控制策略。",
                 "加入長時間資料以學習季節性與日夜週期變化。",
+                "以真實量測資料重新訓練與驗證 hybrid residual neural network，檢驗其在真實房間中的泛化能力。",
             ]
         ),
         page_break(),
@@ -326,7 +347,7 @@ def build_blocks() -> List[Block]:
         ),
         page_break(),
         heading("附錄 A：原型執行方式", 1),
-        code("python3 scripts/run_demo.py\npython3 scripts/run_window_matrix.py\npython3 scripts/run_web_demo.py\npython3 scripts/run_mcp_server.py"),
+        code("python3 scripts/run_demo.py\npython3 scripts/run_window_matrix.py\npython3 scripts/run_hybrid_residual_experiment.py\npython3 scripts/run_web_demo.py\npython3 scripts/run_mcp_server.py"),
         heading("附錄 B：Web Demo 操作", 1),
         bullets(
             [
@@ -334,6 +355,7 @@ def build_blocks() -> List[Block]:
                 "3D 預覽可拖曳旋轉，滾輪縮放。",
                 "Metric checkbox 可切換 temperature、humidity 與 illuminance。",
                 "左側 Indoor Baseline 可直接調整室內基準溫度、濕度與照度。",
+                "左側 Estimator toggle 可切換主模型與 hybrid residual corrected field。",
                 "窗戶區可選季節、天氣與時段 preset，並手動覆寫外部溫度與開窗比例。",
                 "時間軸可播放從啟動到接近準穩態的變化。",
                 "Point Sample 可查詢任意座標的三因子估計值。",

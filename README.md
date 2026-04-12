@@ -30,6 +30,8 @@
   執行窗戶在早上/中午/下午/晚上、陰天/晴天/雨天、春夏秋冬下的 48 組模擬。
 - `tests/`
   基本單元測試與行為驗證。
+- `digital_twin/hybrid_residual.py`
+  混合式殘差神經網路實驗模組，以現有 `bulk + local field` 模型為主體，再用小型 MLP 學習剩餘誤差。
 - `docs/thesis_guide_zh.md`
   將此原型對應到碩士論文撰寫的章節與方法說明。
 - `docs/problem_statement_zh.md`
@@ -40,6 +42,8 @@
   整理 IDW baseline 比較與非連網裝置影響學習結果。
 - `docs/window_matrix_simulation_zh.md`
   說明窗戶在時段、天氣、季節矩陣下的 48 組模擬設定與結果。
+- `docs/hybrid_residual_model_zh.md`
+  說明 hybrid residual neural network 的定位、公式與實驗方式。
 - `docs/web_demo_zh.md`
   說明本地 web demo 的啟動方式與公開展示流程。
 - `ieee_paper/`
@@ -59,6 +63,12 @@ python3 scripts/run_demo.py
 
 ```bash
 python3 scripts/run_window_matrix.py
+```
+
+執行 hybrid residual neural network 實驗：
+
+```bash
+python3 scripts/run_hybrid_residual_experiment.py
 ```
 
 執行測試：
@@ -95,6 +105,21 @@ python3 scripts/run_mcp_server.py
 - `run_window_direct`
 
 詳細設定請見 `docs/mcp_service_zh.md`。
+
+## Hybrid Residual Neural Network
+
+若你想把目前的參數化數位孿生模型再往資料驅動方向延伸，專案內建一個不取代主模型的 hybrid residual neural network 實驗模組。它的形式是：
+
+```text
+F_final(p, t) = F_physics(p, t) + f_theta(features(p, t))
+```
+
+其中：
+
+- `F_physics` 是目前的 `bulk + local field` 主模型
+- `f_theta` 是小型 MLP，用來學習主模型在特定座標、設備組合與環境條件下的殘差
+
+這個設計比純黑盒神經網路更適合目前題目，因為它保留了裝置影響函數、時間響應與感測器校正的可解釋性，同時允許你在論文中把 neural network 定位成「第二層殘差修正器」而非主體模型。詳細說明請見 `docs/hybrid_residual_model_zh.md`。
 
 ## Gemma4 / Ollama Bridge
 

@@ -1,3 +1,4 @@
+from pathlib import Path
 from dataclasses import replace
 from typing import Dict, List, Optional
 from copy import deepcopy
@@ -12,8 +13,15 @@ from .demo import (
     synthesize_sensor_observations,
 )
 from .entities import Vector3
+from .hybrid_residual import (
+    HybridResidualModel,
+    apply_hybrid_model_to_field,
+    build_point_features,
+    run_hybrid_residual_experiment as run_hybrid_residual_experiment_backend,
+)
+from .math_utils import clamp
 from .model import DigitalTwinModel
-from .recommendations import rank_actions
+from .recommendations import apply_action
 from .scenarios import (
     SEASON_PROFILES,
     TIME_OF_DAY_PROFILES,
@@ -27,6 +35,12 @@ from .scenarios import (
     build_validation_scenarios,
     build_window_matrix_scenarios,
 )
+
+
+ROOT = Path(__file__).resolve().parents[1]
+OUTPUTS = ROOT / "outputs"
+HYBRID_CHECKPOINT_PATH = OUTPUTS / "hybrid_residual_checkpoint.json"
+_HYBRID_MODEL_CACHE: Dict[str, object] = {"mtime": None, "model": None}
 
 
 def list_scenario_metadata() -> List[Dict]:
@@ -45,6 +59,7 @@ def evaluate_scenario(
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -55,7 +70,7 @@ def evaluate_scenario(
         base_illuminance,
         elapsed_minutes,
     )
-    return _evaluate_scenario_object(scenario)
+    return _evaluate_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
 
 
 def evaluate_window_direct(
@@ -68,6 +83,7 @@ def evaluate_window_direct(
     base_illuminance: float = 70.0,
     daylight_factor: float = 0.95,
     elapsed_minutes: float = 18.0,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -80,7 +96,7 @@ def evaluate_window_direct(
         daylight_factor=daylight_factor,
         elapsed_minutes=elapsed_minutes,
     )
-    result = _evaluate_scenario_object(scenario)
+    result = _evaluate_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
     result["input"] = _window_direct_input_dict(
         scenario=scenario,
         opening_ratio=opening_ratio,
@@ -98,6 +114,7 @@ def evaluate_window_direct_dashboard(
     base_illuminance: float = 70.0,
     daylight_factor: float = 0.95,
     elapsed_minutes: float = 18.0,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -110,7 +127,7 @@ def evaluate_window_direct_dashboard(
         daylight_factor=daylight_factor,
         elapsed_minutes=elapsed_minutes,
     )
-    result = _evaluate_dashboard_scenario_object(scenario)
+    result = _evaluate_dashboard_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
     result["scenario"]["input"] = _window_direct_input_dict(
         scenario=scenario,
         opening_ratio=opening_ratio,
@@ -131,6 +148,7 @@ def sample_window_direct_point(
     base_illuminance: float = 70.0,
     daylight_factor: float = 0.95,
     elapsed_minutes: float = 18.0,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -148,6 +166,7 @@ def sample_window_direct_point(
         x=x,
         y=y,
         z=z,
+        use_hybrid_residual=use_hybrid_residual,
     )
 
 
@@ -161,6 +180,7 @@ def get_scenario_timeline(
     elapsed_minutes: Optional[float] = None,
     duration_minutes: float = 120.0,
     steps: int = 13,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -171,7 +191,12 @@ def get_scenario_timeline(
         base_illuminance,
         elapsed_minutes,
     )
-    return _build_scenario_timeline(scenario, duration_minutes=duration_minutes, steps=steps)
+    return _build_scenario_timeline(
+        scenario,
+        duration_minutes=duration_minutes,
+        steps=steps,
+        use_hybrid_residual=use_hybrid_residual,
+    )
 
 
 def get_window_direct_timeline(
@@ -186,6 +211,7 @@ def get_window_direct_timeline(
     elapsed_minutes: float = 18.0,
     duration_minutes: float = 120.0,
     steps: int = 13,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -198,26 +224,35 @@ def get_window_direct_timeline(
         daylight_factor=daylight_factor,
         elapsed_minutes=elapsed_minutes,
     )
-    timeline = _build_scenario_timeline(scenario, duration_minutes=duration_minutes, steps=steps)
+    timeline = _build_scenario_timeline(
+        scenario,
+        duration_minutes=duration_minutes,
+        steps=steps,
+        use_hybrid_residual=use_hybrid_residual,
+    )
     timeline["input"] = _window_direct_input_dict(scenario=scenario, opening_ratio=opening_ratio)
     return timeline
 
 
-def _evaluate_dashboard_scenario_object(scenario: Scenario) -> Dict:
+def _evaluate_dashboard_scenario_object(scenario: Scenario, use_hybrid_residual: bool = False) -> Dict:
     return {
-        "scenario": _evaluate_scenario_object(scenario),
-        "ranking": _rank_scenario_object_actions(scenario),
-        "baseline": _compare_scenario_object_baseline(scenario),
-        "impacts": _learn_scenario_object_impacts(scenario),
-        "volume": _get_scenario_object_volume(scenario),
-        "timeline": _build_scenario_timeline(scenario),
+        "scenario": _evaluate_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual),
+        "ranking": _rank_scenario_object_actions(scenario, use_hybrid_residual=use_hybrid_residual),
+        "baseline": _compare_scenario_object_baseline(scenario, use_hybrid_residual=use_hybrid_residual),
+        "impacts": _learn_scenario_object_impacts(scenario, use_hybrid_residual=use_hybrid_residual),
+        "volume": _get_scenario_object_volume(scenario, use_hybrid_residual=use_hybrid_residual),
+        "timeline": _build_scenario_timeline(scenario, use_hybrid_residual=use_hybrid_residual),
     }
 
 
-def _evaluate_scenario_object(scenario: Scenario) -> Dict:
-    model = DigitalTwinModel()
-    truth_result = _simulate_truth(model, scenario)
-    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
+def _evaluate_scenario_object(scenario: Scenario, use_hybrid_residual: bool = False) -> Dict:
+    bundle = _build_estimation_bundle(scenario, use_hybrid_residual=use_hybrid_residual)
+    model = bundle["model"]
+    truth_result = bundle["truth_result"]
+    observed_sensors = bundle["observed_sensors"]
+    estimated_result = bundle["estimated_result"]
+    estimated_field = bundle["field"]
+    estimated_zone_averages = bundle["zone_averages"]
     raw_nominal = model.simulate(
         room=scenario.room,
         environment=scenario.environment,
@@ -240,16 +275,6 @@ def _evaluate_scenario_object(scenario: Scenario) -> Dict:
         resolution=scenario.resolution,
     )
     before_observations = synthesize_sensor_observations(before_result.sensor_predictions, scenario.sensors)
-    estimated_result = model.simulate(
-        room=scenario.room,
-        environment=scenario.environment,
-        devices=scenario.devices,
-        sensors=scenario.sensors,
-        zones=scenario.zones,
-        elapsed_minutes=scenario.elapsed_minutes,
-        resolution=scenario.resolution,
-        observed_sensors=observed_sensors,
-    )
     idw_field = build_idw_field(
         room=scenario.room,
         sensors=scenario.sensors,
@@ -257,7 +282,7 @@ def _evaluate_scenario_object(scenario: Scenario) -> Dict:
         resolution=scenario.resolution,
     )
     idw_zone_averages = compute_idw_zone_averages(idw_field, scenario.zones)
-    field_mae = compare_fields(estimated_result.field, truth_result.field)
+    field_mae = compare_fields(estimated_field, truth_result.field)
     idw_field_mae = compare_fields(idw_field, truth_result.field)
     return {
         "name": scenario.name,
@@ -273,7 +298,7 @@ def _evaluate_scenario_object(scenario: Scenario) -> Dict:
         "idw_field_mae": idw_field_mae,
         "idw_zone_mae": compare_zone_averages(idw_zone_averages, truth_result.zone_averages),
         "baseline_comparison": compare_model_to_idw(field_mae, idw_field_mae),
-        "zone_mae": compare_zone_averages(estimated_result.zone_averages, truth_result.zone_averages),
+        "zone_mae": compare_zone_averages(estimated_zone_averages, truth_result.zone_averages),
         "sensor_mae_before": compare_sensors(raw_nominal.sensor_predictions, observed_sensors),
         "sensor_mae_after": compare_sensors(estimated_result.sensor_predictions, observed_sensors),
         "device_power_calibration": _device_power_calibration(estimated_result.calibrated_devices),
@@ -285,10 +310,11 @@ def _evaluate_scenario_object(scenario: Scenario) -> Dict:
             after_observations=observed_sensors,
             elapsed_minutes=scenario.elapsed_minutes,
         ),
+        "estimator": bundle["estimator"],
         "target_zone": scenario.target_zone_name,
-        "target_zone_estimated": _round_metric_dict(estimated_result.zone_averages[scenario.target_zone_name]),
+        "target_zone_estimated": _round_metric_dict(estimated_zone_averages[scenario.target_zone_name]),
         "target_zone_truth": _round_metric_dict(truth_result.zone_averages[scenario.target_zone_name]),
-        "zone_estimated": _round_zone_dict(estimated_result.zone_averages),
+        "zone_estimated": _round_zone_dict(estimated_zone_averages),
         "zone_truth": _round_zone_dict(truth_result.zone_averages),
         "corrections": {
             metric: {
@@ -339,6 +365,28 @@ def evaluate_window_matrix() -> Dict:
     }
 
 
+def run_hybrid_residual_experiment(
+    include_window_matrix: bool = False,
+    holdout_stride: int = 4,
+    max_points_per_scenario: int = 96,
+    hidden_dim: int = 10,
+    epochs: int = 80,
+    learning_rate: float = 0.018,
+    l2: float = 1e-5,
+    seed: int = 42,
+) -> Dict:
+    return run_hybrid_residual_experiment_backend(
+        include_window_matrix=include_window_matrix,
+        holdout_stride=holdout_stride,
+        max_points_per_scenario=max_points_per_scenario,
+        hidden_dim=hidden_dim,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        l2=l2,
+        seed=seed,
+    )
+
+
 def get_scenario_volume(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
@@ -347,6 +395,7 @@ def get_scenario_volume(
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -357,7 +406,7 @@ def get_scenario_volume(
         base_illuminance,
         elapsed_minutes,
     )
-    return _get_scenario_object_volume(scenario)
+    return _get_scenario_object_volume(scenario, use_hybrid_residual=use_hybrid_residual)
 
 
 def rank_scenario_actions(
@@ -368,6 +417,7 @@ def rank_scenario_actions(
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -378,7 +428,7 @@ def rank_scenario_actions(
         base_illuminance,
         elapsed_minutes,
     )
-    return _rank_scenario_object_actions(scenario)
+    return _rank_scenario_object_actions(scenario, use_hybrid_residual=use_hybrid_residual)
 
 
 def sample_scenario_point(
@@ -392,6 +442,7 @@ def sample_scenario_point(
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -402,7 +453,7 @@ def sample_scenario_point(
         base_illuminance,
         elapsed_minutes,
     )
-    return _sample_scenario_object_point(scenario, x, y, z)
+    return _sample_scenario_object_point(scenario, x, y, z, use_hybrid_residual=use_hybrid_residual)
 
 
 def compare_scenario_baseline(
@@ -413,6 +464,7 @@ def compare_scenario_baseline(
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -423,7 +475,7 @@ def compare_scenario_baseline(
         base_illuminance,
         elapsed_minutes,
     )
-    return _compare_scenario_object_baseline(scenario)
+    return _compare_scenario_object_baseline(scenario, use_hybrid_residual=use_hybrid_residual)
 
 
 def learn_scenario_impacts(
@@ -434,6 +486,7 @@ def learn_scenario_impacts(
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -444,24 +497,13 @@ def learn_scenario_impacts(
         base_illuminance,
         elapsed_minutes,
     )
-    return _learn_scenario_object_impacts(scenario)
+    return _learn_scenario_object_impacts(scenario, use_hybrid_residual=use_hybrid_residual)
 
 
-def _get_scenario_object_volume(scenario: Scenario) -> Dict:
-    model = DigitalTwinModel()
-    truth_result = _simulate_truth(model, scenario)
-    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
-    estimated_result = model.simulate(
-        room=scenario.room,
-        environment=scenario.environment,
-        devices=scenario.devices,
-        sensors=scenario.sensors,
-        zones=scenario.zones,
-        elapsed_minutes=scenario.elapsed_minutes,
-        resolution=scenario.resolution,
-        observed_sensors=observed_sensors,
-    )
-    field = estimated_result.field
+def _get_scenario_object_volume(scenario: Scenario, use_hybrid_residual: bool = False) -> Dict:
+    bundle = _build_estimation_bundle(scenario, use_hybrid_residual=use_hybrid_residual)
+    estimated_result = bundle["estimated_result"]
+    field = bundle["field"]
     points = []
     for iz in range(field.resolution.nz):
         for iy in range(field.resolution.ny):
@@ -481,6 +523,7 @@ def _get_scenario_object_volume(scenario: Scenario) -> Dict:
     return {
         "scenario": scenario.name,
         "description": scenario.description,
+        "estimator": bundle["estimator"],
         "room": {
             "width": scenario.room.width,
             "length": scenario.room.length,
@@ -508,56 +551,72 @@ def _get_scenario_object_volume(scenario: Scenario) -> Dict:
     }
 
 
-def _rank_scenario_object_actions(scenario: Scenario) -> Dict:
-    model = DigitalTwinModel()
-    truth_result = _simulate_truth(model, scenario)
-    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
-    ranked = rank_actions(
-        model=model,
-        room=scenario.room,
-        environment=scenario.environment,
-        devices=scenario.devices,
-        sensors=scenario.sensors,
-        zones=scenario.zones,
-        target_zone_name=scenario.target_zone_name,
-        target=scenario.comfort_target,
-        actions=scenario.candidate_actions,
-        elapsed_minutes=scenario.elapsed_minutes,
-        resolution=scenario.resolution,
-        observed_sensors=observed_sensors,
-    )
+def _rank_scenario_object_actions(scenario: Scenario, use_hybrid_residual: bool = False) -> Dict:
+    bundle = _build_estimation_bundle(scenario, use_hybrid_residual=use_hybrid_residual)
+    model = bundle["model"]
+    estimated_result = bundle["estimated_result"]
+    baseline_zone = bundle["zone_averages"][scenario.target_zone_name]
+    corrections = estimated_result.corrections
+    calibrated_devices = estimated_result.calibrated_devices or scenario.devices
+    hybrid_model = bundle["hybrid_model"]
+    baseline_score = _score_zone_values(baseline_zone, scenario.comfort_target)
+
+    recommendations = []
+    for action in scenario.candidate_actions:
+        candidate_devices = apply_action(calibrated_devices, action)
+        candidate = model.simulate(
+            room=scenario.room,
+            environment=scenario.environment,
+            devices=candidate_devices,
+            sensors=scenario.sensors,
+            zones=scenario.zones,
+            elapsed_minutes=scenario.elapsed_minutes,
+            resolution=scenario.resolution,
+            corrections=corrections,
+        )
+        candidate_zone_averages = candidate.zone_averages
+        if hybrid_model is not None:
+            candidate_field = apply_hybrid_model_to_field(
+                hybrid_model=hybrid_model,
+                model=model,
+                scenario=replace(scenario, devices=candidate_devices),
+                estimated_field=candidate.field,
+                calibrated_devices=candidate.calibrated_devices or candidate_devices,
+            )
+            candidate_zone_averages = model.compute_zone_averages(candidate_field, scenario.zones)
+        candidate_zone = candidate_zone_averages[scenario.target_zone_name]
+        candidate_penalty = _score_zone_values(candidate_zone, scenario.comfort_target)
+        recommendations.append(
+            {
+                "name": action.name,
+                "description": action.description,
+                "improvement": round(baseline_score - candidate_penalty, 4),
+                "resulting_penalty": round(candidate_penalty, 4),
+                "resulting_zone_values": _round_metric_dict(candidate_zone),
+            }
+        )
+
+    recommendations.sort(key=lambda item: item["improvement"], reverse=True)
     return {
         "scenario": scenario.name,
+        "estimator": bundle["estimator"],
         "target_zone": scenario.target_zone_name,
-        "recommendations": [
-            {
-                "name": item.name,
-                "description": item.description,
-                "improvement": round(item.improvement, 4),
-                "resulting_penalty": round(item.resulting_penalty, 4),
-                "resulting_zone_values": _round_metric_dict(item.resulting_zone_values),
-            }
-            for item in ranked
-        ],
+        "recommendations": recommendations,
     }
 
 
-def _sample_scenario_object_point(scenario: Scenario, x: float, y: float, z: float) -> Dict:
+def _sample_scenario_object_point(
+    scenario: Scenario,
+    x: float,
+    y: float,
+    z: float,
+    use_hybrid_residual: bool = False,
+) -> Dict:
     model = DigitalTwinModel()
     point = Vector3(x=x, y=y, z=z)
     _validate_point(scenario, point)
-    truth_result = _simulate_truth(model, scenario)
-    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
-    estimated_result = model.simulate(
-        room=scenario.room,
-        environment=scenario.environment,
-        devices=scenario.devices,
-        sensors=scenario.sensors,
-        zones=scenario.zones,
-        elapsed_minutes=scenario.elapsed_minutes,
-        resolution=scenario.resolution,
-        observed_sensors=observed_sensors,
-    )
+    bundle = _build_estimation_bundle(scenario, use_hybrid_residual=use_hybrid_residual)
+    estimated_result = bundle["estimated_result"]
     values = model.sample_point(
         point=point,
         room=scenario.room,
@@ -566,44 +625,51 @@ def _sample_scenario_object_point(scenario: Scenario, x: float, y: float, z: flo
         elapsed_minutes=scenario.elapsed_minutes,
         corrections=estimated_result.corrections,
     )
+    hybrid_model = bundle["hybrid_model"]
+    if hybrid_model is not None:
+        features = build_point_features(
+            model=model,
+            scenario=scenario,
+            devices=estimated_result.calibrated_devices,
+            point=point,
+            estimated_values=values,
+        )
+        residuals = hybrid_model.predict(features)
+        values = {
+            "temperature": values["temperature"] + residuals["temperature"],
+            "humidity": clamp(values["humidity"] + residuals["humidity"], 0.0, 100.0),
+            "illuminance": max(0.0, values["illuminance"] + residuals["illuminance"]),
+        }
     return {
         "scenario": scenario.name,
+        "estimator": bundle["estimator"],
         "point": _vector_to_dict(point),
         "values": _round_metric_dict(values),
     }
 
 
-def _compare_scenario_object_baseline(scenario: Scenario) -> Dict:
-    model = DigitalTwinModel()
-    truth_result = _simulate_truth(model, scenario)
-    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
-    estimated_result = model.simulate(
-        room=scenario.room,
-        environment=scenario.environment,
-        devices=scenario.devices,
-        sensors=scenario.sensors,
-        zones=scenario.zones,
-        elapsed_minutes=scenario.elapsed_minutes,
-        resolution=scenario.resolution,
-        observed_sensors=observed_sensors,
-    )
+def _compare_scenario_object_baseline(scenario: Scenario, use_hybrid_residual: bool = False) -> Dict:
+    bundle = _build_estimation_bundle(scenario, use_hybrid_residual=use_hybrid_residual)
+    truth_result = bundle["truth_result"]
+    observed_sensors = bundle["observed_sensors"]
     idw_field = build_idw_field(
         room=scenario.room,
         sensors=scenario.sensors,
         observed_sensors=observed_sensors,
         resolution=scenario.resolution,
     )
-    model_mae = compare_fields(estimated_result.field, truth_result.field)
+    model_mae = compare_fields(bundle["field"], truth_result.field)
     idw_mae = compare_fields(idw_field, truth_result.field)
     return {
         "scenario": scenario.name,
-        "model": "trilinear-corrected appliance influence field",
+        "model": bundle["estimator"]["label"],
         "baseline": "inverse distance weighting",
+        "estimator": bundle["estimator"],
         "comparison": compare_model_to_idw(model_mae, idw_mae),
     }
 
 
-def _learn_scenario_object_impacts(scenario: Scenario) -> Dict:
+def _learn_scenario_object_impacts(scenario: Scenario, use_hybrid_residual: bool = False) -> Dict:
     model = DigitalTwinModel()
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
@@ -623,6 +689,8 @@ def _learn_scenario_object_impacts(scenario: Scenario) -> Dict:
     return {
         "scenario": scenario.name,
         "description": "Learn active non-networked appliance impact coefficients from before/after sensor observations.",
+        "estimator": _hybrid_estimator_status(use_hybrid_residual, _load_hybrid_residual_model() if use_hybrid_residual else None),
+        "estimator_note": "Impact coefficients remain observation-driven. The hybrid residual estimator affects field reconstruction and ranking, but the coefficient fitting still uses before/after sensor deltas.",
         "learned_device_impacts": learn_active_device_impacts(
             model=model,
             scenario_devices=scenario.devices,
@@ -634,30 +702,40 @@ def _learn_scenario_object_impacts(scenario: Scenario) -> Dict:
     }
 
 
+def _score_zone_values(values: Dict[str, float], target) -> float:
+    temp_penalty = _penalty(values["temperature"], target.temperature, target.temperature_tolerance)
+    humidity_penalty = _penalty(values["humidity"], target.humidity, target.humidity_tolerance)
+    lux_penalty = _penalty(values["illuminance"], target.illuminance, target.illuminance_tolerance)
+    return (
+        target.temperature_weight * temp_penalty
+        + target.humidity_weight * humidity_penalty
+        + target.illuminance_weight * lux_penalty
+    )
+
+
+def _penalty(value: float, target_value: float, tolerance: float) -> float:
+    tolerance = max(tolerance, 1e-6)
+    deviation = abs(value - target_value)
+    if deviation <= tolerance:
+        return 0.0
+    return (deviation - tolerance) / tolerance
+
+
 def _build_scenario_timeline(
     scenario: Scenario,
     duration_minutes: float = 120.0,
     steps: int = 13,
+    use_hybrid_residual: bool = False,
 ) -> Dict:
-    model = DigitalTwinModel()
     duration = max(0.0, float(duration_minutes))
     sample_count = max(2, int(steps))
     points: List[Dict] = []
+    estimator = None
     for minute in _timeline_minutes(duration, sample_count):
         sampled_scenario = replace(scenario, elapsed_minutes=minute)
-        truth_result = _simulate_truth(model, sampled_scenario)
-        observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, sampled_scenario.sensors)
-        estimated_result = model.simulate(
-            room=sampled_scenario.room,
-            environment=sampled_scenario.environment,
-            devices=sampled_scenario.devices,
-            sensors=sampled_scenario.sensors,
-            zones=sampled_scenario.zones,
-            elapsed_minutes=sampled_scenario.elapsed_minutes,
-            resolution=sampled_scenario.resolution,
-            observed_sensors=observed_sensors,
-        )
-        target_values = estimated_result.zone_averages[sampled_scenario.target_zone_name]
+        bundle = _build_estimation_bundle(sampled_scenario, use_hybrid_residual=use_hybrid_residual)
+        target_values = bundle["zone_averages"][sampled_scenario.target_zone_name]
+        estimator = bundle["estimator"]
         points.append(
             {
                 "elapsed_minutes": round(minute, 4),
@@ -667,10 +745,88 @@ def _build_scenario_timeline(
     return {
         "scenario": scenario.name,
         "target_zone": scenario.target_zone_name,
+        "estimator": estimator or _hybrid_estimator_status(False, None),
         "current_elapsed_minutes": round(scenario.elapsed_minutes, 4),
         "duration_minutes": round(duration, 4),
         "steps": sample_count,
         "points": points,
+    }
+
+
+def _build_estimation_bundle(scenario: Scenario, use_hybrid_residual: bool = False) -> Dict[str, object]:
+    model = DigitalTwinModel()
+    truth_result = _simulate_truth(model, scenario)
+    observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
+    estimated_result = model.simulate(
+        room=scenario.room,
+        environment=scenario.environment,
+        devices=scenario.devices,
+        sensors=scenario.sensors,
+        zones=scenario.zones,
+        elapsed_minutes=scenario.elapsed_minutes,
+        resolution=scenario.resolution,
+        observed_sensors=observed_sensors,
+    )
+
+    hybrid_model = _load_hybrid_residual_model() if use_hybrid_residual else None
+    field = estimated_result.field
+    zone_averages = estimated_result.zone_averages
+    if hybrid_model is not None:
+        field = apply_hybrid_model_to_field(
+            hybrid_model=hybrid_model,
+            model=model,
+            scenario=scenario,
+            estimated_field=estimated_result.field,
+            calibrated_devices=estimated_result.calibrated_devices,
+        )
+        zone_averages = model.compute_zone_averages(field, scenario.zones)
+
+    return {
+        "model": model,
+        "truth_result": truth_result,
+        "observed_sensors": observed_sensors,
+        "estimated_result": estimated_result,
+        "field": field,
+        "zone_averages": zone_averages,
+        "hybrid_model": hybrid_model,
+        "estimator": _hybrid_estimator_status(use_hybrid_residual, hybrid_model),
+    }
+
+
+def _load_hybrid_residual_model() -> Optional[HybridResidualModel]:
+    global _HYBRID_MODEL_CACHE
+
+    if not HYBRID_CHECKPOINT_PATH.exists():
+        _HYBRID_MODEL_CACHE = {"mtime": None, "model": None}
+        return None
+
+    mtime = HYBRID_CHECKPOINT_PATH.stat().st_mtime
+    if _HYBRID_MODEL_CACHE["mtime"] == mtime:
+        return _HYBRID_MODEL_CACHE["model"]  # type: ignore[return-value]
+
+    try:
+        model = HybridResidualModel.load_json(str(HYBRID_CHECKPOINT_PATH))
+    except (OSError, ValueError, KeyError, TypeError):
+        _HYBRID_MODEL_CACHE = {"mtime": None, "model": None}
+        return None
+
+    _HYBRID_MODEL_CACHE = {"mtime": mtime, "model": model}
+    return model
+
+
+def _hybrid_estimator_status(requested: bool, hybrid_model: Optional[HybridResidualModel]) -> Dict[str, object]:
+    applied = requested and hybrid_model is not None
+    checkpoint_available = hybrid_model is not None
+    if applied:
+        label = "hybrid residual corrected field"
+    else:
+        label = "trilinear-corrected appliance influence field"
+    return {
+        "requested": requested,
+        "applied": applied,
+        "checkpoint_available": checkpoint_available,
+        "checkpoint_path": str(HYBRID_CHECKPOINT_PATH) if checkpoint_available else None,
+        "label": label,
     }
 
 

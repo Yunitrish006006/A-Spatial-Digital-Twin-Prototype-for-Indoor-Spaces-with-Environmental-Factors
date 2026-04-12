@@ -2,6 +2,7 @@ import unittest
 
 from digital_twin.web_demo import (
     INDEX_HTML,
+    _query_bool,
     _query_device_metadata_overrides,
     _query_device_overrides,
     _query_float,
@@ -36,6 +37,10 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("baselineIndoorTemperature", INDEX_HTML)
         self.assertIn("baselineIndoorHumidity", INDEX_HTML)
         self.assertIn("baselineIlluminance", INDEX_HTML)
+        self.assertIn("Hybrid Residual Correction", INDEX_HTML)
+        self.assertIn("useHybridResidual", INDEX_HTML)
+        self.assertIn("hybridEstimatorStatus", INDEX_HTML)
+        self.assertIn("estimatorStatus", INDEX_HTML)
         self.assertIn("Window Controls", INDEX_HTML)
         self.assertIn("sidebar-form-grid", INDEX_HTML)
         self.assertIn("Outdoor Season", INDEX_HTML)
@@ -63,6 +68,12 @@ class WebDemoTests(unittest.TestCase):
     def test_query_float_defaults_on_invalid_input(self) -> None:
         self.assertEqual(_query_float({"x": ["2.5"]}, "x", 3.0), 2.5)
         self.assertEqual(_query_float({"x": ["bad"]}, "x", 3.0), 3.0)
+
+    def test_query_bool_parses_common_flags(self) -> None:
+        self.assertTrue(_query_bool({"use_hybrid_residual": ["1"]}, "use_hybrid_residual"))
+        self.assertTrue(_query_bool({"use_hybrid_residual": ["true"]}, "use_hybrid_residual"))
+        self.assertFalse(_query_bool({"use_hybrid_residual": ["0"]}, "use_hybrid_residual"))
+        self.assertFalse(_query_bool({}, "use_hybrid_residual"))
 
     def test_query_device_overrides(self) -> None:
         overrides = _query_device_overrides("name=idle&ac_main=0.8&window_main=0&light_main=1")

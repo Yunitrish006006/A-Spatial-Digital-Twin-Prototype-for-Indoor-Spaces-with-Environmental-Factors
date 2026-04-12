@@ -27,7 +27,7 @@ advisor@example.com}
 \maketitle
 
 \begin{abstract}
-Indoor digital twins are often designed under the assumption that appliances are network-connected and can directly report their operating states. In ordinary rooms, however, many influential devices and environmental elements remain non-networked: a conventional air conditioner may not expose its actual output, a manual window cannot report its opening degree, and ordinary lights may not provide feedback beyond environmental changes. This paper presents a lightweight spatial digital twin prototype that learns the environmental impact of such non-networked appliances from limited room sensors. The proposed prototype models a single room through three environmental fields: temperature, humidity, and illuminance. A reduced-order bulk-plus-local field model is combined with parameterized appliance influence functions, active-device power calibration, and trilinear residual correction from eight corner sensor nodes. The system further estimates active appliance impact coefficients from before-and-after sensor observations and ranks candidate control actions by target-zone comfort improvement. To support AI-agent access, the prototype exposes simulation, point estimation, baseline comparison, impact learning, window-condition analysis, and direct window-condition simulation through a local Model Context Protocol (MCP) server. The implementation includes a Python simulation backend, an inverse distance weighting baseline, a 48-case window simulation matrix, direct window input, and an interactive rotatable 3D web demo. Simulation results show that the proposed appliance-aware reduced-order twin can provide interpretable field reconstruction and action recommendations under sparse sensing constraints.
+Indoor digital twins are often designed under the assumption that appliances are network-connected and can directly report their operating states. In ordinary rooms, however, many influential devices and environmental elements remain non-networked: a conventional air conditioner may not expose its actual output, a manual window cannot report its opening degree, and ordinary lights may not provide feedback beyond environmental changes. This paper presents a lightweight spatial digital twin prototype that learns the environmental impact of such non-networked appliances from limited room sensors. The proposed prototype models a single room through three environmental fields: temperature, humidity, and illuminance. A reduced-order bulk-plus-local field model is combined with parameterized appliance influence functions, active-device power calibration, trilinear residual correction from eight corner sensor nodes, and an optional hybrid residual neural correction layer. The system further estimates active appliance impact coefficients from before-and-after sensor observations and ranks candidate control actions by target-zone comfort improvement. To support AI-agent access, the prototype exposes simulation, point estimation, baseline comparison, impact learning, window-condition analysis, and direct window-condition simulation through a local Model Context Protocol (MCP) server. The implementation includes a Python simulation backend, an inverse distance weighting baseline, a 48-case window simulation matrix, direct window input, a saved hybrid residual checkpoint, and an interactive rotatable 3D web demo. Simulation results show that the proposed appliance-aware reduced-order twin can provide interpretable field reconstruction and action recommendations under sparse sensing constraints.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -47,6 +47,7 @@ The main contributions are as follows:
 \item Parameterized influence functions for air conditioning, windows, and lighting, including a simplified dynamic response and distance attenuation.
 \item A residual calibration procedure that uses eight corner sensors to correct field bias and first-order spatial gradients.
 \item A non-networked appliance impact learning procedure that estimates active device coefficients from before-and-after sensor observations.
+\item A hybrid residual neural correction layer that refines the reduced-order field estimate without replacing the interpretable appliance-aware model.
 \item An MCP-enabled service interface and a local web demo with checkbox-based device activation and rotatable 3D visualization.
 \item A simulation study including eight appliance-combination scenarios, an inverse distance weighting (IDW) baseline, a 48-case window matrix across time of day, weather, and season, and a direct window-input mode for user-supplied outdoor conditions.
 \end{itemize}
@@ -144,18 +145,33 @@ For non-networked devices, the system estimates impact coefficients from before-
 \end{equation}
 For a single active device, the learned coefficient describes the direction and magnitude of its effect. For multiple active devices, the regression separates their contributions according to their spatial bases.
 
+\subsection{Hybrid Residual Neural Correction}
+The reduced-order model remains the primary estimator in the proposed system. To further reduce structured residual error without sacrificing interpretability, we add an optional hybrid residual correction layer:
+\begin{equation}
+F^{\mathrm{hybrid}}_m(\mathbf{p},t)=F_m(\mathbf{p},t)+R_m(\mathbf{p},t;\theta_m),
+\end{equation}
+where $F_m$ is the reduced-order field estimate and $R_m$ is a compact multilayer perceptron trained to predict the residual between the truth field and the base model output. The training target is
+\begin{equation}
+R^*_m(\mathbf{p},t)=F^{\mathrm{truth}}_m(\mathbf{p},t)-F_m(\mathbf{p},t),
+\end{equation}
+and the loss is regularized mean squared error:
+\begin{equation}
+\mathcal{L}(\theta_m)=\frac{1}{N}\sum_i \left\|R^*_m(\mathbf{p}_i,t_i)-R_m(\mathbf{p}_i,t_i;\theta_m)\right\|_2^2+\lambda\|\theta_m\|_2^2.
+\end{equation}
+The residual network takes normalized coordinates, elapsed time, indoor and outdoor conditions, base-model predictions, device activations, calibrated powers, appliance envelopes, and air-conditioner mode indicators as input. This design preserves the appliance-aware structure while allowing a data-driven second-stage correction.
+
 \subsection{Action Ranking}
 Candidate actions are evaluated by simulating their resulting target-zone values. A weighted comfort penalty is computed from deviations from target temperature, humidity, and illuminance. Actions are ranked by the reduction in this penalty. The system does not perform closed-loop control; it outputs an interpretable recommendation order.
 
 \section{Implementation}
 \subsection{Python Prototype}
-The implementation is a zero-dependency Python prototype. The main modules define entities, scenarios, field simulation, learning, IDW baseline comparison, action ranking, service APIs, MCP server, and the web demo. The same service layer is shared by the MCP server, the Gemma/Ollama bridge, and the web interface.
+The implementation is a zero-dependency Python prototype. The main modules define entities, scenarios, field simulation, impact learning, hybrid residual training and inference, IDW baseline comparison, action ranking, service APIs, MCP server, and the web demo. The same service layer is shared by the MCP server, the Gemma/Ollama bridge, and the web interface.
 
 \subsection{MCP Service}
 The local MCP server exposes tools for listing scenarios, running a scenario, ranking actions, sampling a point, comparing against IDW, learning appliance impacts, listing window scenarios, running the full window matrix, and running a direct window simulation from user-supplied outdoor temperature, humidity, sunlight, and opening ratio. These tools allow MCP-compatible clients to access the digital twin without directly importing Python modules.
 
 \subsection{Interactive Web Demo}
-The web demo provides a rotatable 3D canvas visualization. The user can rotate and zoom the estimated field, switch the metric using checkbox controls, and toggle appliances using checkboxes. The air conditioner is displayed as a wall bar, the window as a wall rectangle, and the light as a point marker. The interface also displays target-zone estimates, recommendations, baseline comparison, impact learning results, point sampling, and a time-evolution view. In the current interface, indoor baseline conditions can be edited directly, season-weather-time presets define outdoor humidity and sunlight, and outdoor temperature together with opening ratio can be manually overridden from the sidebar.
+The web demo provides a rotatable 3D canvas visualization. The user can rotate and zoom the estimated field, switch the metric using checkbox controls, and toggle appliances using checkboxes. The air conditioner is displayed as a wall bar, the window as a wall rectangle, and the light as a point marker. The interface also displays target-zone estimates, recommendations, baseline comparison, impact learning results, point sampling, and a time-evolution view. In the current interface, indoor baseline conditions can be edited directly, season-weather-time presets define outdoor humidity and sunlight, outdoor temperature together with opening ratio can be manually overridden from the sidebar, and an estimator toggle can switch the view between the base reduced-order model and the hybrid residual-corrected field whenever a saved checkpoint is available.
 
 \section{Evaluation}
 \subsection{Standard Appliance Scenarios}
@@ -220,6 +236,9 @@ ac\_only & Illum. & 1.7625 & 1.3210 & -33.42\%\\
 \subsection{Learning Appliance Impact Coefficients}
 For the air-conditioner-only scenario, the learned coefficient is negative for temperature and humidity and approximately zero for illuminance. For the light-only scenario, the learned coefficient is strongly positive for illuminance, weakly positive for temperature, and approximately zero for humidity. These directions match the intended physical interpretation of the appliances.
 
+\subsection{Hybrid Residual Correction Results}
+Under the default held-out split used in the current prototype, six scenarios are used for residual-network training and two scenarios (\texttt{light\_only} and \texttt{all\_active}) are held out for evaluation. The average field MAE is reduced from 0.0473 to 0.0026 for temperature, from 0.1764 to 0.0043 for humidity, and from 2.3727 to 0.2357 for illuminance. These reductions suggest that a residual neural layer can absorb structured error left by the reduced-order model while preserving the base model's interpretability.
+
 \subsection{Window Time-Weather-Season Matrix}
 The window matrix contains 48 cases: four times of day, three weather states, and four seasons. This matrix evaluates the window as an environmental variable rather than a simple binary switch. In addition to the enumerated matrix, the system supports a direct window-input mode in which a user or external data source supplies outdoor temperature, outdoor humidity, sunlight illuminance, and the equivalent opening ratio. The direct mode uses the same influence function and sensor-calibration pipeline, but it avoids discretizing the outside condition into season, weather, and time categories. Table~\ref{tab:window} shows representative enumerated cases.
 
@@ -242,12 +261,12 @@ spring-cloud-morn. & 21.5 & 70.0 & 5005.0 & 92.38\\
 The summer sunny noon case produces the highest daylight input among the representative examples, while the winter rainy night case contributes almost no sunlight and shifts the window-side zone toward colder and more humid outdoor conditions.
 
 \section{Discussion}
-The results suggest that an appliance-aware field model can be more informative than pure interpolation under sparse sensing. The prototype is intentionally lightweight: it does not attempt CFD-grade airflow modeling, full wall thermal mass modeling, or detailed optical rendering. This tradeoff makes the method easier to implement and explain, but it also limits physical fidelity.
+The results suggest that an appliance-aware field model can be more informative than pure interpolation under sparse sensing. The prototype is intentionally lightweight: it does not attempt CFD-grade airflow modeling, full wall thermal mass modeling, or detailed optical rendering. This tradeoff makes the method easier to implement and explain, but it also limits physical fidelity. The hybrid residual layer improves held-out reconstruction accuracy in the current simulation setting, but its reported gain should still be interpreted as an extension built on synthetic truth rather than a replacement for real-room validation.
 
 The humidity component is modeled using a simplified first-order coupling with the air conditioner and window. Therefore, humidity results should be interpreted as secondary evidence compared with temperature and illuminance. In addition, the current evaluation uses simulated observations with deterministic perturbations rather than long-term real deployment data. Future work should include physical ESP32-based measurements to calibrate and validate the learned coefficients.
 
 \section{Conclusion}
-This paper presented an MCP-enabled spatial digital twin prototype for learning environmental impacts of non-networked appliances in a single room. The prototype estimates temperature, humidity, and illuminance fields from sparse corner sensors, models appliance effects through interpretable influence functions, learns impact coefficients from before-and-after observations, ranks candidate control actions, and exposes the system through MCP tools and an interactive 3D web demo. The simulation study demonstrates that the proposed approach can provide interpretable estimates and recommendations under sparse sensing constraints. Future work will focus on real sensor deployment, custom room input, remote MCP deployment, and closed-loop control.
+This paper presented an MCP-enabled spatial digital twin prototype for learning environmental impacts of non-networked appliances in a single room. The prototype estimates temperature, humidity, and illuminance fields from sparse corner sensors, models appliance effects through interpretable influence functions, learns impact coefficients from before-and-after observations, ranks candidate control actions, and exposes the system through MCP tools and an interactive 3D web demo. An optional hybrid residual neural layer further refines the reduced-order estimate without discarding the model's appliance-aware structure. The simulation study demonstrates that the proposed approach can provide interpretable estimates and recommendations under sparse sensing constraints. Future work will focus on real sensor deployment, custom room input, retraining on measured data, remote MCP deployment, and closed-loop control.
 
 \section*{Acknowledgment}
 The authors thank the Department of Computer Science and Information Engineering, National Changhua University of Education, for supporting the thesis prototype development. This section should be revised according to the target IEEE venue policy.

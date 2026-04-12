@@ -445,6 +445,14 @@ INDEX_HTML = """<!doctype html>
         </div>
       </div>
       <div class="sidebar-section">
+        <label>Estimator</label>
+        <label class="device-toggle">
+          <input id="useHybridResidual" type="checkbox" checked>
+          <span>Hybrid Residual Correction<small>Apply the saved residual neural checkpoint on top of the physics model when available.</small></span>
+        </label>
+        <p class="status" id="hybridEstimatorStatus">Hybrid residual status will appear here.</p>
+      </div>
+      <div class="sidebar-section">
         <label>Window Controls</label>
         <p class="status">Season, weather, and time presets derive outdoor humidity and sunlight. Manual input here only overrides outdoor temperature and window opening.</p>
         <div class="control-group">
@@ -488,6 +496,7 @@ INDEX_HTML = """<!doctype html>
     <div class="content">
       <section class="panel">
         <h2>Target Zone Estimate</h2>
+        <p class="status" id="estimatorStatus">Estimator status will appear here.</p>
         <div class="cards" id="zoneCards"></div>
       </section>
       <section class="panel">
@@ -597,6 +606,7 @@ INDEX_HTML = """<!doctype html>
       activeContext = { kind: "scenario", name: activeScenario };
       setupElapsedTimeControl();
       setupIndoorBaselineControls();
+      setupHybridEstimatorControls();
       syncDeviceControlsFromScenario(activeScenario);
       syncAcControlsFromScenario(activeScenario);
       setupWindowPresetControls();
@@ -647,6 +657,19 @@ INDEX_HTML = """<!doctype html>
           await refreshActiveContext();
         });
       });
+    }
+
+    function setupHybridEstimatorControls() {
+      const input = document.getElementById("useHybridResidual");
+      if (input.dataset.bound === "1") {
+        return;
+      }
+      input.dataset.bound = "1";
+      input.addEventListener("change", async () => {
+        stopElapsedPlayback();
+        await refreshActiveContext();
+      });
+      setEstimatorStatus(null);
     }
 
     async function loadScenario() {
@@ -868,6 +891,7 @@ INDEX_HTML = """<!doctype html>
         params.set(name, String(value));
       });
       params.set("elapsed_minutes", String(selectedElapsedMinutes()));
+      params.set("use_hybrid_residual", hybridResidualEnabled() ? "1" : "0");
       return params.toString();
     }
 
@@ -897,6 +921,10 @@ INDEX_HTML = """<!doctype html>
         indoor_humidity: Number(document.getElementById("baselineIndoorHumidity").value || "67"),
         base_illuminance: Number(document.getElementById("baselineIlluminance").value || "90")
       };
+    }
+
+    function hybridResidualEnabled() {
+      return document.getElementById("useHybridResidual")?.checked ?? false;
     }
 
     function selectedChoice(name, fallback) {
@@ -963,6 +991,7 @@ INDEX_HTML = """<!doctype html>
 
     function renderZoneCards(data) {
       const values = data.target_zone_estimated;
+      setEstimatorStatus(data.estimator || null);
       document.getElementById("zoneCards").innerHTML = metrics.map(metric => `
         <div class="card">
           <div class="metric">${labels[metric]}</div>
@@ -1047,7 +1076,8 @@ INDEX_HTML = """<!doctype html>
     }
 
     function renderRecommendations(data) {
-      document.getElementById("recommendations").innerHTML = table(
+      const estimatorNote = data.estimator?.label ? `<p class="status">Ranking estimator: ${data.estimator.label}.</p>` : "";
+      document.getElementById("recommendations").innerHTML = estimatorNote + table(
         ["Rank", "Action", "Improvement", "Resulting Zone Values"],
         data.recommendations.map((item, index) => [
           index + 1,
@@ -1059,7 +1089,8 @@ INDEX_HTML = """<!doctype html>
     }
 
     function renderBaseline(data) {
-      document.getElementById("baseline").innerHTML = table(
+      const estimatorNote = data.estimator?.label ? `<p class="status">Estimator under comparison: ${data.estimator.label}.</p>` : "";
+      document.getElementById("baseline").innerHTML = estimatorNote + table(
         ["Metric", "Model MAE", "IDW MAE", "Reduction"],
         metrics.map(metric => {
           const item = data.comparison[metric];
@@ -1073,7 +1104,11 @@ INDEX_HTML = """<!doctype html>
         document.getElementById("impacts").innerHTML = `<p class="status">No active appliance in this scenario.</p>`;
         return;
       }
-      document.getElementById("impacts").innerHTML = table(
+      const note = [
+        data.estimator?.label ? `Estimator context: ${data.estimator.label}.` : null,
+        data.estimator_note || null
+      ].filter(Boolean).join(" ");
+      document.getElementById("impacts").innerHTML = `${note ? `<p class="status">${note}</p>` : ""}` + table(
         ["Device", "Temperature", "Humidity", "Illuminance"],
         data.learned_device_impacts.map(item => [
           item.device_name,
@@ -1149,7 +1184,8 @@ INDEX_HTML = """<!doctype html>
 
     function setVolumeData(data) {
       volumeData = data;
-      document.getElementById("volumeStatus").textContent = `${data.scenario}: ${data.points.length} samples, ${data.devices.length} appliance markers.`;
+      const estimatorLabel = data.estimator?.label ? `, estimator: ${data.estimator.label}` : "";
+      document.getElementById("volumeStatus").textContent = `${data.scenario}: ${data.points.length} samples, ${data.devices.length} appliance markers${estimatorLabel}.`;
       drawVolume();
     }
 
@@ -1396,14 +1432,15 @@ INDEX_HTML = """<!doctype html>
         indoor_temperature: document.getElementById("baselineIndoorTemperature").value,
         indoor_humidity: document.getElementById("baselineIndoorHumidity").value,
         base_illuminance: document.getElementById("baselineIlluminance").value,
-        elapsed_minutes: String(selectedElapsedMinutes())
+        elapsed_minutes: String(selectedElapsedMinutes()),
+        use_hybrid_residual: hybridResidualEnabled() ? "1" : "0"
       });
     }
 
     function renderDirectWindowResult(data) {
       const container = document.getElementById("windowDirectResult");
       container.innerHTML = `
-        <p class="status">Direct input mode at ${fmt(data.input.elapsed_minutes)} min, window opening ${Math.round(data.input.opening_ratio * 100)}%, target zone: ${data.target_zone}</p>
+        <p class="status">Direct input mode at ${fmt(data.input.elapsed_minutes)} min, window opening ${Math.round(data.input.opening_ratio * 100)}%, target zone: ${data.target_zone}, estimator: ${data.estimator?.label || "n/a"}.</p>
         ${table(
           ["Input", "Window Zone", "Center Zone", "Door-Side Zone"],
           [[
@@ -1469,6 +1506,35 @@ INDEX_HTML = """<!doctype html>
       document.getElementById("sample").textContent = JSON.stringify(data, null, 2);
     }
 
+    function setEstimatorStatus(estimator) {
+      const sidebar = document.getElementById("hybridEstimatorStatus");
+      const banner = document.getElementById("estimatorStatus");
+      if (!sidebar || !banner) return;
+      if (!estimator) {
+        const text = hybridResidualEnabled()
+          ? "Hybrid residual correction requested. The demo will use the saved checkpoint when it is available."
+          : "Using the trilinear-corrected appliance influence field only.";
+        sidebar.textContent = text;
+        banner.textContent = text;
+        return;
+      }
+      if (estimator.requested && estimator.applied) {
+        const text = `Estimator: ${estimator.label}. Saved checkpoint loaded from outputs and applied on top of the physics model.`;
+        sidebar.textContent = text;
+        banner.textContent = text;
+        return;
+      }
+      if (estimator.requested && !estimator.applied) {
+        const text = "Hybrid residual correction was requested, but no checkpoint is available. Falling back to the trilinear-corrected appliance influence field.";
+        sidebar.textContent = text;
+        banner.textContent = text;
+        return;
+      }
+      const text = `Estimator: ${estimator.label}.`;
+      sidebar.textContent = text;
+      banner.textContent = text;
+    }
+
     function table(headers, rows) {
       return `<table><thead><tr>${headers.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     }
@@ -1506,6 +1572,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
+                        _query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1524,6 +1591,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
+                        use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1539,6 +1607,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
+                        use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1553,6 +1622,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
+                        _query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1567,6 +1637,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
+                        _query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1581,6 +1652,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
+                        _query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1595,6 +1667,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
+                        _query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1609,6 +1682,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
+                        use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1624,6 +1698,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
+                        use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1641,6 +1716,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
+                        use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1659,6 +1735,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
+                        use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                     )
                 )
                 return
@@ -1712,6 +1789,21 @@ def _query_float(query: Dict[str, list], key: str, default: float) -> float:
         return float(query.get(key, [default])[0])
     except (TypeError, ValueError):
         return default
+
+
+def _query_bool(query: Dict[str, list], key: str, default: bool = False) -> bool:
+    value = query.get(key, [default])[0]
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return default
 
 
 def _query_device_overrides(query_string: str) -> Dict[str, float]:

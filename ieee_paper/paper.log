@@ -271,20 +271,13 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 LaTeX Font Warning: Font shape `TU/ptm/m/sc' undefined
 (Font)              using `TU/ptm/m/n' instead on input line 37.
 
-
-Underfull \vbox (badness 1132) has occurred while \output is active []
-
- [1
+[1
 
 
 ]
-Underfull \hbox (badness 4120) in paragraph at lines 51--52
+Underfull \hbox (badness 4120) in paragraph at lines 52--53
 []\TU/ptm/bx/it/10 A simulation study including eight appliance-
  []
-
-
-LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 75.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
@@ -294,7 +287,25 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 77.
 
-[2] [3] [4] (paper.bbl)
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 78.
+
+[2]
+Underfull \hbox (badness 2221) in paragraph at lines 160--162
+\TU/ptm/m/sc/10 The residual network takes normalized coordinates,
+ []
+
+[3]
+LaTeX Font Info:    Trying to load font information for TU+pcr on input line 24
+0.
+LaTeX Font Info:    No file TUpcr.fd. on input line 240.
+
+
+LaTeX Font Warning: Font shape `TU/pcr/m/n' undefined
+(Font)              using `TU/lmr/m/n' instead on input line 240.
+
+[4] (paper.bbl [5])
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -306,11 +317,11 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[5
+[6
 
 ] (paper.aux)
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (5 pages, 217428 bytes).
+Output written on paper.xdv (6 pages, 240568 bytes).
