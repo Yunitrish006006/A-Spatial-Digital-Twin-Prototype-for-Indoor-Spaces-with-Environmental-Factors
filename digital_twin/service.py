@@ -69,15 +69,84 @@ def evaluate_window_direct(
         elapsed_minutes=elapsed_minutes,
     )
     result = _evaluate_scenario_object(scenario)
-    result["input"] = {
-        "mode": "direct",
-        "opening_ratio": round(max(0.0, min(1.0, float(opening_ratio))), 4),
-        "indoor_temperature": scenario.room.base_temperature,
-        "indoor_humidity": scenario.room.base_humidity,
-        "base_illuminance": scenario.room.base_illuminance,
-        "elapsed_minutes": scenario.elapsed_minutes,
-    }
+    result["input"] = _window_direct_input_dict(
+        scenario=scenario,
+        opening_ratio=opening_ratio,
+    )
     return result
+
+
+def evaluate_window_direct_dashboard(
+    outdoor_temperature: float,
+    outdoor_humidity: float,
+    sunlight_illuminance: float,
+    opening_ratio: float = 0.7,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: float = 70.0,
+    daylight_factor: float = 0.95,
+    elapsed_minutes: float = 18.0,
+) -> Dict:
+    scenario = build_direct_window_scenario(
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        opening_ratio=opening_ratio,
+        indoor_temperature=indoor_temperature,
+        indoor_humidity=indoor_humidity,
+        base_illuminance=base_illuminance,
+        daylight_factor=daylight_factor,
+        elapsed_minutes=elapsed_minutes,
+    )
+    result = _evaluate_dashboard_scenario_object(scenario)
+    result["scenario"]["input"] = _window_direct_input_dict(
+        scenario=scenario,
+        opening_ratio=opening_ratio,
+    )
+    return result
+
+
+def sample_window_direct_point(
+    x: float,
+    y: float,
+    z: float,
+    outdoor_temperature: float,
+    outdoor_humidity: float,
+    sunlight_illuminance: float,
+    opening_ratio: float = 0.7,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: float = 70.0,
+    daylight_factor: float = 0.95,
+    elapsed_minutes: float = 18.0,
+) -> Dict:
+    scenario = build_direct_window_scenario(
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        opening_ratio=opening_ratio,
+        indoor_temperature=indoor_temperature,
+        indoor_humidity=indoor_humidity,
+        base_illuminance=base_illuminance,
+        daylight_factor=daylight_factor,
+        elapsed_minutes=elapsed_minutes,
+    )
+    return _sample_scenario_object_point(
+        scenario=scenario,
+        x=x,
+        y=y,
+        z=z,
+    )
+
+
+def _evaluate_dashboard_scenario_object(scenario: Scenario) -> Dict:
+    return {
+        "scenario": _evaluate_scenario_object(scenario),
+        "ranking": _rank_scenario_object_actions(scenario),
+        "baseline": _compare_scenario_object_baseline(scenario),
+        "impacts": _learn_scenario_object_impacts(scenario),
+        "volume": _get_scenario_object_volume(scenario),
+    }
 
 
 def _evaluate_scenario_object(scenario: Scenario) -> Dict:
@@ -210,8 +279,51 @@ def get_scenario_volume(
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
 ) -> Dict:
-    model = DigitalTwinModel()
     scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    return _get_scenario_object_volume(scenario)
+
+
+def rank_scenario_actions(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    return _rank_scenario_object_actions(scenario)
+
+
+def sample_scenario_point(
+    scenario_name: str,
+    x: float,
+    y: float,
+    z: float,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    return _sample_scenario_object_point(scenario, x, y, z)
+
+
+def compare_scenario_baseline(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    return _compare_scenario_object_baseline(scenario)
+
+
+def learn_scenario_impacts(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+) -> Dict:
+    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    return _learn_scenario_object_impacts(scenario)
+
+
+def _get_scenario_object_volume(scenario: Scenario) -> Dict:
+    model = DigitalTwinModel()
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     estimated_result = model.simulate(
@@ -241,7 +353,6 @@ def get_scenario_volume(
                         "illuminance": round(field.values["illuminance"][index], 4),
                     }
                 )
-
     return {
         "scenario": scenario.name,
         "description": scenario.description,
@@ -272,13 +383,8 @@ def get_scenario_volume(
     }
 
 
-def rank_scenario_actions(
-    scenario_name: str,
-    device_overrides: Optional[Dict[str, float]] = None,
-    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
-) -> Dict:
+def _rank_scenario_object_actions(scenario: Scenario) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     ranked = rank_actions(
@@ -311,16 +417,8 @@ def rank_scenario_actions(
     }
 
 
-def sample_scenario_point(
-    scenario_name: str,
-    x: float,
-    y: float,
-    z: float,
-    device_overrides: Optional[Dict[str, float]] = None,
-    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
-) -> Dict:
+def _sample_scenario_object_point(scenario: Scenario, x: float, y: float, z: float) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     point = Vector3(x=x, y=y, z=z)
     _validate_point(scenario, point)
     truth_result = _simulate_truth(model, scenario)
@@ -350,13 +448,8 @@ def sample_scenario_point(
     }
 
 
-def compare_scenario_baseline(
-    scenario_name: str,
-    device_overrides: Optional[Dict[str, float]] = None,
-    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
-) -> Dict:
+def _compare_scenario_object_baseline(scenario: Scenario) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     estimated_result = model.simulate(
@@ -385,13 +478,8 @@ def compare_scenario_baseline(
     }
 
 
-def learn_scenario_impacts(
-    scenario_name: str,
-    device_overrides: Optional[Dict[str, float]] = None,
-    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
-) -> Dict:
+def _learn_scenario_object_impacts(scenario: Scenario) -> Dict:
     model = DigitalTwinModel()
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
     truth_result = _simulate_truth(model, scenario)
     observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, scenario.sensors)
     before_devices = deepcopy(scenario.devices)
@@ -418,6 +506,17 @@ def learn_scenario_impacts(
             after_observations=observed_sensors,
             elapsed_minutes=scenario.elapsed_minutes,
         ),
+    }
+
+
+def _window_direct_input_dict(scenario: Scenario, opening_ratio: float) -> Dict:
+    return {
+        "mode": "direct",
+        "opening_ratio": round(max(0.0, min(1.0, float(opening_ratio))), 4),
+        "indoor_temperature": scenario.room.base_temperature,
+        "indoor_humidity": scenario.room.base_humidity,
+        "base_illuminance": scenario.room.base_illuminance,
+        "elapsed_minutes": scenario.elapsed_minutes,
     }
 
 

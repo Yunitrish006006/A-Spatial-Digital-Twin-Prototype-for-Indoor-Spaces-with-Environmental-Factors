@@ -10,12 +10,22 @@ from .service import (
     compare_scenario_baseline,
     evaluate_scenario,
     evaluate_window_direct,
+    evaluate_window_direct_dashboard,
     evaluate_window_matrix,
     get_scenario_volume,
     learn_scenario_impacts,
     list_scenario_metadata,
     rank_scenario_actions,
+    sample_window_direct_point,
     sample_scenario_point,
+)
+from .scenarios import (
+    SEASON_PROFILES,
+    TIME_OF_DAY_PROFILES,
+    WEATHER_PROFILES,
+    WINDOW_SEASON_ORDER,
+    WINDOW_TIME_ORDER,
+    WINDOW_WEATHER_ORDER,
 )
 
 
@@ -24,6 +34,17 @@ OUTPUTS = ROOT / "outputs"
 DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
 AC_MODE_OPTIONS = ("cool", "dry", "heat", "fan")
 AC_SWING_OPTIONS = ("fixed", "swing")
+WINDOW_PRESET_DATA = json.dumps(
+    {
+        "seasonOrder": list(WINDOW_SEASON_ORDER),
+        "weatherOrder": list(WINDOW_WEATHER_ORDER),
+        "timeOrder": list(WINDOW_TIME_ORDER),
+        "seasons": SEASON_PROFILES,
+        "weathers": WEATHER_PROFILES,
+        "times": TIME_OF_DAY_PROFILES,
+    },
+    ensure_ascii=False,
+)
 
 
 INDEX_HTML = """<!doctype html>
@@ -377,6 +398,19 @@ INDEX_HTML = """<!doctype html>
       <div class="sidebar-section">
         <label>Window Controls</label>
         <p class="status">Direct outdoor conditions and batch window simulations stay pinned here while result tables remain on the right.</p>
+        <div class="control-group">
+          <label>Outdoor Season</label>
+          <div class="metric-controls" id="windowSeasonControls"></div>
+        </div>
+        <div class="control-group">
+          <label>Outdoor Weather</label>
+          <div class="metric-controls" id="windowWeatherControls"></div>
+        </div>
+        <div class="control-group">
+          <label>Time Of Day</label>
+          <div class="metric-controls" id="windowTimeControls"></div>
+        </div>
+        <p class="status" id="windowPresetSummary">Preset values will appear here.</p>
         <div class="sidebar-form-grid">
           <div><label for="directOutdoorTemperature">Outdoor °C</label><input id="directOutdoorTemperature" type="number" step="0.1" value="33"></div>
           <div><label for="directOutdoorHumidity">Outdoor RH</label><input id="directOutdoorHumidity" type="number" step="0.1" value="74"></div>
@@ -386,6 +420,7 @@ INDEX_HTML = """<!doctype html>
           <div><label for="directIndoorHumidity">Indoor RH</label><input id="directIndoorHumidity" type="number" step="0.1" value="67"></div>
         </div>
         <div class="sidebar-actions">
+          <button class="secondary" onclick="applyWindowPreset()">Apply Outdoor Preset</button>
           <button class="secondary" onclick="loadDirectWindow()">Run Direct Window Simulation</button>
           <button class="secondary" onclick="loadWindowMatrix()">Run Window Matrix</button>
         </div>
@@ -467,7 +502,9 @@ INDEX_HTML = """<!doctype html>
     const acSwingLabels = { fixed: "Fixed", swing: "Swing" };
     const acHorizontalAngles = [-45, -20, 0, 20, 45];
     const acVerticalAngles = [5, 15, 25, 35];
+    const windowPresetData = __WINDOW_PRESET_DATA__;
     let activeScenario = "idle";
+    let activeContext = { kind: "scenario", name: "idle" };
     let scenarioMetadata = {};
     let volumeData = null;
     let volumeMetric = "temperature";
@@ -489,18 +526,21 @@ INDEX_HTML = """<!doctype html>
       const data = await getJSON("/api/scenarios");
       scenarioMetadata = Object.fromEntries(data.scenarios.map(item => [item.name, item]));
       activeScenario = scenarioMetadata.idle ? "idle" : data.scenarios[0].name;
+      activeContext = { kind: "scenario", name: activeScenario };
       syncDeviceControlsFromScenario(activeScenario);
       syncAcControlsFromScenario(activeScenario);
+      setupWindowPresetControls();
       await loadScenario();
       loadWindowMatrix().catch(error => {
         document.getElementById("windowMatrix").innerHTML = `<p class="status">${error.message}</p>`;
       });
-      loadDirectWindow().catch(error => {
+      loadDirectWindow(false).catch(error => {
         document.getElementById("windowDirectResult").innerHTML = `<p class="status">${error.message}</p>`;
       });
     }
 
     async function loadScenario() {
+      activeContext = { kind: "scenario", name: activeScenario };
       document.getElementById("status").textContent = "Running checkbox-defined simulation...";
       const query = scenarioQuery();
       const [scenario, ranking, baseline, impacts, volume] = await Promise.all([
@@ -515,7 +555,7 @@ INDEX_HTML = """<!doctype html>
       renderBaseline(baseline);
       renderImpacts(impacts);
       setVolumeData(volume);
-      renderHeatmaps(activeScenario);
+      renderHeatmapsForScenario(activeScenario);
       await samplePoint();
       document.getElementById("status").textContent = "Loaded checkbox-defined simulation.";
     }
@@ -580,6 +620,20 @@ INDEX_HTML = """<!doctype html>
       slider.addEventListener("input", syncAcTemperatureReadout);
       slider.addEventListener("change", () => loadScenario());
       syncAcAngleControlState();
+    }
+
+    function setupWindowPresetControls() {
+      const seasonLabels = Object.fromEntries(windowPresetData.seasonOrder.map(name => [name, windowPresetData.seasons[name].zh]));
+      const weatherLabels = Object.fromEntries(windowPresetData.weatherOrder.map(name => [name, windowPresetData.weathers[name].zh]));
+      const timeLabels = Object.fromEntries(windowPresetData.timeOrder.map(name => [name, windowPresetData.times[name].zh]));
+
+      renderRadioGroup("windowSeasonControls", "windowSeason", windowPresetData.seasonOrder, "summer", seasonLabels);
+      renderRadioGroup("windowWeatherControls", "windowWeather", windowPresetData.weatherOrder, "sunny", weatherLabels);
+      renderRadioGroup("windowTimeControls", "windowTime", windowPresetData.timeOrder, "morning", timeLabels);
+
+      document.querySelectorAll("#windowSeasonControls input, #windowWeatherControls input, #windowTimeControls input")
+        .forEach(input => input.addEventListener("change", () => syncWindowPresetSummary()));
+      syncWindowPresetSummary();
     }
 
     function renderRadioGroup(containerId, name, options, selected, labelsMap = null, formatter = null) {
@@ -659,6 +713,50 @@ INDEX_HTML = """<!doctype html>
       });
     }
 
+    function selectedWindowPreset() {
+      return {
+        season: selectedChoice("windowSeason", "summer"),
+        weather: selectedChoice("windowWeather", "sunny"),
+        time: selectedChoice("windowTime", "morning"),
+      };
+    }
+
+    function computeWindowPresetValues() {
+      const preset = selectedWindowPreset();
+      const season = windowPresetData.seasons[preset.season];
+      const weather = windowPresetData.weathers[preset.weather];
+      const time = windowPresetData.times[preset.time];
+      return {
+        season,
+        weather,
+        time,
+        indoorTemperature: Number(season.indoor_temperature),
+        indoorHumidity: Number(season.indoor_humidity),
+        outdoorTemperature: Number(season.outdoor_temperature) + Number(weather.temperature_delta) + Number(time.temperature_delta),
+        outdoorHumidity: clamp(Number(season.outdoor_humidity) + Number(weather.humidity_delta), 0, 100),
+        sunlightIlluminance: Number(season.sunlight_illuminance) * Number(weather.sunlight_factor) * Number(time.sunlight_factor),
+      };
+    }
+
+    function syncWindowPresetSummary() {
+      const values = computeWindowPresetValues();
+      document.getElementById("windowPresetSummary").innerHTML = [
+        `Selected preset: ${values.season.zh} / ${values.weather.zh} / ${values.time.zh}`,
+        `Outdoor T ${fmt(values.outdoorTemperature)}°C, Outdoor H ${fmt(values.outdoorHumidity)}%, Sun ${fmt(values.sunlightIlluminance)} lx`,
+        `Indoor baseline T ${fmt(values.indoorTemperature)}°C, Indoor H ${fmt(values.indoorHumidity)}%`
+      ].join("<br>");
+    }
+
+    function applyWindowPreset() {
+      const values = computeWindowPresetValues();
+      document.getElementById("directOutdoorTemperature").value = String(Number(values.outdoorTemperature.toFixed(2)));
+      document.getElementById("directOutdoorHumidity").value = String(Number(values.outdoorHumidity.toFixed(2)));
+      document.getElementById("directSunlight").value = String(Number(values.sunlightIlluminance.toFixed(2)));
+      document.getElementById("directIndoorTemperature").value = String(Number(values.indoorTemperature.toFixed(2)));
+      document.getElementById("directIndoorHumidity").value = String(Number(values.indoorHumidity.toFixed(2)));
+      loadDirectWindow();
+    }
+
     function renderZoneCards(data) {
       const values = data.target_zone_estimated;
       document.getElementById("zoneCards").innerHTML = metrics.map(metric => `
@@ -708,10 +806,16 @@ INDEX_HTML = """<!doctype html>
       );
     }
 
-    function renderHeatmaps(name) {
+    function renderHeatmapsForScenario(name) {
       document.getElementById("heatmaps").innerHTML = metrics.map(metric => `
         <img src="/outputs/${name}_${metric}_3d.svg" alt="${name} ${metric} 3D heatmap">
       `).join("");
+    }
+
+    function renderDirectHeatmapNotice() {
+      document.getElementById("heatmaps").innerHTML = `
+        <p class="status">Static SVG snapshots are generated only for named validation scenarios. Direct window mode is shown in the rotatable 3D preview above.</p>
+      `;
     }
 
     function setupVolumeControls() {
@@ -1025,10 +1129,8 @@ INDEX_HTML = """<!doctype html>
       );
     }
 
-    async function loadDirectWindow() {
-      const container = document.getElementById("windowDirectResult");
-      container.innerHTML = `<p class="status">Running direct window simulation...</p>`;
-      const params = new URLSearchParams({
+    function directWindowParams() {
+      return new URLSearchParams({
         outdoor_temperature: document.getElementById("directOutdoorTemperature").value,
         outdoor_humidity: document.getElementById("directOutdoorHumidity").value,
         sunlight_illuminance: document.getElementById("directSunlight").value,
@@ -1036,7 +1138,10 @@ INDEX_HTML = """<!doctype html>
         indoor_temperature: document.getElementById("directIndoorTemperature").value,
         indoor_humidity: document.getElementById("directIndoorHumidity").value
       });
-      const data = await getJSON(`/api/window_direct?${params.toString()}`);
+    }
+
+    function renderDirectWindowResult(data) {
+      const container = document.getElementById("windowDirectResult");
       container.innerHTML = `
         <p class="status">Direct input mode, window opening ${Math.round(data.input.opening_ratio * 100)}%, target zone: ${data.target_zone}</p>
         ${table(
@@ -1057,15 +1162,48 @@ INDEX_HTML = """<!doctype html>
       `;
     }
 
+    async function loadDirectWindow(updateDashboard = true) {
+      const container = document.getElementById("windowDirectResult");
+      container.innerHTML = `<p class="status">Running direct window simulation...</p>`;
+      const params = directWindowParams();
+      if (!updateDashboard) {
+        const data = await getJSON(`/api/window_direct?${params.toString()}`);
+        renderDirectWindowResult(data);
+        return;
+      }
+
+      activeContext = { kind: "window_direct" };
+      document.getElementById("status").textContent = "Running direct window dashboard...";
+      const bundle = await getJSON(`/api/window_direct_dashboard?${params.toString()}`);
+      renderDirectWindowResult(bundle.scenario);
+      renderZoneCards(bundle.scenario);
+      renderRecommendations(bundle.ranking);
+      renderBaseline(bundle.baseline);
+      renderImpacts(bundle.impacts);
+      setVolumeData(bundle.volume);
+      renderDirectHeatmapNotice();
+      await samplePoint();
+      document.getElementById("status").textContent = "Loaded direct window dashboard.";
+    }
+
     async function samplePoint() {
       const x = document.getElementById("x").value;
       const y = document.getElementById("y").value;
       const z = document.getElementById("z").value;
-      const params = new URLSearchParams(scenarioQuery());
-      params.set("x", x);
-      params.set("y", y);
-      params.set("z", z);
-      const data = await getJSON(`/api/sample?${params.toString()}`);
+      let data;
+      if (activeContext.kind === "window_direct") {
+        const params = directWindowParams();
+        params.set("x", x);
+        params.set("y", y);
+        params.set("z", z);
+        data = await getJSON(`/api/window_direct_sample?${params.toString()}`);
+      } else {
+        const params = new URLSearchParams(scenarioQuery());
+        params.set("x", x);
+        params.set("y", y);
+        params.set("z", z);
+        data = await getJSON(`/api/sample?${params.toString()}`);
+      }
       document.getElementById("sample").textContent = JSON.stringify(data, null, 2);
     }
 
@@ -1081,6 +1219,8 @@ INDEX_HTML = """<!doctype html>
 </body>
 </html>
 """
+
+INDEX_HTML = INDEX_HTML.replace("__WINDOW_PRESET_DATA__", WINDOW_PRESET_DATA)
 
 
 class DemoRequestHandler(BaseHTTPRequestHandler):
@@ -1109,6 +1249,19 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 query = parse_qs(parsed.query)
                 self._send_json(
                     evaluate_window_direct(
+                        outdoor_temperature=_query_float(query, "outdoor_temperature", 33.0),
+                        outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
+                        sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
+                        opening_ratio=_query_float(query, "opening_ratio", 0.7),
+                        indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
+                        indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
+                    )
+                )
+                return
+            if parsed.path == "/api/window_direct_dashboard":
+                query = parse_qs(parsed.query)
+                self._send_json(
+                    evaluate_window_direct_dashboard(
                         outdoor_temperature=_query_float(query, "outdoor_temperature", 33.0),
                         outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
                         sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
@@ -1164,6 +1317,22 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         z=_query_float(query, "z", 1.5),
                         device_overrides=_query_device_overrides(parsed.query),
                         device_metadata_overrides=_query_device_metadata_overrides(parsed.query),
+                    )
+                )
+                return
+            if parsed.path == "/api/window_direct_sample":
+                query = parse_qs(parsed.query)
+                self._send_json(
+                    sample_window_direct_point(
+                        x=_query_float(query, "x", 3.0),
+                        y=_query_float(query, "y", 2.0),
+                        z=_query_float(query, "z", 1.5),
+                        outdoor_temperature=_query_float(query, "outdoor_temperature", 33.0),
+                        outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
+                        sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
+                        opening_ratio=_query_float(query, "opening_ratio", 0.7),
+                        indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
+                        indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                     )
                 )
                 return

@@ -5,10 +5,12 @@ from digital_twin.mcp_server import LocalMCPServer
 from digital_twin.service import (
     evaluate_scenario,
     evaluate_window_direct,
+    evaluate_window_direct_dashboard,
     evaluate_window_matrix,
     get_scenario_volume,
     list_scenario_metadata,
     list_window_scenario_metadata,
+    sample_window_direct_point,
     sample_scenario_point,
 )
 
@@ -59,6 +61,35 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result["environment"]["outdoor_temperature"], 35.0)
         self.assertIn("window_zone", result["zone_estimated"])
 
+    def test_evaluate_window_direct_cools_room_when_outdoor_is_colder(self) -> None:
+        result = evaluate_window_direct(
+            outdoor_temperature=11.0,
+            outdoor_humidity=70.0,
+            sunlight_illuminance=0.0,
+            opening_ratio=0.7,
+            indoor_temperature=19.0,
+            indoor_humidity=60.0,
+        )
+        self.assertLess(result["zone_estimated"]["window_zone"]["temperature"], 19.0)
+        self.assertLess(result["zone_estimated"]["center_zone"]["temperature"], 19.0)
+
+    def test_evaluate_window_direct_dashboard_returns_main_panels(self) -> None:
+        result = evaluate_window_direct_dashboard(
+            outdoor_temperature=11.0,
+            outdoor_humidity=70.0,
+            sunlight_illuminance=0.0,
+            opening_ratio=0.7,
+            indoor_temperature=19.0,
+            indoor_humidity=60.0,
+        )
+        self.assertIn("scenario", result)
+        self.assertIn("ranking", result)
+        self.assertIn("baseline", result)
+        self.assertIn("impacts", result)
+        self.assertIn("volume", result)
+        self.assertEqual(result["scenario"]["input"]["indoor_temperature"], 19.0)
+        self.assertLess(result["scenario"]["zone_estimated"]["window_zone"]["temperature"], 19.0)
+
     def test_ac_metadata_override_changes_zone_estimate(self) -> None:
         cool = evaluate_scenario(
             "ac_only",
@@ -75,6 +106,21 @@ class ServiceTests(unittest.TestCase):
         self.assertIn("temperature", result["values"])
         self.assertIn("humidity", result["values"])
         self.assertIn("illuminance", result["values"])
+
+    def test_sample_window_direct_point_uses_direct_window_state(self) -> None:
+        result = sample_window_direct_point(
+            x=0.8,
+            y=2.0,
+            z=1.2,
+            outdoor_temperature=11.0,
+            outdoor_humidity=70.0,
+            sunlight_illuminance=0.0,
+            opening_ratio=0.7,
+            indoor_temperature=19.0,
+            indoor_humidity=60.0,
+        )
+        self.assertEqual(result["scenario"], "window_direct_input")
+        self.assertLess(result["values"]["temperature"], 19.0)
 
     def test_get_scenario_volume_returns_points_and_devices(self) -> None:
         result = get_scenario_volume("idle")
