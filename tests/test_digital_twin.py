@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from digital_twin.baselines import build_idw_field
@@ -75,6 +76,25 @@ class DigitalTwinTests(unittest.TestCase):
             on_result.zone_averages["center_zone"]["temperature"],
             off_result.zone_averages["center_zone"]["temperature"],
         )
+
+    def test_ac_cools_whole_room_after_two_hours_in_hot_start(self) -> None:
+        hot_room = replace(self.room, base_temperature=34.0)
+        devices = build_standard_devices()
+        ac_device = next(device for device in devices if device.name == "ac_main")
+        ac_device.activation = 0.8
+        ac_device.metadata.update({"ac_mode": "cool", "target_temperature": 24.0})
+
+        result = self.model.simulate(
+            room=hot_room,
+            environment=self.environment,
+            devices=devices,
+            sensors=self.sensors,
+            zones=self.zones,
+            elapsed_minutes=120.0,
+            resolution=self.resolution,
+        )
+        self.assertLess(max(result.field.values["temperature"]), 31.0)
+        self.assertLess(result.zone_averages["center_zone"]["temperature"], 30.0)
 
     def test_ac_heat_mode_raises_temperature_relative_to_cool_mode(self) -> None:
         point = Vector3(3.9, 2.0, 1.5)

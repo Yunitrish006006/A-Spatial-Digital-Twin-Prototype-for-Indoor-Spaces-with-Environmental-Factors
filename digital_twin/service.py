@@ -41,8 +41,20 @@ def evaluate_scenario(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
 ) -> Dict:
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+    )
     return _evaluate_scenario_object(scenario)
 
 
@@ -139,6 +151,58 @@ def sample_window_direct_point(
     )
 
 
+def get_scenario_timeline(
+    scenario_name: str,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
+    duration_minutes: float = 120.0,
+    steps: int = 13,
+) -> Dict:
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+    )
+    return _build_scenario_timeline(scenario, duration_minutes=duration_minutes, steps=steps)
+
+
+def get_window_direct_timeline(
+    outdoor_temperature: float,
+    outdoor_humidity: float,
+    sunlight_illuminance: float,
+    opening_ratio: float = 0.7,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: float = 70.0,
+    daylight_factor: float = 0.95,
+    elapsed_minutes: float = 18.0,
+    duration_minutes: float = 120.0,
+    steps: int = 13,
+) -> Dict:
+    scenario = build_direct_window_scenario(
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        opening_ratio=opening_ratio,
+        indoor_temperature=indoor_temperature,
+        indoor_humidity=indoor_humidity,
+        base_illuminance=base_illuminance,
+        daylight_factor=daylight_factor,
+        elapsed_minutes=elapsed_minutes,
+    )
+    timeline = _build_scenario_timeline(scenario, duration_minutes=duration_minutes, steps=steps)
+    timeline["input"] = _window_direct_input_dict(scenario=scenario, opening_ratio=opening_ratio)
+    return timeline
+
+
 def _evaluate_dashboard_scenario_object(scenario: Scenario) -> Dict:
     return {
         "scenario": _evaluate_scenario_object(scenario),
@@ -146,6 +210,7 @@ def _evaluate_dashboard_scenario_object(scenario: Scenario) -> Dict:
         "baseline": _compare_scenario_object_baseline(scenario),
         "impacts": _learn_scenario_object_impacts(scenario),
         "volume": _get_scenario_object_volume(scenario),
+        "timeline": _build_scenario_timeline(scenario),
     }
 
 
@@ -278,8 +343,20 @@ def get_scenario_volume(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
 ) -> Dict:
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+    )
     return _get_scenario_object_volume(scenario)
 
 
@@ -287,8 +364,20 @@ def rank_scenario_actions(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
 ) -> Dict:
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+    )
     return _rank_scenario_object_actions(scenario)
 
 
@@ -299,8 +388,20 @@ def sample_scenario_point(
     z: float,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
 ) -> Dict:
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+    )
     return _sample_scenario_object_point(scenario, x, y, z)
 
 
@@ -308,8 +409,20 @@ def compare_scenario_baseline(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
 ) -> Dict:
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+    )
     return _compare_scenario_object_baseline(scenario)
 
 
@@ -317,8 +430,20 @@ def learn_scenario_impacts(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
 ) -> Dict:
-    scenario = _scenario_with_overrides(_find_scenario(scenario_name), device_overrides, device_metadata_overrides)
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+    )
     return _learn_scenario_object_impacts(scenario)
 
 
@@ -509,6 +634,55 @@ def _learn_scenario_object_impacts(scenario: Scenario) -> Dict:
     }
 
 
+def _build_scenario_timeline(
+    scenario: Scenario,
+    duration_minutes: float = 120.0,
+    steps: int = 13,
+) -> Dict:
+    model = DigitalTwinModel()
+    duration = max(0.0, float(duration_minutes))
+    sample_count = max(2, int(steps))
+    points: List[Dict] = []
+    for minute in _timeline_minutes(duration, sample_count):
+        sampled_scenario = replace(scenario, elapsed_minutes=minute)
+        truth_result = _simulate_truth(model, sampled_scenario)
+        observed_sensors = synthesize_sensor_observations(truth_result.sensor_predictions, sampled_scenario.sensors)
+        estimated_result = model.simulate(
+            room=sampled_scenario.room,
+            environment=sampled_scenario.environment,
+            devices=sampled_scenario.devices,
+            sensors=sampled_scenario.sensors,
+            zones=sampled_scenario.zones,
+            elapsed_minutes=sampled_scenario.elapsed_minutes,
+            resolution=sampled_scenario.resolution,
+            observed_sensors=observed_sensors,
+        )
+        target_values = estimated_result.zone_averages[sampled_scenario.target_zone_name]
+        points.append(
+            {
+                "elapsed_minutes": round(minute, 4),
+                "target_zone_values": _round_metric_dict(target_values),
+            }
+        )
+    return {
+        "scenario": scenario.name,
+        "target_zone": scenario.target_zone_name,
+        "current_elapsed_minutes": round(scenario.elapsed_minutes, 4),
+        "duration_minutes": round(duration, 4),
+        "steps": sample_count,
+        "points": points,
+    }
+
+
+def _timeline_minutes(duration_minutes: float, steps: int) -> List[float]:
+    if steps <= 1:
+        return [0.0]
+    if duration_minutes <= 0.0:
+        return [0.0 for _ in range(steps)]
+    interval = duration_minutes / float(steps - 1)
+    return [interval * float(index) for index in range(steps)]
+
+
 def _window_direct_input_dict(scenario: Scenario, opening_ratio: float) -> Dict:
     return {
         "mode": "direct",
@@ -536,16 +710,41 @@ def _scenario_with_overrides(
     scenario: Scenario,
     device_overrides: Optional[Dict[str, float]],
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]],
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
 ) -> Scenario:
-    if not device_overrides and not device_metadata_overrides:
+    if (
+        not device_overrides
+        and not device_metadata_overrides
+        and indoor_temperature is None
+        and indoor_humidity is None
+        and base_illuminance is None
+        and elapsed_minutes is None
+    ):
         return scenario
-    devices = deepcopy(scenario.devices)
-    for device in devices:
-        if device_overrides and device.name in device_overrides:
-            device.activation = max(0.0, min(1.0, float(device_overrides[device.name])))
-        if device_metadata_overrides and device.name in device_metadata_overrides:
-            device.metadata.update(deepcopy(device_metadata_overrides[device.name]))
-    return replace(scenario, devices=devices)
+    updates = {}
+    if device_overrides or device_metadata_overrides:
+        devices = deepcopy(scenario.devices)
+        for device in devices:
+            if device_overrides and device.name in device_overrides:
+                device.activation = max(0.0, min(1.0, float(device_overrides[device.name])))
+            if device_metadata_overrides and device.name in device_metadata_overrides:
+                device.metadata.update(deepcopy(device_metadata_overrides[device.name]))
+        updates["devices"] = devices
+    room_updates = {}
+    if indoor_temperature is not None:
+        room_updates["base_temperature"] = float(indoor_temperature)
+    if indoor_humidity is not None:
+        room_updates["base_humidity"] = max(0.0, min(100.0, float(indoor_humidity)))
+    if base_illuminance is not None:
+        room_updates["base_illuminance"] = max(0.0, float(base_illuminance))
+    if room_updates:
+        updates["room"] = replace(scenario.room, **room_updates)
+    if elapsed_minutes is not None:
+        updates["elapsed_minutes"] = max(0.0, float(elapsed_minutes))
+    return replace(scenario, **updates)
 
 
 def _scenario_metadata(scenario: Scenario) -> Dict:

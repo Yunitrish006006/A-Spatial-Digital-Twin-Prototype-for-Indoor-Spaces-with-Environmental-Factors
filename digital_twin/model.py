@@ -304,9 +304,10 @@ class DigitalTwinModel:
         corrections: Optional[Dict[str, TrilinearCorrection]] = None,
     ) -> Dict[str, float]:
         corrections = corrections or {metric: TrilinearCorrection() for metric in METRICS}
-        values = self._background_field(point, room)
+        bulk_state = self._bulk_state(room, environment, devices, elapsed_minutes)
+        values = self._background_field(point, room, devices, elapsed_minutes, bulk_state)
         for device in devices:
-            delta = self._device_delta(
+            delta = self._device_local_delta(
                 point=point,
                 room=room,
                 environment=environment,
@@ -345,17 +346,63 @@ class DigitalTwinModel:
                     zone_values[zone.name][metric] = 0.0
         return zone_values
 
-    def _background_field(self, point: Vector3, room: Room) -> Dict[str, float]:
+    def _background_field(
+        self,
+        point: Vector3,
+        room: Room,
+        devices: List[Device],
+        elapsed_minutes: float,
+        bulk_state: Dict[str, float],
+    ) -> Dict[str, float]:
         normalized_height = 0.0
         if room.height > 0.0:
             normalized_height = point.z / room.height
+        mixing_factor = self._room_mixing_factor(devices, elapsed_minutes)
         return {
-            "temperature": room.base_temperature + 0.8 * (normalized_height - 0.5),
-            "humidity": room.base_humidity - 3.0 * (normalized_height - 0.5),
+            "temperature": bulk_state["temperature"] + 0.8 * mixing_factor * (normalized_height - 0.5),
+            "humidity": bulk_state["humidity"] - 3.0 * mixing_factor * (normalized_height - 0.5),
             "illuminance": room.base_illuminance,
         }
 
+    def _bulk_state(
+        self,
+        room: Room,
+        environment: Environment,
+        devices: List[Device],
+        elapsed_minutes: float,
+    ) -> Dict[str, float]:
+        values = {
+            "temperature": room.base_temperature,
+            "humidity": room.base_humidity,
+        }
+        for device in devices:
+            delta = self._device_bulk_delta(
+                room=room,
+                environment=environment,
+                device=device,
+                elapsed_minutes=elapsed_minutes,
+            )
+            values["temperature"] += delta["temperature"]
+            values["humidity"] += delta["humidity"]
+        values["humidity"] = clamp(values["humidity"], 0.0, 100.0)
+        return values
+
     def _device_delta(
+        self,
+        point: Vector3,
+        room: Room,
+        environment: Environment,
+        device: Device,
+        elapsed_minutes: float,
+    ) -> Dict[str, float]:
+        bulk_delta = self._device_bulk_delta(room, environment, device, elapsed_minutes)
+        local_delta = self._device_local_delta(point, room, environment, device, elapsed_minutes)
+        return {
+            metric: bulk_delta[metric] + local_delta[metric]
+            for metric in METRICS
+        }
+
+    def _device_local_delta(
         self,
         point: Vector3,
         room: Room,
@@ -368,22 +415,25 @@ class DigitalTwinModel:
             return {metric: 0.0 for metric in METRICS}
 
         if device.kind == "ac":
-            return self._ac_delta(point, room, environment, device, envelope)
+            return self._ac_local_delta(point, room, environment, device, envelope)
 
         if device.kind == "window":
             thermal_exchange = device.metadata.get("thermal_exchange", 0.28)
             humidity_exchange = device.metadata.get("humidity_exchange", 0.24)
             solar_gain = device.metadata.get("solar_gain", 0.018)
+            local_share = float(device.metadata.get("local_exchange_share", 0.38))
             return {
                 "temperature": (
                     (environment.outdoor_temperature - room.base_temperature)
                     * thermal_exchange
+                    * local_share
                     * device.power
                     * envelope
                 ),
                 "humidity": (
                     (environment.outdoor_humidity - room.base_humidity)
                     * humidity_exchange
+                    * local_share
                     * device.power
                     * envelope
                 ),
@@ -399,10 +449,58 @@ class DigitalTwinModel:
         if device.kind == "light":
             illuminance_gain = device.metadata.get("illuminance_gain", 950.0)
             heat_gain = device.metadata.get("heat_gain", 0.9)
+            local_heat_share = float(device.metadata.get("local_heat_share", 0.42))
             return {
-                "temperature": heat_gain * device.power * envelope,
+                "temperature": heat_gain * local_heat_share * device.power * envelope,
                 "humidity": 0.0,
                 "illuminance": illuminance_gain * device.power * envelope,
+            }
+
+        return {metric: 0.0 for metric in METRICS}
+
+    def _device_bulk_delta(
+        self,
+        room: Room,
+        environment: Environment,
+        device: Device,
+        elapsed_minutes: float,
+    ) -> Dict[str, float]:
+        dynamic_level = self._dynamic_activation(device, elapsed_minutes)
+        if dynamic_level <= 0.0:
+            return {metric: 0.0 for metric in METRICS}
+
+        if device.kind == "ac":
+            return self._ac_bulk_delta(room, environment, device, dynamic_level)
+
+        if device.kind == "window":
+            thermal_exchange = float(device.metadata.get("thermal_exchange", 0.28))
+            humidity_exchange = float(device.metadata.get("humidity_exchange", 0.24))
+            bulk_share = float(device.metadata.get("bulk_exchange_share", 0.62))
+            return {
+                "temperature": (
+                    (environment.outdoor_temperature - room.base_temperature)
+                    * thermal_exchange
+                    * bulk_share
+                    * device.power
+                    * dynamic_level
+                ),
+                "humidity": (
+                    (environment.outdoor_humidity - room.base_humidity)
+                    * humidity_exchange
+                    * bulk_share
+                    * device.power
+                    * dynamic_level
+                ),
+                "illuminance": 0.0,
+            }
+
+        if device.kind == "light":
+            heat_gain = float(device.metadata.get("heat_gain", 0.9))
+            bulk_heat_share = float(device.metadata.get("bulk_heat_share", 0.24))
+            return {
+                "temperature": heat_gain * bulk_heat_share * device.power * dynamic_level,
+                "humidity": 0.0,
+                "illuminance": 0.0,
             }
 
         return {metric: 0.0 for metric in METRICS}
@@ -435,7 +533,64 @@ class DigitalTwinModel:
         time_constant = max(device.response_time_minutes, 0.1)
         return device.activation * (1.0 - math.exp(-elapsed_minutes / time_constant))
 
-    def _ac_delta(
+    def _room_mixing_factor(self, devices: List[Device], elapsed_minutes: float) -> float:
+        mixing_level = 0.0
+        for device in devices:
+            dynamic_level = self._dynamic_activation(device, elapsed_minutes)
+            if dynamic_level <= 0.0:
+                continue
+            if device.kind == "ac":
+                mode = str(device.metadata.get("ac_mode", "cool")).lower()
+                mode_boost = 1.15 if mode == "fan" else 1.0
+                mixing_level += 0.7 * mode_boost * dynamic_level * device.power
+            elif device.kind == "window":
+                mixing_level += 0.22 * dynamic_level * device.power
+        return clamp(1.0 - 0.42 * mixing_level, 0.38, 1.0)
+
+    def _ac_bulk_delta(
+        self,
+        room: Room,
+        environment: Environment,
+        device: Device,
+        dynamic_level: float,
+    ) -> Dict[str, float]:
+        mode = str(device.metadata.get("ac_mode", "cool")).lower()
+        setpoint = clamp(float(device.metadata.get("target_temperature", 24.0)), 20.0, 33.0)
+        cooling_delta = float(device.metadata.get("cooling_delta", 8.0))
+        drying_delta = float(device.metadata.get("drying_delta", 4.0))
+        bulk_cooling_gain = float(device.metadata.get("bulk_cooling_gain", 0.72))
+        bulk_heating_gain = float(device.metadata.get("bulk_heating_gain", 0.68))
+        bulk_drying_gain = float(device.metadata.get("bulk_drying_gain", 0.42))
+
+        if mode == "dry":
+            demand = clamp((room.base_temperature - setpoint + 2.0) / 10.0, 0.15, 1.0)
+            return {
+                "temperature": -0.58 * cooling_delta * bulk_cooling_gain * demand * device.power * dynamic_level,
+                "humidity": -1.2 * drying_delta * bulk_drying_gain * demand * device.power * dynamic_level,
+                "illuminance": 0.0,
+            }
+        if mode == "heat":
+            demand = clamp((setpoint - room.base_temperature + 3.0) / 12.0, 0.0, 1.0)
+            return {
+                "temperature": cooling_delta * bulk_heating_gain * demand * device.power * dynamic_level,
+                "humidity": -0.28 * drying_delta * max(demand, 0.2) * device.power * dynamic_level,
+                "illuminance": 0.0,
+            }
+        if mode == "fan":
+            return {
+                "temperature": 0.0,
+                "humidity": 0.0,
+                "illuminance": 0.0,
+            }
+
+        demand = clamp((room.base_temperature - setpoint + 3.0) / 12.0, 0.05, 1.0)
+        return {
+            "temperature": -cooling_delta * bulk_cooling_gain * demand * device.power * dynamic_level,
+            "humidity": -drying_delta * bulk_drying_gain * (0.55 + 0.45 * demand) * device.power * dynamic_level,
+            "illuminance": 0.0,
+        }
+
+    def _ac_local_delta(
         self,
         point: Vector3,
         room: Room,
@@ -447,17 +602,19 @@ class DigitalTwinModel:
         setpoint = clamp(float(device.metadata.get("target_temperature", 24.0)), 20.0, 33.0)
         cooling_delta = float(device.metadata.get("cooling_delta", 8.0))
         drying_delta = float(device.metadata.get("drying_delta", 4.0))
+        local_cooling_gain = float(device.metadata.get("local_cooling_gain", 0.44))
+        local_drying_gain = float(device.metadata.get("local_drying_gain", 0.55))
         if mode == "dry":
             demand = clamp((room.base_temperature - setpoint + 2.0) / 10.0, 0.15, 1.0)
             return {
-                "temperature": -0.52 * cooling_delta * demand * device.power * envelope,
-                "humidity": -1.35 * drying_delta * demand * device.power * envelope,
+                "temperature": -0.52 * cooling_delta * local_cooling_gain * demand * device.power * envelope,
+                "humidity": -1.35 * drying_delta * local_drying_gain * demand * device.power * envelope,
                 "illuminance": 0.0,
             }
         if mode == "heat":
             demand = clamp((setpoint - room.base_temperature + 3.0) / 12.0, 0.0, 1.0)
             return {
-                "temperature": 0.92 * cooling_delta * demand * device.power * envelope,
+                "temperature": 0.92 * cooling_delta * local_cooling_gain * demand * device.power * envelope,
                 "humidity": -0.32 * drying_delta * max(demand, 0.2) * device.power * envelope,
                 "illuminance": 0.0,
             }
@@ -471,8 +628,8 @@ class DigitalTwinModel:
 
         demand = clamp((room.base_temperature - setpoint + 3.0) / 12.0, 0.05, 1.0)
         return {
-            "temperature": -cooling_delta * demand * device.power * envelope,
-            "humidity": -drying_delta * (0.55 + 0.45 * demand) * device.power * envelope,
+            "temperature": -cooling_delta * local_cooling_gain * demand * device.power * envelope,
+            "humidity": -drying_delta * local_drying_gain * (0.55 + 0.45 * demand) * device.power * envelope,
             "illuminance": 0.0,
         }
 

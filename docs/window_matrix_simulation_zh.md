@@ -81,7 +81,7 @@ outputs/window_matrix_summary.json
 run_window_matrix
 ```
 
-或在 web demo 中查看 `Window Season/Weather/Time Matrix` 表格。
+web demo 已移除這個列舉表格，避免和 direct input 視圖重複；若要做 48 組批次列舉，請使用上述腳本、JSON 輸出或 MCP tool。
 
 ## 直接輸入模式
 

@@ -111,23 +111,23 @@ def build_blocks() -> List[Block]:
         heading("第二章 文獻探討", 1),
         heading("2.1 室內環境建模", 2),
         paragraph(
-            "室內環境建模常見目標包含熱舒適評估、能源管理、HVAC 控制與照明控制。高精度方法如 CFD 可描述細緻空氣流動與熱交換，但建模成本高、計算量大，且需要詳細邊界條件。本研究採用較輕量的連續影響場模型，以可解釋、低成本與易部署為主要設計取向。"
+            "室內環境建模的主要目的，在於描述空間中熱舒適、能源使用與設備控制之間的關係。高精度方法如 computational fluid dynamics（CFD）雖可細緻描述空氣流動、傳熱與邊界交換，但通常需要大量幾何細節、材料參數與邊界條件，計算成本亦相對較高。相較之下，reduced-order model、grey-box thermal model 與控制導向動態模型著重於以較少參數捕捉主要動態，並保留參數辨識與即時推估能力，因此更適合用於建築控制、預測與數位孿生原型 [1][2][3]。基於此，本研究不追求 CFD 等級的高解析流場，而採用偏向控制導向與可解釋性的簡化空間模型。"
         ),
         heading("2.2 空間插值與場估計", 2),
         paragraph(
-            "當感測器數量有限時，常見做法是以空間插值估計未量測位置。本研究加入 IDW 作為 baseline，並與 appliance influence model 比較。IDW 僅依據感測器距離權重重建場，不使用設備位置與方向資訊；本研究模型則將背景場、設備影響函數與感測器校正場結合，因此可在設備影響明顯時提供更可解釋的估計。"
+            "在感測器數量有限的情況下，最直接的方法是使用空間插值估計未量測位置。本研究採用 inverse distance weighting（IDW）作為 baseline。IDW 的優點是實作簡單且不依賴設備先驗，但其估計完全由量測點距離決定，無法反映冷氣出風方向、窗戶位置、照明熱源或設備作用範圍等結構資訊。相較之下，zonal model 與 hybrid spatial model 提供了介於 well-mixed room model 與 CFD 之間的折衷途徑，可在維持較低計算成本的同時保留主要空間差異 [4][5][6]。因此，本研究將場模型設計為 bulk + local field：以 bulk state 描述房間整體平均狀態的時間收斂，以 local field 表示設備附近與特定區域的空間差異，藉此兼顧可解釋性與可計算性。"
         ),
         heading("2.3 數位孿生與智慧建築", 2),
         paragraph(
-            "數位孿生通常表示實體系統在數位空間中的動態對應模型。在智慧建築中，數位孿生可整合 BIM、IoT 感測資料與設備控制資訊。本研究不建立完整 BIM/BMS 系統，而是聚焦於單房間、低成本感測器與非連網裝置條件下的簡化數位孿生原型。"
+            "數位孿生通常被視為實體系統在數位空間中的動態對應模型，其核心價值在於將感測資料、系統狀態與分析模型整合為可更新、可查詢且可推估的數位映射。在智慧建築領域中，數位孿生常與 BIM、IoT 感測、設備監控與能源管理系統結合，用於營運最佳化與狀態預測。近年的建築數位孿生回顧指出，多數研究著重於平台架構、資料整合與建築尺度的決策支援，但對於少量感測器條件下之單房間空間場重建與設備影響推估，討論仍相對有限 [7]。因此，本研究的定位並非建構完整 BIM/BMS 平台，而是針對單房間、低成本感測器與非連網裝置場景提出一個可運作的簡化數位孿生原型。"
         ),
         heading("2.4 非連網裝置影響學習", 2),
         paragraph(
-            "既有智慧家庭研究多半假設裝置能被直接讀取或控制。然而真實環境中，許多裝置沒有網路能力。此時系統需要從環境變化反推裝置影響。本研究將裝置啟用前後的感測器差異視為學習資料，使用裝置空間影響基底與最小平方法估計其對三個環境因素的影響係數。"
+            "既有智慧家庭與智慧建築研究，常預設設備可由網路介面直接讀取或控制。然而在一般居住空間中，傳統冷氣、手動窗戶與一般照明往往不具備可直接讀取的連網能力。此時，若系統仍希望掌握設備對環境的作用，就必須從感測到的環境變化反推設備影響。近期研究顯示，有限感測器搭配 data assimilation、hybrid model 或感測配置分析，確實能對室內溫濕度場進行重建，並評估量測點配置對重建品質的影響 [5][8][9]。本研究延續此方向，將裝置啟用前後的感測器差異視為學習訊號，並利用裝置空間影響基底與最小平方法估計其對溫度、濕度與照度的影響係數，以支援後續的場估計與控制推薦。"
         ),
         heading("2.5 MCP 與 AI Agent Tool Interface", 2),
         paragraph(
-            "Model Context Protocol（MCP）可讓外部模型或 AI client 以標準化工具介面存取系統能力。本研究將數位孿生原型封裝為本地 MCP server，使情境查詢、場估計、動作排序與座標查詢可被 AI agent 直接呼叫。MCP 在本研究中的定位是系統整合與展示介面，而非通訊協定本身的創新。"
+            "Model Context Protocol（MCP）提供一種標準化工具介面，使外部模型或 AI client 能以一致方式呼叫系統能力。本研究將數位孿生原型封裝為本地 MCP server，使情境查詢、場估計、動作排序、點位取樣與窗戶條件模擬等功能，可被 AI agent 直接使用。需要強調的是，MCP 在本研究中的角色屬於系統整合與工具化封裝，用以驗證數位孿生模型可被外部 AI 系統操作，而非針對 MCP 通訊協定本身提出新方法。"
         ),
         page_break(),
         heading("第三章 系統架構與數學模型", 1),
@@ -154,13 +154,17 @@ def build_blocks() -> List[Block]:
         paragraph("本研究將室內狀態定義為三個空間與時間函數："),
         code("T(x, y, z, t): temperature field\nH(x, y, z, t): humidity field\nL(x, y, z, t): illuminance field"),
         paragraph("任一環境因素 v 的估計場可表示為："),
-        code("F_v(x, y, z, t) = B_v(x, y, z) + Σ I_j,v(x, y, z, t) + C_v(x, y, z)"),
+        code("F_v(x, y, z, t) = B_v^bulk(t) + B_v^local(x, y, z, t) + Σ I_j,v^local(x, y, z, t) + C_v(x, y, z)"),
         bullets(
             [
-                "B_v：背景場，描述無設備作用時的基本環境分布。",
-                "I_j,v：第 j 個設備對環境因素 v 的影響函數。",
+                "B_v^bulk：房間整體平均狀態，描述全室在時間軸上逐漸接近準穩態的平均變化。",
+                "B_v^local：局部背景場，保留簡化垂直分層與空間差異。",
+                "I_j,v^local：第 j 個設備對環境因素 v 的局部影響函數。",
                 "C_v：由感測器殘差推估出的校正場。",
             ]
+        ),
+        paragraph(
+            "其中 bulk 與 local 的分離是本研究模型的重要改良。若僅使用局部影響場，容易產生冷氣附近很冷，但房間遠端幾乎維持原溫的不合理結果；加入 bulk state 後，模型能同時表示整體房間平均溫濕度的時間響應，以及冷氣出風口、窗邊交換與照明附近的局部差異。此設計也更接近 reduced-order spatial twin 與 zonal or hybrid model 的方法定位 [4][6]。"
         ),
         heading("3.4 設備影響函數", 2),
         bullets(
@@ -224,7 +228,7 @@ def build_blocks() -> List[Block]:
         ),
         heading("4.4 Web Demo", 2),
         paragraph(
-            "Web demo 以 idle 房間背景為基礎，透過 ac_main、window_main 與 light_main checkbox 組合設備狀態，不使用下拉式情境選單。3D 預覽可拖曳旋轉與縮放，並以牆面橫條標示冷氣、牆面矩形標示窗戶、點狀標記表示照明。Metric 亦以勾選式控制切換 temperature、humidity 與 illuminance。窗戶展示除列舉矩陣外，另提供 direct input 表單，讓使用者直接輸入外部溫度、濕度、日照與開窗比例。"
+            "Web demo 以 idle 房間背景為基礎，透過 ac_main、window_main 與 light_main checkbox 組合設備狀態，不使用下拉式情境選單。3D 預覽可拖曳旋轉與縮放，並以牆面橫條標示冷氣、牆面矩形標示窗戶、點狀標記表示照明。Metric 亦以勾選式控制切換 temperature、humidity 與 illuminance。左側固定欄位提供 Indoor Baseline 設定，使室內基準溫度、濕度與照度可直接調整；窗戶區則保留季節、天氣與時段 preset，並允許使用者手動覆寫外部溫度與開窗比例。互動式 3D 預覽上方另提供時間軸與播放控制，可觀察系統從啟動到接近準穩態的過程。"
         ),
         page_break(),
         heading("第五章 模擬案例與結果分析", 1),
@@ -304,14 +308,20 @@ def build_blocks() -> List[Block]:
             ]
         ),
         page_break(),
-        heading("參考文獻（待正式整理）", 1),
+        heading("參考文獻", 1),
         bullets(
             [
-                "ASHRAE Standard 55, Thermal Environmental Conditions for Human Occupancy.",
-                "ISO 7730, Ergonomics of the thermal environment.",
-                "Model Context Protocol documentation and tool interface specification.",
-                "Indoor environmental quality, spatial interpolation, and smart building digital twin related literature.",
-                "HVAC modeling, RC thermal models, PMV/PPD, and lighting simulation related literature.",
+                "[1] Per Bacher, Henrik Madsen, Identifying suitable models for the heat dynamics of buildings, Energy and Buildings, vol. 43, no. 7, pp. 1511-1522, 2011. DOI: 10.1016/j.enbuild.2011.02.005",
+                "[2] Petri Hietaharju, Mika Ruusunen, Kauko Leiviska, A Dynamic Model for Indoor Temperature Prediction in Buildings, Energies, vol. 11, no. 6, 1477, 2018. DOI: 10.3390/en11061477",
+                "[3] Gargya Gokhale, Bert Claessens, Chris Develder, Physics informed neural networks for control oriented thermal modeling of buildings, Applied Energy, vol. 314, 118852, 2022. DOI: 10.1016/j.apenergy.2022.118852",
+                "[4] E. J. Teshome, F. Haghighat, Zonal Models for Indoor Air Flow - A Critical Review, International Journal of Ventilation, vol. 3, no. 2, pp. 119-129, 2004. DOI: 10.1080/14733315.2004.11683908",
+                "[5] Boris Huljak, Juan A. Acero, Zin H. Kyaw, Francisco Chinesta, Hybrid models for simulating indoor temperature distribution in air-conditioned spaces, Frontiers in Built Environment, vol. 11, 1690062, 2025. DOI: 10.3389/fbuil.2025.1690062",
+                "[6] Ahmed Megri, Yao Yu, Rui Miao, Xiaoou Hu, A new dynamic zOnal model with air-diffuser (DOMA) - Application to thermal comfort prediction, Indoor and Built Environment, vol. 31, no. 7, pp. 1738-1757, 2022. DOI: 10.1177/1420326X211060486",
+                "[7] Andres Sebastian Cespedes-Cubides, Muhyiddine Jradi, A review of building digital twins to improve energy efficiency in the building operational stage, Energy Informatics, vol. 7, article 11, 2024. DOI: 10.1186/s42162-024-00313-7",
+                "[8] Weixin Qian, Chenxi Li, Hu Gao, Lei Zhuang, Yanyu Lu, Site Hu, Jing Liu, Estimating indoor air temperature and humidity distributions by data assimilation with finite observations: Validation using an actual residential room, Building and Environment, vol. 269, 112495, 2025. DOI: 10.1016/j.buildenv.2024.112495",
+                "[9] Y. Lisa Chen, Jin Wen, Application of zonal model on indoor air sensor network design, Proceedings of SPIE, vol. 6529, 652911, 2007. DOI: 10.1117/12.716356",
+                "[10] D. Shepard, A Two-Dimensional Interpolation Function for Irregularly-Spaced Data, Proceedings of the 1968 ACM National Conference, pp. 517-524, 1968.",
+                "[11] Model Context Protocol, Model Context Protocol Documentation, https://modelcontextprotocol.io/ , accessed 2026-04-10.",
             ]
         ),
         page_break(),
@@ -323,8 +333,9 @@ def build_blocks() -> List[Block]:
                 "左側 checkbox 控制 ac_main、window_main 與 light_main。",
                 "3D 預覽可拖曳旋轉，滾輪縮放。",
                 "Metric checkbox 可切換 temperature、humidity 與 illuminance。",
-                "窗戶矩陣表格展示 48 組時段、天氣與季節組合。",
-                "Direct Window Input 表單可直接輸入外部溫度、濕度、日照與開窗比例。",
+                "左側 Indoor Baseline 可直接調整室內基準溫度、濕度與照度。",
+                "窗戶區可選季節、天氣與時段 preset，並手動覆寫外部溫度與開窗比例。",
+                "時間軸可播放從啟動到接近準穩態的變化。",
                 "Point Sample 可查詢任意座標的三因子估計值。",
             ]
         ),

@@ -271,7 +271,10 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 LaTeX Font Warning: Font shape `TU/ptm/m/sc' undefined
 (Font)              using `TU/ptm/m/n' instead on input line 37.
 
-[1
+
+Underfull \vbox (badness 1132) has occurred while \output is active []
+
+ [1
 
 
 ]
@@ -291,7 +294,7 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 77.
 
-[2] [3] (paper.bbl [4])
+[2] [3] [4] (paper.bbl)
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -310,4 +313,4 @@ Before submitting the final camera ready copy, remember to:
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (5 pages, 185436 bytes).
+Output written on paper.xdv (5 pages, 217428 bytes).

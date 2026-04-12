@@ -13,6 +13,8 @@ from .service import (
     evaluate_window_direct_dashboard,
     evaluate_window_matrix,
     get_scenario_volume,
+    get_scenario_timeline,
+    get_window_direct_timeline,
     learn_scenario_impacts,
     list_scenario_metadata,
     rank_scenario_actions,
@@ -311,6 +313,44 @@ INDEX_HTML = """<!doctype html>
       border: 1px solid var(--line);
       background: white;
     }
+    .timeline-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .timeline-card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 14px;
+      background: #fffdf7;
+    }
+    .timeline-svg {
+      width: 100%;
+      height: 180px;
+      display: block;
+    }
+    .preview-timeline {
+      margin-bottom: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fffdf7;
+    }
+    .preview-timeline-meta {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .preview-timeline-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .preview-timeline-actions button {
+      width: auto;
+      min-width: 150px;
+      margin-top: 0;
+    }
     .volume-toolbar {
       display: flex;
       gap: 12px;
@@ -352,7 +392,7 @@ INDEX_HTML = """<!doctype html>
         overflow: visible;
       }
       .sidebar-form-grid { grid-template-columns: 1fr; }
-      .cards, .heatmaps { grid-template-columns: 1fr; }
+      .cards, .heatmaps, .timeline-grid { grid-template-columns: 1fr; }
       .volume-toolbar { display: block; }
       .volume-toolbar button { width: 100%; margin-top: 14px; }
       .volume-canvas { height: 420px; }
@@ -396,8 +436,17 @@ INDEX_HTML = """<!doctype html>
         </div>
       </div>
       <div class="sidebar-section">
+        <label>Indoor Baseline</label>
+        <p class="status">These baseline values feed the full room model, including zone cards, ranking, timeline, 3D preview, and direct-window mode.</p>
+        <div class="sidebar-form-grid">
+          <div><label for="baselineIndoorTemperature">Indoor °C</label><input id="baselineIndoorTemperature" type="number" step="0.1" value="29"></div>
+          <div><label for="baselineIndoorHumidity">Indoor RH</label><input id="baselineIndoorHumidity" type="number" step="0.1" value="67"></div>
+          <div><label for="baselineIlluminance">Base lx</label><input id="baselineIlluminance" type="number" step="1" value="90"></div>
+        </div>
+      </div>
+      <div class="sidebar-section">
         <label>Window Controls</label>
-        <p class="status">Direct outdoor conditions and batch window simulations stay pinned here while result tables remain on the right.</p>
+        <p class="status">Season, weather, and time presets derive outdoor humidity and sunlight. Manual input here only overrides outdoor temperature and window opening.</p>
         <div class="control-group">
           <label>Outdoor Season</label>
           <div class="metric-controls" id="windowSeasonControls"></div>
@@ -413,16 +462,11 @@ INDEX_HTML = """<!doctype html>
         <p class="status" id="windowPresetSummary">Preset values will appear here.</p>
         <div class="sidebar-form-grid">
           <div><label for="directOutdoorTemperature">Outdoor °C</label><input id="directOutdoorTemperature" type="number" step="0.1" value="33"></div>
-          <div><label for="directOutdoorHumidity">Outdoor RH</label><input id="directOutdoorHumidity" type="number" step="0.1" value="74"></div>
-          <div><label for="directSunlight">Sunlight lx</label><input id="directSunlight" type="number" step="100" value="32000"></div>
           <div><label for="directOpening">Opening</label><input id="directOpening" type="number" min="0" max="1" step="0.05" value="0.7"></div>
-          <div><label for="directIndoorTemperature">Indoor °C</label><input id="directIndoorTemperature" type="number" step="0.1" value="29"></div>
-          <div><label for="directIndoorHumidity">Indoor RH</label><input id="directIndoorHumidity" type="number" step="0.1" value="67"></div>
         </div>
         <div class="sidebar-actions">
           <button class="secondary" onclick="applyWindowPreset()">Apply Outdoor Preset</button>
           <button class="secondary" onclick="loadDirectWindow()">Run Direct Window Simulation</button>
-          <button class="secondary" onclick="loadWindowMatrix()">Run Window Matrix</button>
         </div>
       </div>
       <div class="sidebar-section">
@@ -447,9 +491,9 @@ INDEX_HTML = """<!doctype html>
         <div class="cards" id="zoneCards"></div>
       </section>
       <section class="panel">
-        <h2>Window Season/Weather/Time Matrix</h2>
-        <p class="status">Runs 48 window-only simulations: 4 time periods × 3 weather states × 4 seasons. Trigger the simulation from the fixed left sidebar.</p>
-        <div id="windowMatrix"></div>
+        <h2>Time Evolution</h2>
+        <p class="status">Shows how the target zone changes from startup toward steady state under the current device and window settings.</p>
+        <div class="timeline-grid" id="timelineCharts"></div>
       </section>
       <section class="panel">
         <h2>Direct Window Input</h2>
@@ -471,6 +515,22 @@ INDEX_HTML = """<!doctype html>
       <section class="panel">
         <h2>Rotatable 3D Field Preview</h2>
         <p class="status">Drag to rotate, wheel or pinch-pad scroll to zoom. Colored squares mark appliance positions.</p>
+        <div class="preview-timeline">
+          <label>Preview Timeline</label>
+          <div class="slider-row">
+            <input id="elapsedMinutes" type="range" min="0" max="120" step="1" value="18">
+            <div class="slider-readout" id="elapsedMinutesValue">18 min</div>
+          </div>
+          <div class="preview-timeline-meta">
+            <div class="metric-controls" id="playbackSpeedControls"></div>
+            <div class="preview-timeline-actions">
+              <button class="secondary" id="elapsedPlayButton" onclick="toggleElapsedPlayback()">Play Timeline</button>
+              <button class="secondary" onclick="resetElapsedPlayback()">Reset To 0</button>
+            </div>
+          </div>
+          <p class="status" id="elapsedTimelineStatus">Current minute and remaining change will appear here.</p>
+          <p class="status">Scrub from startup toward quasi-steady state. The preview, zone cards, point sample, and time charts stay synchronized.</p>
+        </div>
         <div class="volume-toolbar">
           <div>
             <label>Metric</label>
@@ -503,14 +563,22 @@ INDEX_HTML = """<!doctype html>
     const acHorizontalAngles = [-45, -20, 0, 20, 45];
     const acVerticalAngles = [5, 15, 25, 35];
     const windowPresetData = __WINDOW_PRESET_DATA__;
+    const timelineColors = { temperature: "#b4552b", humidity: "#2b5c7c", illuminance: "#c58b2d" };
+    const playbackSpeedOptions = [
+      { value: "1x", label: "1x", delayMs: 320 },
+      { value: "2x", label: "2x", delayMs: 180 },
+      { value: "4x", label: "4x", delayMs: 90 }
+    ];
     let activeScenario = "idle";
     let activeContext = { kind: "scenario", name: "idle" };
     let scenarioMetadata = {};
+    let currentTimeline = null;
     let volumeData = null;
     let volumeMetric = "temperature";
     let volumeRotation = { pitch: -0.62, yaw: 0.72 };
     let volumeZoom = 1.0;
     let volumeDrag = null;
+    let elapsedPlayback = { running: false, stepMinutes: 5, delayMs: 180 };
 
     async function getJSON(url) {
       const response = await fetch(url);
@@ -527,15 +595,57 @@ INDEX_HTML = """<!doctype html>
       scenarioMetadata = Object.fromEntries(data.scenarios.map(item => [item.name, item]));
       activeScenario = scenarioMetadata.idle ? "idle" : data.scenarios[0].name;
       activeContext = { kind: "scenario", name: activeScenario };
+      setupElapsedTimeControl();
+      setupIndoorBaselineControls();
       syncDeviceControlsFromScenario(activeScenario);
       syncAcControlsFromScenario(activeScenario);
       setupWindowPresetControls();
       await loadScenario();
-      loadWindowMatrix().catch(error => {
-        document.getElementById("windowMatrix").innerHTML = `<p class="status">${error.message}</p>`;
-      });
       loadDirectWindow(false).catch(error => {
         document.getElementById("windowDirectResult").innerHTML = `<p class="status">${error.message}</p>`;
+      });
+    }
+
+    function setupElapsedTimeControl() {
+      const slider = document.getElementById("elapsedMinutes");
+      renderRadioGroup(
+        "playbackSpeedControls",
+        "playbackSpeed",
+        playbackSpeedOptions.map(item => item.value),
+        "2x",
+        null,
+        value => value
+      );
+      syncElapsedTimeReadout();
+      updateElapsedPlaybackButton();
+      if (slider.dataset.bound === "1") {
+        return;
+      }
+      slider.dataset.bound = "1";
+      slider.addEventListener("input", () => {
+        stopElapsedPlayback();
+        syncElapsedTimeReadout();
+      });
+      slider.addEventListener("change", async () => {
+        stopElapsedPlayback();
+        await refreshActiveContext();
+      });
+      document.querySelectorAll("#playbackSpeedControls input").forEach(input => {
+        input.addEventListener("change", () => syncPlaybackSpeed());
+      });
+      syncPlaybackSpeed();
+    }
+
+    function setupIndoorBaselineControls() {
+      document.querySelectorAll("#baselineIndoorTemperature, #baselineIndoorHumidity, #baselineIlluminance").forEach(input => {
+        if (input.dataset.bound === "1") {
+          return;
+        }
+        input.dataset.bound = "1";
+        input.addEventListener("change", async () => {
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
       });
     }
 
@@ -543,21 +653,31 @@ INDEX_HTML = """<!doctype html>
       activeContext = { kind: "scenario", name: activeScenario };
       document.getElementById("status").textContent = "Running checkbox-defined simulation...";
       const query = scenarioQuery();
-      const [scenario, ranking, baseline, impacts, volume] = await Promise.all([
+      const [scenario, ranking, baseline, impacts, volume, timeline] = await Promise.all([
         getJSON(`/api/scenario?${query}`),
         getJSON(`/api/rank_actions?${query}`),
         getJSON(`/api/compare_baseline?${query}`),
         getJSON(`/api/learn_impacts?${query}`),
-        getJSON(`/api/volume?${query}`)
+        getJSON(`/api/volume?${query}`),
+        getJSON(`/api/timeline?${query}`)
       ]);
       renderZoneCards(scenario);
       renderRecommendations(ranking);
       renderBaseline(baseline);
       renderImpacts(impacts);
       setVolumeData(volume);
+      renderTimeline(timeline);
       renderHeatmapsForScenario(activeScenario);
       await samplePoint();
       document.getElementById("status").textContent = "Loaded checkbox-defined simulation.";
+    }
+
+    async function refreshActiveContext() {
+      if (activeContext.kind === "window_direct") {
+        await loadDirectWindow(true);
+        return;
+      }
+      await loadScenario();
     }
 
     function syncDeviceControlsFromScenario(name) {
@@ -633,6 +753,7 @@ INDEX_HTML = """<!doctype html>
 
       document.querySelectorAll("#windowSeasonControls input, #windowWeatherControls input, #windowTimeControls input")
         .forEach(input => input.addEventListener("change", () => syncWindowPresetSummary()));
+      document.getElementById("directOutdoorTemperature").addEventListener("input", () => syncWindowPresetSummary());
       syncWindowPresetSummary();
     }
 
@@ -654,6 +775,80 @@ INDEX_HTML = """<!doctype html>
       document.getElementById("acTargetTemperatureValue").textContent = `${value}°C`;
     }
 
+    function syncElapsedTimeReadout() {
+      const value = Number(document.getElementById("elapsedMinutes").value || "18");
+      document.getElementById("elapsedMinutesValue").textContent = `${value} min`;
+      syncElapsedTimelineStatus();
+    }
+
+    function syncPlaybackSpeed() {
+      const selected = selectedChoice("playbackSpeed", "2x");
+      const option = playbackSpeedOptions.find(item => item.value === selected) || playbackSpeedOptions[1];
+      elapsedPlayback.delayMs = option.delayMs;
+    }
+
+    function formatDelta(value, unit) {
+      const numeric = Number(value);
+      const sign = numeric > 0 ? "+" : "";
+      return `${sign}${fmt(numeric)} ${unit}`;
+    }
+
+    function selectedElapsedMinutes() {
+      return Number(document.getElementById("elapsedMinutes").value || "18");
+    }
+
+    function setElapsedMinutes(value) {
+      document.getElementById("elapsedMinutes").value = String(clamp(Number(value), 0, 120));
+      syncElapsedTimeReadout();
+    }
+
+    function updateElapsedPlaybackButton() {
+      const button = document.getElementById("elapsedPlayButton");
+      if (!button) return;
+      button.textContent = elapsedPlayback.running ? "Pause Playback" : "Play Timeline";
+    }
+
+    function stopElapsedPlayback() {
+      if (!elapsedPlayback.running) return;
+      elapsedPlayback.running = false;
+      updateElapsedPlaybackButton();
+    }
+
+    async function toggleElapsedPlayback() {
+      if (elapsedPlayback.running) {
+        stopElapsedPlayback();
+        return;
+      }
+      elapsedPlayback.running = true;
+      updateElapsedPlaybackButton();
+      if (selectedElapsedMinutes() >= 120) {
+        setElapsedMinutes(0);
+      }
+      try {
+        while (elapsedPlayback.running && selectedElapsedMinutes() < 120) {
+          setElapsedMinutes(selectedElapsedMinutes() + elapsedPlayback.stepMinutes);
+          await refreshActiveContext();
+          if (!elapsedPlayback.running || selectedElapsedMinutes() >= 120) {
+            break;
+          }
+          await sleep(elapsedPlayback.delayMs);
+        }
+      } finally {
+        elapsedPlayback.running = false;
+        updateElapsedPlaybackButton();
+      }
+    }
+
+    async function resetElapsedPlayback() {
+      stopElapsedPlayback();
+      setElapsedMinutes(0);
+      await refreshActiveContext();
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => window.setTimeout(resolve, ms));
+    }
+
     function resetDeviceControls() {
       document.querySelectorAll("#deviceControls input[type='checkbox']").forEach(input => {
         input.checked = false;
@@ -669,6 +864,10 @@ INDEX_HTML = """<!doctype html>
       Object.entries(acSettings()).forEach(([name, value]) => {
         params.set(name, String(value));
       });
+      Object.entries(indoorBaselineParams()).forEach(([name, value]) => {
+        params.set(name, String(value));
+      });
+      params.set("elapsed_minutes", String(selectedElapsedMinutes()));
       return params.toString();
     }
 
@@ -689,6 +888,14 @@ INDEX_HTML = """<!doctype html>
         ac_horizontal_angle_deg: Number(selectedChoice("acHorizontalAngle", "0")),
         ac_vertical_mode: selectedChoice("acVerticalMode", "fixed"),
         ac_vertical_angle_deg: Number(selectedChoice("acVerticalAngle", "15"))
+      };
+    }
+
+    function indoorBaselineParams() {
+      return {
+        indoor_temperature: Number(document.getElementById("baselineIndoorTemperature").value || "29"),
+        indoor_humidity: Number(document.getElementById("baselineIndoorHumidity").value || "67"),
+        base_illuminance: Number(document.getElementById("baselineIlluminance").value || "90")
       };
     }
 
@@ -742,18 +949,15 @@ INDEX_HTML = """<!doctype html>
       const values = computeWindowPresetValues();
       document.getElementById("windowPresetSummary").innerHTML = [
         `Selected preset: ${values.season.zh} / ${values.weather.zh} / ${values.time.zh}`,
-        `Outdoor T ${fmt(values.outdoorTemperature)}°C, Outdoor H ${fmt(values.outdoorHumidity)}%, Sun ${fmt(values.sunlightIlluminance)} lx`,
-        `Indoor baseline T ${fmt(values.indoorTemperature)}°C, Indoor H ${fmt(values.indoorHumidity)}%`
+        `Preset-derived RH ${fmt(values.outdoorHumidity)}%, Sun ${fmt(values.sunlightIlluminance)} lx, suggested outdoor T ${fmt(values.outdoorTemperature)}°C`,
+        `Indoor baseline comes from the panel above. Current manual outdoor T input: ${fmt(Number(document.getElementById("directOutdoorTemperature").value || values.outdoorTemperature))}°C`
       ].join("<br>");
     }
 
     function applyWindowPreset() {
       const values = computeWindowPresetValues();
       document.getElementById("directOutdoorTemperature").value = String(Number(values.outdoorTemperature.toFixed(2)));
-      document.getElementById("directOutdoorHumidity").value = String(Number(values.outdoorHumidity.toFixed(2)));
-      document.getElementById("directSunlight").value = String(Number(values.sunlightIlluminance.toFixed(2)));
-      document.getElementById("directIndoorTemperature").value = String(Number(values.indoorTemperature.toFixed(2)));
-      document.getElementById("directIndoorHumidity").value = String(Number(values.indoorHumidity.toFixed(2)));
+      syncWindowPresetSummary();
       loadDirectWindow();
     }
 
@@ -766,6 +970,80 @@ INDEX_HTML = """<!doctype html>
           <div class="status">MAE ${fmt(data.field_mae[metric])}</div>
         </div>
       `).join("");
+    }
+
+    function renderTimeline(data) {
+      const container = document.getElementById("timelineCharts");
+      currentTimeline = data?.points?.length ? data : null;
+      if (!data?.points?.length) {
+        container.innerHTML = `<p class="status">No timeline data available.</p>`;
+        syncElapsedTimelineStatus();
+        return;
+      }
+      container.innerHTML = metrics.map(metric => timelineCard(metric, data)).join("");
+      syncElapsedTimelineStatus();
+    }
+
+    function timelineCard(metric, data) {
+      const width = 320;
+      const height = 180;
+      const padding = { left: 40, right: 12, top: 12, bottom: 28 };
+      const values = data.points.map(point => Number(point.target_zone_values[metric]));
+      const minValue = Math.min(...values);
+      const maxValue = Math.max(...values);
+      const rangeMin = minValue === maxValue ? minValue - 1 : minValue;
+      const rangeMax = minValue === maxValue ? maxValue + 1 : maxValue;
+      const duration = Math.max(Number(data.duration_minutes || 0), 1);
+      const current = nearestTimelinePoint(data.points, Number(data.current_elapsed_minutes || 0));
+
+      const polyline = data.points.map(point => {
+        const x = padding.left + (Number(point.elapsed_minutes) / duration) * (width - padding.left - padding.right);
+        const y = padding.top + (1 - metricFraction(Number(point.target_zone_values[metric]), { min: rangeMin, max: rangeMax })) * (height - padding.top - padding.bottom);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+      const currentX = padding.left + (Number(current.elapsed_minutes) / duration) * (width - padding.left - padding.right);
+      const currentY = padding.top + (1 - metricFraction(Number(current.target_zone_values[metric]), { min: rangeMin, max: rangeMax })) * (height - padding.top - padding.bottom);
+
+      return `
+        <div class="timeline-card">
+          <div class="metric">${labels[metric]}</div>
+          <svg class="timeline-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${labels[metric]} time evolution">
+            <line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="#cdbca0" stroke-width="1.5" />
+            <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="#cdbca0" stroke-width="1.5" />
+            <polyline fill="none" stroke="${timelineColors[metric]}" stroke-width="3" points="${polyline}" />
+            <line x1="${currentX.toFixed(1)}" y1="${padding.top}" x2="${currentX.toFixed(1)}" y2="${height - padding.bottom}" stroke="#17211b" stroke-dasharray="4 4" stroke-width="1.5" />
+            <circle cx="${currentX.toFixed(1)}" cy="${currentY.toFixed(1)}" r="4.5" fill="${timelineColors[metric]}" stroke="#17211b" stroke-width="1.5" />
+            <text x="${padding.left}" y="${padding.top - 2}" fill="#69776e" font-size="11">${rangeMax.toFixed(1)} ${units[metric]}</text>
+            <text x="${padding.left}" y="${height - 8}" fill="#69776e" font-size="11">${rangeMin.toFixed(1)} ${units[metric]}</text>
+            <text x="${padding.left}" y="${height - padding.bottom + 18}" fill="#69776e" font-size="11">0 min</text>
+            <text x="${width - padding.right - 40}" y="${height - 8}" fill="#69776e" font-size="11">${duration.toFixed(0)} min</text>
+          </svg>
+          <div class="status">Current ${Number(current.elapsed_minutes).toFixed(1)} min: ${fmt(current.target_zone_values[metric])} ${units[metric]}</div>
+        </div>
+      `;
+    }
+
+    function nearestTimelinePoint(points, minute) {
+      return points.reduce((best, point) => {
+        if (!best) return point;
+        return Math.abs(Number(point.elapsed_minutes) - minute) < Math.abs(Number(best.elapsed_minutes) - minute) ? point : best;
+      }, null);
+    }
+
+    function syncElapsedTimelineStatus() {
+      const container = document.getElementById("elapsedTimelineStatus");
+      if (!container) return;
+      if (!currentTimeline?.points?.length) {
+        container.textContent = "Current minute and remaining change will appear here.";
+        return;
+      }
+      const current = nearestTimelinePoint(currentTimeline.points, selectedElapsedMinutes());
+      const steadyState = currentTimeline.points[currentTimeline.points.length - 1];
+      const remaining = metrics.map(metric => {
+        const delta = Number(steadyState.target_zone_values[metric]) - Number(current.target_zone_values[metric]);
+        return `${labels[metric]} ${formatDelta(delta, units[metric])}`;
+      }).join(", ");
+      container.textContent = `Current ${Number(current.elapsed_minutes).toFixed(1)} min. Remaining to quasi-steady state: ${remaining}.`;
     }
 
     function renderRecommendations(data) {
@@ -1108,42 +1386,24 @@ INDEX_HTML = """<!doctype html>
       return `${device.name} (${mode} ${target}°C, ${lr}, ${ud})`;
     }
 
-    async function loadWindowMatrix() {
-      const container = document.getElementById("windowMatrix");
-      container.innerHTML = `<p class="status">Running 48 window scenarios...</p>`;
-      const data = await getJSON("/api/window_matrix");
-      container.innerHTML = table(
-        ["Season", "Weather", "Time", "Outdoor", "Window Zone", "Center Zone"],
-        data.scenarios.map(item => [
-          item.metadata.season_zh,
-          item.metadata.weather_zh,
-          item.metadata.time_of_day_zh,
-          [
-            `T: ${fmt(item.environment.outdoor_temperature)}`,
-            `H: ${fmt(item.environment.outdoor_humidity)}`,
-            `Sun: ${fmt(item.environment.sunlight_illuminance)}`
-          ].join("<br>"),
-          metrics.map(metric => `${labels[metric]}: ${fmt(item.window_zone_estimated[metric])}`).join("<br>"),
-          metrics.map(metric => `${labels[metric]}: ${fmt(item.center_zone_estimated[metric])}`).join("<br>")
-        ])
-      );
-    }
-
     function directWindowParams() {
+      const preset = computeWindowPresetValues();
       return new URLSearchParams({
         outdoor_temperature: document.getElementById("directOutdoorTemperature").value,
-        outdoor_humidity: document.getElementById("directOutdoorHumidity").value,
-        sunlight_illuminance: document.getElementById("directSunlight").value,
+        outdoor_humidity: String(Number(preset.outdoorHumidity.toFixed(2))),
+        sunlight_illuminance: String(Number(preset.sunlightIlluminance.toFixed(2))),
         opening_ratio: document.getElementById("directOpening").value,
-        indoor_temperature: document.getElementById("directIndoorTemperature").value,
-        indoor_humidity: document.getElementById("directIndoorHumidity").value
+        indoor_temperature: document.getElementById("baselineIndoorTemperature").value,
+        indoor_humidity: document.getElementById("baselineIndoorHumidity").value,
+        base_illuminance: document.getElementById("baselineIlluminance").value,
+        elapsed_minutes: String(selectedElapsedMinutes())
       });
     }
 
     function renderDirectWindowResult(data) {
       const container = document.getElementById("windowDirectResult");
       container.innerHTML = `
-        <p class="status">Direct input mode, window opening ${Math.round(data.input.opening_ratio * 100)}%, target zone: ${data.target_zone}</p>
+        <p class="status">Direct input mode at ${fmt(data.input.elapsed_minutes)} min, window opening ${Math.round(data.input.opening_ratio * 100)}%, target zone: ${data.target_zone}</p>
         ${table(
           ["Input", "Window Zone", "Center Zone", "Door-Side Zone"],
           [[
@@ -1152,7 +1412,8 @@ INDEX_HTML = """<!doctype html>
               `Outdoor H: ${fmt(data.environment.outdoor_humidity)}`,
               `Sun: ${fmt(data.environment.sunlight_illuminance)}`,
               `Indoor T: ${fmt(data.input.indoor_temperature)}`,
-              `Indoor H: ${fmt(data.input.indoor_humidity)}`
+              `Indoor H: ${fmt(data.input.indoor_humidity)}`,
+              `Base lx: ${fmt(data.input.base_illuminance)}`
             ].join("<br>"),
             metrics.map(metric => `${labels[metric]}: ${fmt(data.zone_estimated.window_zone[metric])}`).join("<br>"),
             metrics.map(metric => `${labels[metric]}: ${fmt(data.zone_estimated.center_zone[metric])}`).join("<br>"),
@@ -1181,6 +1442,7 @@ INDEX_HTML = """<!doctype html>
       renderBaseline(bundle.baseline);
       renderImpacts(bundle.impacts);
       setVolumeData(bundle.volume);
+      renderTimeline(bundle.timeline);
       renderDirectHeatmapNotice();
       await samplePoint();
       document.getElementById("status").textContent = "Loaded direct window dashboard.";
@@ -1234,11 +1496,16 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"scenarios": list_scenario_metadata()})
                 return
             if parsed.path == "/api/scenario":
+                query = parse_qs(parsed.query)
                 self._send_json(
                     evaluate_scenario(
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_float(query, "indoor_temperature", 29.0),
+                        _query_float(query, "indoor_humidity", 67.0),
+                        _query_float(query, "base_illuminance", 90.0),
+                        _query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return
@@ -1255,6 +1522,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         opening_ratio=_query_float(query, "opening_ratio", 0.7),
                         indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
+                        base_illuminance=_query_float(query, "base_illuminance", 90.0),
+                        elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return
@@ -1268,42 +1537,93 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         opening_ratio=_query_float(query, "opening_ratio", 0.7),
                         indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
+                        base_illuminance=_query_float(query, "base_illuminance", 90.0),
+                        elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return
             if parsed.path == "/api/volume":
+                query = parse_qs(parsed.query)
                 self._send_json(
                     get_scenario_volume(
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_float(query, "indoor_temperature", 29.0),
+                        _query_float(query, "indoor_humidity", 67.0),
+                        _query_float(query, "base_illuminance", 90.0),
+                        _query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return
             if parsed.path == "/api/rank_actions":
+                query = parse_qs(parsed.query)
                 self._send_json(
                     rank_scenario_actions(
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_float(query, "indoor_temperature", 29.0),
+                        _query_float(query, "indoor_humidity", 67.0),
+                        _query_float(query, "base_illuminance", 90.0),
+                        _query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return
             if parsed.path == "/api/compare_baseline":
+                query = parse_qs(parsed.query)
                 self._send_json(
                     compare_scenario_baseline(
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_float(query, "indoor_temperature", 29.0),
+                        _query_float(query, "indoor_humidity", 67.0),
+                        _query_float(query, "base_illuminance", 90.0),
+                        _query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return
             if parsed.path == "/api/learn_impacts":
+                query = parse_qs(parsed.query)
                 self._send_json(
                     learn_scenario_impacts(
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_float(query, "indoor_temperature", 29.0),
+                        _query_float(query, "indoor_humidity", 67.0),
+                        _query_float(query, "base_illuminance", 90.0),
+                        _query_float(query, "elapsed_minutes", 18.0),
+                    )
+                )
+                return
+            if parsed.path == "/api/timeline":
+                query = parse_qs(parsed.query)
+                self._send_json(
+                    get_scenario_timeline(
+                        _query_name(parsed.query),
+                        _query_device_overrides(parsed.query),
+                        _query_device_metadata_overrides(parsed.query),
+                        _query_float(query, "indoor_temperature", 29.0),
+                        _query_float(query, "indoor_humidity", 67.0),
+                        _query_float(query, "base_illuminance", 90.0),
+                        _query_float(query, "elapsed_minutes", 18.0),
+                    )
+                )
+                return
+            if parsed.path == "/api/window_direct_timeline":
+                query = parse_qs(parsed.query)
+                self._send_json(
+                    get_window_direct_timeline(
+                        outdoor_temperature=_query_float(query, "outdoor_temperature", 33.0),
+                        outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
+                        sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
+                        opening_ratio=_query_float(query, "opening_ratio", 0.7),
+                        indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
+                        indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
+                        base_illuminance=_query_float(query, "base_illuminance", 90.0),
+                        elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return
@@ -1317,6 +1637,10 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         z=_query_float(query, "z", 1.5),
                         device_overrides=_query_device_overrides(parsed.query),
                         device_metadata_overrides=_query_device_metadata_overrides(parsed.query),
+                        indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
+                        indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
+                        base_illuminance=_query_float(query, "base_illuminance", 90.0),
+                        elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return
@@ -1333,6 +1657,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         opening_ratio=_query_float(query, "opening_ratio", 0.7),
                         indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
+                        base_illuminance=_query_float(query, "base_illuminance", 90.0),
+                        elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                     )
                 )
                 return

@@ -8,6 +8,8 @@ from digital_twin.service import (
     evaluate_window_direct_dashboard,
     evaluate_window_matrix,
     get_scenario_volume,
+    get_scenario_timeline,
+    get_window_direct_timeline,
     list_scenario_metadata,
     list_window_scenario_metadata,
     sample_window_direct_point,
@@ -53,11 +55,13 @@ class ServiceTests(unittest.TestCase):
             opening_ratio=0.45,
             indoor_temperature=28.0,
             indoor_humidity=64.0,
+            base_illuminance=140.0,
         )
         self.assertEqual(result["name"], "window_direct_input")
         self.assertEqual(result["metadata"]["category"], "window_direct_input")
         self.assertEqual(result["input"]["mode"], "direct")
         self.assertEqual(result["input"]["opening_ratio"], 0.45)
+        self.assertEqual(result["input"]["base_illuminance"], 140.0)
         self.assertEqual(result["environment"]["outdoor_temperature"], 35.0)
         self.assertIn("window_zone", result["zone_estimated"])
 
@@ -101,6 +105,23 @@ class ServiceTests(unittest.TestCase):
         )
         self.assertLess(cool["target_zone_estimated"]["temperature"], heat["target_zone_estimated"]["temperature"])
 
+    def test_elapsed_minutes_changes_active_scenario_estimate(self) -> None:
+        early = evaluate_scenario("ac_only", elapsed_minutes=1.0)
+        late = evaluate_scenario("ac_only", elapsed_minutes=120.0)
+        self.assertGreater(early["target_zone_estimated"]["temperature"], late["target_zone_estimated"]["temperature"])
+
+    def test_evaluate_scenario_supports_indoor_baseline_override(self) -> None:
+        default = evaluate_scenario("idle")
+        custom = evaluate_scenario(
+            "idle",
+            indoor_temperature=21.0,
+            indoor_humidity=54.0,
+            base_illuminance=150.0,
+        )
+        self.assertLess(custom["target_zone_estimated"]["temperature"], default["target_zone_estimated"]["temperature"])
+        self.assertLess(custom["target_zone_estimated"]["humidity"], default["target_zone_estimated"]["humidity"])
+        self.assertGreater(custom["target_zone_estimated"]["illuminance"], default["target_zone_estimated"]["illuminance"])
+
     def test_sample_point_returns_three_metrics(self) -> None:
         result = sample_scenario_point("light_only", x=3.0, y=2.0, z=1.5)
         self.assertIn("temperature", result["values"])
@@ -121,6 +142,34 @@ class ServiceTests(unittest.TestCase):
         )
         self.assertEqual(result["scenario"], "window_direct_input")
         self.assertLess(result["values"]["temperature"], 19.0)
+
+    def test_get_scenario_timeline_shows_settling_trend(self) -> None:
+        result = get_scenario_timeline("ac_only", elapsed_minutes=45.0, duration_minutes=60.0, steps=7)
+        self.assertEqual(result["scenario"], "ac_only")
+        self.assertEqual(len(result["points"]), 7)
+        self.assertGreater(
+            result["points"][0]["target_zone_values"]["temperature"],
+            result["points"][-1]["target_zone_values"]["temperature"],
+        )
+
+    def test_get_window_direct_timeline_tracks_current_elapsed_minutes(self) -> None:
+        result = get_window_direct_timeline(
+            outdoor_temperature=11.0,
+            outdoor_humidity=70.0,
+            sunlight_illuminance=0.0,
+            opening_ratio=0.7,
+            indoor_temperature=19.0,
+            indoor_humidity=60.0,
+            elapsed_minutes=30.0,
+            duration_minutes=60.0,
+            steps=7,
+        )
+        self.assertEqual(result["scenario"], "window_direct_input")
+        self.assertEqual(result["current_elapsed_minutes"], 30.0)
+        self.assertGreater(
+            result["points"][0]["target_zone_values"]["temperature"],
+            result["points"][-1]["target_zone_values"]["temperature"],
+        )
 
     def test_get_scenario_volume_returns_points_and_devices(self) -> None:
         result = get_scenario_volume("idle")
