@@ -23,6 +23,7 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             room=scenario.room,
             environment=scenario.environment,
             devices=truth_devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             zones=scenario.zones,
             elapsed_minutes=scenario.elapsed_minutes,
@@ -34,6 +35,7 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             room=scenario.room,
             environment=scenario.environment,
             devices=scenario.devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             zones=scenario.zones,
             elapsed_minutes=scenario.elapsed_minutes,
@@ -44,6 +46,7 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             room=scenario.room,
             environment=scenario.environment,
             devices=before_learning_devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             zones=scenario.zones,
             elapsed_minutes=scenario.elapsed_minutes,
@@ -57,6 +60,7 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             room=scenario.room,
             environment=scenario.environment,
             devices=scenario.devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             zones=scenario.zones,
             elapsed_minutes=scenario.elapsed_minutes,
@@ -72,7 +76,9 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
         idw_zone_averages = compute_idw_zone_averages(idw_field, scenario.zones)
         learned_impacts = learn_active_device_impacts(
             model=model,
+            room=scenario.room,
             scenario_devices=scenario.devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             before_observations=before_learning_observations,
             after_observations=observed_sensors,
@@ -84,6 +90,7 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             room=scenario.room,
             environment=scenario.environment,
             devices=scenario.devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             zones=scenario.zones,
             target_zone_name=scenario.target_zone_name,
@@ -189,7 +196,9 @@ def synthesize_sensor_observations(
 
 def learn_active_device_impacts(
     model: DigitalTwinModel,
+    room,
     scenario_devices,
+    furniture,
     sensors: List[Sensor],
     before_observations: Dict[str, Dict[str, float]],
     after_observations: Dict[str, Dict[str, float]],
@@ -199,6 +208,8 @@ def learn_active_device_impacts(
     learned = learn_active_device_impacts_from_observations(
         model=model,
         active_devices=active_devices,
+        room=room,
+        furniture=furniture,
         sensors=sensors,
         before_observations=before_observations,
         after_observations=after_observations,

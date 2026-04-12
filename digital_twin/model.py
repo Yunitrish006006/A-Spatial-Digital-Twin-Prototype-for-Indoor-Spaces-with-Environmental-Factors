@@ -3,7 +3,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from .entities import Device, Environment, GridResolution, Room, Sensor, Vector3, Zone
+from .entities import Device, Environment, Furniture, GridResolution, Room, Sensor, Vector3, Zone
 from .math_utils import clamp, distance, dot, normalize, solve_linear_system, spaced_values, subtract
 
 
@@ -82,6 +82,7 @@ class DigitalTwinModel:
         room: Room,
         environment: Environment,
         devices: List[Device],
+        furniture: Optional[List[Furniture]],
         sensors: List[Sensor],
         zones: List[Zone],
         elapsed_minutes: float,
@@ -95,6 +96,7 @@ class DigitalTwinModel:
                 room=room,
                 environment=environment,
                 devices=devices,
+                furniture=furniture,
                 sensors=sensors,
                 observed_sensors=observed_sensors,
                 elapsed_minutes=elapsed_minutes,
@@ -104,6 +106,7 @@ class DigitalTwinModel:
                 room=room,
                 environment=environment,
                 devices=calibrated_devices,
+                furniture=furniture,
                 sensors=sensors,
                 observed_sensors=observed_sensors,
                 elapsed_minutes=elapsed_minutes,
@@ -113,6 +116,7 @@ class DigitalTwinModel:
             room=room,
             environment=environment,
             devices=calibrated_devices,
+            furniture=furniture,
             elapsed_minutes=elapsed_minutes,
             resolution=resolution,
             corrections=corrections,
@@ -121,6 +125,7 @@ class DigitalTwinModel:
             room=room,
             environment=environment,
             devices=calibrated_devices,
+            furniture=furniture,
             sensors=sensors,
             elapsed_minutes=elapsed_minutes,
             corrections=corrections,
@@ -139,6 +144,7 @@ class DigitalTwinModel:
         room: Room,
         environment: Environment,
         devices: List[Device],
+        furniture: Optional[List[Furniture]],
         sensors: List[Sensor],
         observed_sensors: Dict[str, Dict[str, float]],
         elapsed_minutes: float,
@@ -152,6 +158,7 @@ class DigitalTwinModel:
             room=room,
             environment=environment,
             devices=devices,
+            furniture=furniture,
             sensors=sensors,
             elapsed_minutes=elapsed_minutes,
             corrections=default_corrections,
@@ -168,6 +175,7 @@ class DigitalTwinModel:
                         room=room,
                         environment=environment,
                         device=device,
+                        furniture=furniture,
                         elapsed_minutes=elapsed_minutes,
                     )[metric]
                     for device in active_devices
@@ -207,6 +215,7 @@ class DigitalTwinModel:
         room: Room,
         environment: Environment,
         devices: List[Device],
+        furniture: Optional[List[Furniture]],
         sensors: List[Sensor],
         observed_sensors: Optional[Dict[str, Dict[str, float]]],
         elapsed_minutes: float,
@@ -219,6 +228,7 @@ class DigitalTwinModel:
             room=room,
             environment=environment,
             devices=devices,
+            furniture=furniture,
             sensors=sensors,
             elapsed_minutes=elapsed_minutes,
             corrections=default_corrections,
@@ -240,6 +250,7 @@ class DigitalTwinModel:
         room: Room,
         environment: Environment,
         devices: List[Device],
+        furniture: Optional[List[Furniture]],
         elapsed_minutes: float,
         resolution: GridResolution,
         corrections: Optional[Dict[str, TrilinearCorrection]] = None,
@@ -259,6 +270,7 @@ class DigitalTwinModel:
                         room=room,
                         environment=environment,
                         devices=devices,
+                        furniture=furniture,
                         elapsed_minutes=elapsed_minutes,
                         corrections=corrections,
                     )
@@ -278,6 +290,7 @@ class DigitalTwinModel:
         room: Room,
         environment: Environment,
         devices: List[Device],
+        furniture: Optional[List[Furniture]],
         sensors: List[Sensor],
         elapsed_minutes: float,
         corrections: Optional[Dict[str, TrilinearCorrection]] = None,
@@ -289,6 +302,7 @@ class DigitalTwinModel:
                 room=room,
                 environment=environment,
                 devices=devices,
+                furniture=furniture,
                 elapsed_minutes=elapsed_minutes,
                 corrections=corrections,
             )
@@ -300,18 +314,20 @@ class DigitalTwinModel:
         room: Room,
         environment: Environment,
         devices: List[Device],
+        furniture: Optional[List[Furniture]],
         elapsed_minutes: float,
         corrections: Optional[Dict[str, TrilinearCorrection]] = None,
     ) -> Dict[str, float]:
         corrections = corrections or {metric: TrilinearCorrection() for metric in METRICS}
         bulk_state = self._bulk_state(room, environment, devices, elapsed_minutes)
-        values = self._background_field(point, room, devices, elapsed_minutes, bulk_state)
+        values = self._background_field(point, room, devices, furniture, elapsed_minutes, bulk_state)
         for device in devices:
             delta = self._device_local_delta(
                 point=point,
                 room=room,
                 environment=environment,
                 device=device,
+                furniture=furniture,
                 elapsed_minutes=elapsed_minutes,
             )
             for metric in METRICS:
@@ -351,13 +367,14 @@ class DigitalTwinModel:
         point: Vector3,
         room: Room,
         devices: List[Device],
+        furniture: Optional[List[Furniture]],
         elapsed_minutes: float,
         bulk_state: Dict[str, float],
     ) -> Dict[str, float]:
         normalized_height = 0.0
         if room.height > 0.0:
             normalized_height = point.z / room.height
-        mixing_factor = self._room_mixing_factor(devices, elapsed_minutes)
+        mixing_factor = self._room_mixing_factor(room, devices, furniture, elapsed_minutes)
         return {
             "temperature": bulk_state["temperature"] + 0.8 * mixing_factor * (normalized_height - 0.5),
             "humidity": bulk_state["humidity"] - 3.0 * mixing_factor * (normalized_height - 0.5),
@@ -393,10 +410,11 @@ class DigitalTwinModel:
         room: Room,
         environment: Environment,
         device: Device,
+        furniture: Optional[List[Furniture]],
         elapsed_minutes: float,
     ) -> Dict[str, float]:
         bulk_delta = self._device_bulk_delta(room, environment, device, elapsed_minutes)
-        local_delta = self._device_local_delta(point, room, environment, device, elapsed_minutes)
+        local_delta = self._device_local_delta(point, room, environment, device, furniture, elapsed_minutes)
         return {
             metric: bulk_delta[metric] + local_delta[metric]
             for metric in METRICS
@@ -408,9 +426,10 @@ class DigitalTwinModel:
         room: Room,
         environment: Environment,
         device: Device,
+        furniture: Optional[List[Furniture]],
         elapsed_minutes: float,
     ) -> Dict[str, float]:
-        envelope = self._influence_envelope(device, point, elapsed_minutes)
+        envelope = self._influence_envelope(device, point, elapsed_minutes, room=room, furniture=furniture)
         if envelope <= 0.0:
             return {metric: 0.0 for metric in METRICS}
 
@@ -505,10 +524,24 @@ class DigitalTwinModel:
 
         return {metric: 0.0 for metric in METRICS}
 
-    def _influence_envelope(self, device: Device, point: Vector3, elapsed_minutes: float) -> float:
-        return self.influence_envelope(device, point, elapsed_minutes)
+    def _influence_envelope(
+        self,
+        device: Device,
+        point: Vector3,
+        elapsed_minutes: float,
+        room: Optional[Room] = None,
+        furniture: Optional[List[Furniture]] = None,
+    ) -> float:
+        return self.influence_envelope(device, point, elapsed_minutes, room=room, furniture=furniture)
 
-    def influence_envelope(self, device: Device, point: Vector3, elapsed_minutes: float) -> float:
+    def influence_envelope(
+        self,
+        device: Device,
+        point: Vector3,
+        elapsed_minutes: float,
+        room: Optional[Room] = None,
+        furniture: Optional[List[Furniture]] = None,
+    ) -> float:
         dynamic_level = self._dynamic_activation(device, elapsed_minutes)
         if dynamic_level <= 0.0:
             return 0.0
@@ -525,7 +558,8 @@ class DigitalTwinModel:
             toward_point = normalize(subtract(point, device.position))
             directional = direction_floor + (1.0 - direction_floor) * max(0.0, dot(orientation, toward_point))
 
-        return dynamic_level * radial * directional
+        obstruction = self._obstruction_factor(device, point, room, furniture)
+        return dynamic_level * radial * directional * obstruction
 
     def _dynamic_activation(self, device: Device, elapsed_minutes: float) -> float:
         if device.activation <= 0.0:
@@ -533,7 +567,13 @@ class DigitalTwinModel:
         time_constant = max(device.response_time_minutes, 0.1)
         return device.activation * (1.0 - math.exp(-elapsed_minutes / time_constant))
 
-    def _room_mixing_factor(self, devices: List[Device], elapsed_minutes: float) -> float:
+    def _room_mixing_factor(
+        self,
+        room: Room,
+        devices: List[Device],
+        furniture: Optional[List[Furniture]],
+        elapsed_minutes: float,
+    ) -> float:
         mixing_level = 0.0
         for device in devices:
             dynamic_level = self._dynamic_activation(device, elapsed_minutes)
@@ -545,7 +585,86 @@ class DigitalTwinModel:
                 mixing_level += 0.7 * mode_boost * dynamic_level * device.power
             elif device.kind == "window":
                 mixing_level += 0.22 * dynamic_level * device.power
-        return clamp(1.0 - 0.42 * mixing_level, 0.38, 1.0)
+        obstacle_penalty = self._furniture_mixing_penalty(room, furniture)
+        return clamp(1.0 - 0.42 * mixing_level + obstacle_penalty, 0.38, 1.0)
+
+    def _obstruction_factor(
+        self,
+        device: Device,
+        point: Vector3,
+        room: Optional[Room],
+        furniture: Optional[List[Furniture]],
+    ) -> float:
+        if room is None or not furniture:
+            return 1.0
+
+        factor = 1.0
+        for item in furniture:
+            activation = clamp(item.activation, 0.0, 1.0)
+            if activation <= 0.0:
+                continue
+            if not self._segment_intersects_box(device.position, point, item.min_corner, item.max_corner):
+                continue
+            block_strength = float(
+                item.metadata.get(
+                    f"{device.kind}_block",
+                    item.metadata.get("block_strength", 0.32),
+                )
+            )
+            factor *= clamp(1.0 - activation * block_strength, 0.08, 1.0)
+        return factor
+
+    def _furniture_mixing_penalty(self, room: Room, furniture: Optional[List[Furniture]]) -> float:
+        if not furniture:
+            return 0.0
+        room_volume = max(room.width * room.length * room.height, 1e-9)
+        penalty = 0.0
+        for item in furniture:
+            activation = clamp(item.activation, 0.0, 1.0)
+            if activation <= 0.0:
+                continue
+            volume = max(
+                0.0,
+                (item.max_corner.x - item.min_corner.x)
+                * (item.max_corner.y - item.min_corner.y)
+                * (item.max_corner.z - item.min_corner.z),
+            )
+            volume_fraction = volume / room_volume
+            mixing_penalty = float(item.metadata.get("mixing_penalty", 0.05))
+            penalty += activation * mixing_penalty * min(volume_fraction * 10.0, 1.0)
+        return clamp(penalty, 0.0, 0.18)
+
+    def _segment_intersects_box(
+        self,
+        start: Vector3,
+        end: Vector3,
+        min_corner: Vector3,
+        max_corner: Vector3,
+    ) -> bool:
+        direction = Vector3(end.x - start.x, end.y - start.y, end.z - start.z)
+        t_min = 0.0
+        t_max = 1.0
+
+        for start_axis, direction_axis, min_axis, max_axis in (
+            (start.x, direction.x, min_corner.x, max_corner.x),
+            (start.y, direction.y, min_corner.y, max_corner.y),
+            (start.z, direction.z, min_corner.z, max_corner.z),
+        ):
+            if abs(direction_axis) <= 1e-9:
+                if start_axis < min_axis or start_axis > max_axis:
+                    return False
+                continue
+
+            inverse = 1.0 / direction_axis
+            t1 = (min_axis - start_axis) * inverse
+            t2 = (max_axis - start_axis) * inverse
+            near = min(t1, t2)
+            far = max(t1, t2)
+            t_min = max(t_min, near)
+            t_max = min(t_max, far)
+            if t_min > t_max:
+                return False
+        return True
 
     def _ac_bulk_delta(
         self,

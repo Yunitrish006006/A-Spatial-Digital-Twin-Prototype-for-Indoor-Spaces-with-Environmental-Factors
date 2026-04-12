@@ -19,6 +19,7 @@ SERVER_NAME = "single-room-spatial-digital-twin"
 SERVER_VERSION = "0.1.0"
 DEFAULT_PROTOCOL_VERSION = "2024-11-05"
 DEVICE_OVERRIDE_KEYS = ("ac_main", "window_main", "light_main")
+FURNITURE_OVERRIDE_KEYS = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = {"cool", "dry", "heat", "fan"}
 AC_SWING_OPTIONS = {"fixed", "swing"}
 
@@ -34,6 +35,18 @@ SCENARIO_OVERRIDE_PROPERTIES = {
     "light_main": {
         "type": "number",
         "description": "Optional lighting activation override from 0.0 to 1.0.",
+    },
+    "cabinet_window": {
+        "type": "number",
+        "description": "Optional furniture blocker activation for the window-side cabinet from 0.0 to 1.0.",
+    },
+    "sofa_main": {
+        "type": "number",
+        "description": "Optional furniture blocker activation for the main sofa from 0.0 to 1.0.",
+    },
+    "table_center": {
+        "type": "number",
+        "description": "Optional furniture blocker activation for the center table from 0.0 to 1.0.",
     },
     "ac_mode": {
         "type": "string",
@@ -183,6 +196,18 @@ TOOLS = [
                     "type": "number",
                     "description": "Equivalent window opening ratio from 0.0 to 1.0. Defaults to 0.7.",
                 },
+                "cabinet_window": {
+                    "type": "number",
+                    "description": "Optional furniture blocker activation for the window-side cabinet from 0.0 to 1.0.",
+                },
+                "sofa_main": {
+                    "type": "number",
+                    "description": "Optional furniture blocker activation for the main sofa from 0.0 to 1.0.",
+                },
+                "table_center": {
+                    "type": "number",
+                    "description": "Optional furniture blocker activation for the center table from 0.0 to 1.0.",
+                },
                 "indoor_temperature": {
                     "type": "number",
                     "description": "Optional indoor baseline temperature in Celsius.",
@@ -260,12 +285,14 @@ class LocalMCPServer:
                 _required_string(arguments, "scenario_name"),
                 _device_overrides(arguments),
                 _device_metadata_overrides(arguments),
+                _furniture_overrides(arguments),
             )
         elif tool_name == "rank_actions":
             payload = rank_scenario_actions(
                 _required_string(arguments, "scenario_name"),
                 _device_overrides(arguments),
                 _device_metadata_overrides(arguments),
+                _furniture_overrides(arguments),
             )
         elif tool_name == "sample_point":
             payload = sample_scenario_point(
@@ -275,18 +302,21 @@ class LocalMCPServer:
                 z=_required_number(arguments, "z"),
                 device_overrides=_device_overrides(arguments),
                 device_metadata_overrides=_device_metadata_overrides(arguments),
+                furniture_overrides=_furniture_overrides(arguments),
             )
         elif tool_name == "compare_baseline":
             payload = compare_scenario_baseline(
                 _required_string(arguments, "scenario_name"),
                 _device_overrides(arguments),
                 _device_metadata_overrides(arguments),
+                _furniture_overrides(arguments),
             )
         elif tool_name == "learn_impacts":
             payload = learn_scenario_impacts(
                 _required_string(arguments, "scenario_name"),
                 _device_overrides(arguments),
                 _device_metadata_overrides(arguments),
+                _furniture_overrides(arguments),
             )
         elif tool_name == "run_window_matrix":
             payload = evaluate_window_matrix()
@@ -296,6 +326,7 @@ class LocalMCPServer:
                 outdoor_humidity=_required_number(arguments, "outdoor_humidity"),
                 sunlight_illuminance=_required_number(arguments, "sunlight_illuminance"),
                 opening_ratio=_optional_number(arguments, "opening_ratio", 0.7),
+                furniture_overrides=_furniture_overrides(arguments),
                 indoor_temperature=_optional_nullable_number(arguments, "indoor_temperature"),
                 indoor_humidity=_optional_nullable_number(arguments, "indoor_humidity"),
                 base_illuminance=_optional_number(arguments, "base_illuminance", 70.0),
@@ -347,6 +378,14 @@ def _device_overrides(arguments: Dict[str, Any]) -> Dict[str, float]:
     for key in DEVICE_OVERRIDE_KEYS:
         if key in arguments:
             overrides[key] = max(0.0, min(1.0, _required_number(arguments, key)))
+    return overrides
+
+
+def _furniture_overrides(arguments: Dict[str, Any]) -> Dict[str, float]:
+    overrides: Dict[str, float] = {}
+    for key in FURNITURE_OVERRIDE_KEYS:
+        if key in arguments and arguments[key] is not None:
+            overrides[key] = max(0.0, min(1.0, float(arguments[key])))
     return overrides
 
 

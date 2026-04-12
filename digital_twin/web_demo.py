@@ -34,6 +34,7 @@ from .scenarios import (
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUTS = ROOT / "outputs"
 DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
+FURNITURE_OVERRIDE_NAMES = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = ("cool", "dry", "heat", "fan")
 AC_SWING_OPTIONS = ("fixed", "swing")
 WINDOW_PRESET_DATA = json.dumps(
@@ -226,6 +227,34 @@ INDEX_HTML = """<!doctype html>
     }
     .sidebar-actions button {
       margin-top: 0;
+    }
+    .item-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .item-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      background: #fffdf7;
+    }
+    .item-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .item-actions button {
+      width: auto;
+      min-width: 0;
+      margin-top: 0;
+      padding: 9px 12px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+    }
+    .item-actions button.remove {
+      background: var(--clay);
     }
     .slider-row {
       display: grid;
@@ -478,6 +507,34 @@ INDEX_HTML = """<!doctype html>
         </div>
       </div>
       <div class="sidebar-section">
+        <label>Furniture Blocking</label>
+        <p class="status">Toggle simplified furniture blockers to attenuate airflow, daylight, and window exchange along their paths.</p>
+        <div class="device-controls" id="furnitureControls"></div>
+        <div class="control-group">
+          <label>Custom Furniture</label>
+          <div class="sidebar-form-grid">
+            <div><label for="customFurnitureLabel">Label</label><input id="customFurnitureLabel" type="text" value="Desk Divider"></div>
+            <div><label for="customFurnitureKind">Kind</label><input id="customFurnitureKind" type="text" value="custom"></div>
+            <div><label for="customFurnitureCenterX">Center X</label><input id="customFurnitureCenterX" type="number" step="0.1" value="2.8"></div>
+            <div><label for="customFurnitureCenterY">Center Y</label><input id="customFurnitureCenterY" type="number" step="0.1" value="2.0"></div>
+            <div><label for="customFurnitureBaseZ">Base Z</label><input id="customFurnitureBaseZ" type="number" step="0.1" value="0.0"></div>
+            <div><label for="customFurnitureWidth">Width X</label><input id="customFurnitureWidth" type="number" min="0.1" step="0.1" value="1.2"></div>
+            <div><label for="customFurnitureLength">Length Y</label><input id="customFurnitureLength" type="number" min="0.1" step="0.1" value="0.6"></div>
+            <div><label for="customFurnitureHeight">Height Z</label><input id="customFurnitureHeight" type="number" min="0.1" step="0.1" value="1.2"></div>
+            <div><label for="customFurnitureBlock">Block</label><input id="customFurnitureBlock" type="number" min="0.05" max="0.95" step="0.05" value="0.35"></div>
+          </div>
+          <label class="device-toggle" style="margin-top: 12px;">
+            <input id="customFurnitureActive" type="checkbox" checked>
+            <span>Enable On Add<small>New custom furniture starts active and immediately affects the simulation.</small></span>
+          </label>
+          <div class="sidebar-actions">
+            <button class="secondary" id="addCustomFurnitureButton" onclick="addCustomFurniture()">Add Custom Furniture</button>
+            <button class="secondary" id="clearCustomFurnitureButton" onclick="clearCustomFurniture()">Clear Custom Furniture</button>
+          </div>
+          <div class="item-list" id="customFurnitureList"></div>
+        </div>
+      </div>
+      <div class="sidebar-section">
         <label>Scenario Controls</label>
         <button onclick="loadScenario()">Run Simulation</button>
         <button class="secondary" onclick="resetDeviceControls()">Clear Devices</button>
@@ -523,7 +580,7 @@ INDEX_HTML = """<!doctype html>
       </section>
       <section class="panel">
         <h2>Rotatable 3D Field Preview</h2>
-        <p class="status">Drag to rotate, wheel or pinch-pad scroll to zoom. Colored squares mark appliance positions.</p>
+        <p class="status">Drag to rotate, wheel or pinch-pad scroll to zoom. Colored markers show appliances and translucent boxes show active furniture blockers. Drag a custom furniture box to reposition it on the floor plane, then release to recompute the field.</p>
         <div class="preview-timeline">
           <label>Preview Timeline</label>
           <div class="slider-row">
@@ -566,6 +623,7 @@ INDEX_HTML = """<!doctype html>
     const labels = { temperature: "Temperature", humidity: "Humidity", illuminance: "Illuminance" };
     const units = { temperature: "°C", humidity: "%", illuminance: "lx" };
     const deviceColors = { ac: "#2b5c7c", window: "#2f855a", light: "#c58b2d" };
+    const furnitureColors = { cabinet: "#7a4a2c", sofa: "#87546a", table: "#8d7a2f" };
     const deviceDefaultActivation = { ac_main: 0.8, window_main: 0.7, light_main: 0.8 };
     const acModeLabels = { cool: "Cool", dry: "Dry", heat: "Heat", fan: "Fan" };
     const acSwingLabels = { fixed: "Fixed", swing: "Swing" };
@@ -586,8 +644,11 @@ INDEX_HTML = """<!doctype html>
     let volumeMetric = "temperature";
     let volumeRotation = { pitch: -0.62, yaw: 0.72 };
     let volumeZoom = 1.0;
-    let volumeDrag = null;
+    let volumeInteraction = null;
+    let volumeFurnitureHandles = [];
     let elapsedPlayback = { running: false, stepMinutes: 5, delayMs: 180 };
+    let customFurnitureItems = [];
+    let customFurnitureCounter = 1;
 
     async function getJSON(url) {
       const response = await fetch(url);
@@ -607,7 +668,9 @@ INDEX_HTML = """<!doctype html>
       setupElapsedTimeControl();
       setupIndoorBaselineControls();
       setupHybridEstimatorControls();
+      setupCustomFurnitureControls();
       syncDeviceControlsFromScenario(activeScenario);
+      syncFurnitureControlsFromScenario(activeScenario);
       syncAcControlsFromScenario(activeScenario);
       setupWindowPresetControls();
       await loadScenario();
@@ -672,6 +735,10 @@ INDEX_HTML = """<!doctype html>
       setEstimatorStatus(null);
     }
 
+    function setupCustomFurnitureControls() {
+      syncCustomFurnitureList();
+    }
+
     async function loadScenario() {
       activeContext = { kind: "scenario", name: activeScenario };
       document.getElementById("status").textContent = "Running checkbox-defined simulation...";
@@ -723,6 +790,132 @@ INDEX_HTML = """<!doctype html>
       }).join("");
       container.querySelectorAll("input[type='checkbox']").forEach(input => {
         input.addEventListener("change", () => loadScenario());
+      });
+    }
+
+    function syncFurnitureControlsFromScenario(name) {
+      const scenario = scenarioMetadata[name];
+      const container = document.getElementById("furnitureControls");
+      if (!scenario) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = (scenario.furniture || []).map(item => {
+        const checked = item.activation > 0 ? "checked" : "";
+        const label = item.metadata?.label || item.name;
+        const block = Math.round(Number(item.metadata?.block_strength || 0.3) * 100);
+        return `
+          <label class="device-toggle">
+            <input type="checkbox" data-furniture="${item.name}" data-activation="1" ${checked}>
+            <span>${label}<small>${item.kind}, approx. ${block}% path attenuation when enabled</small></span>
+          </label>
+        `;
+      }).join("");
+      container.querySelectorAll("input[type='checkbox']").forEach(input => {
+        input.addEventListener("change", async () => {
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+    }
+
+    async function addCustomFurniture() {
+      const room = currentRoomDimensions();
+      const label = document.getElementById("customFurnitureLabel").value.trim() || `Custom Furniture ${customFurnitureCounter}`;
+      const kind = sanitizeFurnitureKind(document.getElementById("customFurnitureKind").value);
+      const centerX = Number(document.getElementById("customFurnitureCenterX").value || room.width / 2);
+      const centerY = Number(document.getElementById("customFurnitureCenterY").value || room.length / 2);
+      const baseZ = Number(document.getElementById("customFurnitureBaseZ").value || 0);
+      const width = Math.max(0.1, Number(document.getElementById("customFurnitureWidth").value || 1.0));
+      const length = Math.max(0.1, Number(document.getElementById("customFurnitureLength").value || 0.8));
+      const height = Math.max(0.1, Number(document.getElementById("customFurnitureHeight").value || 1.0));
+      const blockStrength = clamp(Number(document.getElementById("customFurnitureBlock").value || 0.35), 0.05, 0.95);
+      const activation = document.getElementById("customFurnitureActive").checked ? 1.0 : 0.0;
+
+      const minCorner = {
+        x: clamp(centerX - width / 2, 0, room.width),
+        y: clamp(centerY - length / 2, 0, room.length),
+        z: clamp(baseZ, 0, room.height)
+      };
+      const maxCorner = {
+        x: clamp(centerX + width / 2, 0, room.width),
+        y: clamp(centerY + length / 2, 0, room.length),
+        z: clamp(baseZ + height, 0, room.height)
+      };
+      if ((maxCorner.x - minCorner.x) < 0.05 || (maxCorner.y - minCorner.y) < 0.05 || (maxCorner.z - minCorner.z) < 0.05) {
+        document.getElementById("status").textContent = "Custom furniture dimensions collapsed outside the room bounds. Adjust the geometry and try again.";
+        return;
+      }
+
+      customFurnitureItems.push({
+        name: `custom_furniture_${customFurnitureCounter++}`,
+        kind,
+        activation,
+        min_corner: minCorner,
+        max_corner: maxCorner,
+        metadata: {
+          label,
+          custom: true,
+          block_strength: blockStrength,
+          window_block: blockStrength,
+          light_block: clamp(blockStrength * 1.05, 0.05, 0.98),
+          ac_block: clamp(blockStrength * 0.9, 0.05, 0.95),
+          mixing_penalty: clamp(blockStrength * 0.12, 0.01, 0.16)
+        }
+      });
+      syncCustomFurnitureList();
+      stopElapsedPlayback();
+      await refreshActiveContext();
+    }
+
+    async function clearCustomFurniture() {
+      customFurnitureItems = [];
+      syncCustomFurnitureList();
+      stopElapsedPlayback();
+      await refreshActiveContext();
+    }
+
+    function syncCustomFurnitureList() {
+      const container = document.getElementById("customFurnitureList");
+      if (!customFurnitureItems.length) {
+        container.innerHTML = `<p class="status">No custom furniture yet. Add blockers here to place multiple extra objects in the room.</p>`;
+        return;
+      }
+      container.innerHTML = customFurnitureItems.map((item, index) => {
+        const size = {
+          x: Number(item.max_corner.x) - Number(item.min_corner.x),
+          y: Number(item.max_corner.y) - Number(item.min_corner.y),
+          z: Number(item.max_corner.z) - Number(item.min_corner.z)
+        };
+        return `
+          <div class="item-card">
+            <label class="device-toggle">
+              <input type="checkbox" data-custom-index="${index}" ${Number(item.activation) > 0 ? "checked" : ""}>
+              <span>${item.metadata?.label || item.name}<small>${item.kind}, center (${fmt((item.min_corner.x + item.max_corner.x) / 2)}, ${fmt((item.min_corner.y + item.max_corner.y) / 2)}, ${fmt(item.min_corner.z)})</small></span>
+            </label>
+            <p class="status">Size ${fmt(size.x)} × ${fmt(size.y)} × ${fmt(size.z)} m, block ${Math.round(Number(item.metadata?.block_strength || 0.3) * 100)}%.</p>
+            <div class="item-actions">
+              <button class="secondary remove" data-remove-custom="${index}">Remove</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+      container.querySelectorAll("input[data-custom-index]").forEach(input => {
+        input.addEventListener("change", async event => {
+          const index = Number(event.currentTarget.dataset.customIndex);
+          customFurnitureItems[index].activation = event.currentTarget.checked ? 1.0 : 0.0;
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+      container.querySelectorAll("button[data-remove-custom]").forEach(button => {
+        button.addEventListener("click", async event => {
+          const index = Number(event.currentTarget.dataset.removeCustom);
+          customFurnitureItems.splice(index, 1);
+          syncCustomFurnitureList();
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
       });
     }
 
@@ -884,12 +1077,18 @@ INDEX_HTML = """<!doctype html>
       Object.entries(deviceOverrides()).forEach(([name, value]) => {
         params.set(name, String(value));
       });
+      Object.entries(furnitureOverrides()).forEach(([name, value]) => {
+        params.set(name, String(value));
+      });
       Object.entries(acSettings()).forEach(([name, value]) => {
         params.set(name, String(value));
       });
       Object.entries(indoorBaselineParams()).forEach(([name, value]) => {
         params.set(name, String(value));
       });
+      if (customFurnitureItems.length) {
+        params.set("custom_furniture", JSON.stringify(customFurniturePayload()));
+      }
       params.set("elapsed_minutes", String(selectedElapsedMinutes()));
       params.set("use_hybrid_residual", hybridResidualEnabled() ? "1" : "0");
       return params.toString();
@@ -902,6 +1101,26 @@ INDEX_HTML = """<!doctype html>
         overrides[input.dataset.device] = input.checked ? activation : 0.0;
       });
       return overrides;
+    }
+
+    function furnitureOverrides() {
+      const overrides = {};
+      document.querySelectorAll("#furnitureControls input[type='checkbox']").forEach(input => {
+        const activation = Number(input.dataset.activation || "1");
+        overrides[input.dataset.furniture] = input.checked ? activation : 0.0;
+      });
+      return overrides;
+    }
+
+    function customFurniturePayload() {
+      return customFurnitureItems.map(item => ({
+        name: item.name,
+        kind: item.kind,
+        activation: item.activation,
+        min_corner: item.min_corner,
+        max_corner: item.max_corner,
+        metadata: item.metadata
+      }));
     }
 
     function acSettings() {
@@ -1155,24 +1374,59 @@ INDEX_HTML = """<!doctype html>
 
       const canvas = document.getElementById("volumeCanvas");
       canvas.addEventListener("pointerdown", event => {
-        volumeDrag = { x: event.clientX, y: event.clientY };
+        const handle = findCustomFurnitureHandle(event);
+        if (handle) {
+          stopElapsedPlayback();
+          volumeInteraction = {
+            mode: "move_furniture",
+            pointerId: event.pointerId,
+            itemName: handle.name,
+            x: event.clientX,
+            y: event.clientY,
+            startState: snapshotCustomFurniture(handle.name),
+          };
+          canvas.setPointerCapture(event.pointerId);
+          document.getElementById("volumeStatus").textContent = `Dragging ${handle.label}. Release to recompute the field.`;
+          return;
+        }
+        volumeInteraction = { mode: "rotate", pointerId: event.pointerId, x: event.clientX, y: event.clientY };
         canvas.setPointerCapture(event.pointerId);
       });
-      canvas.addEventListener("pointermove", event => {
-        if (!volumeDrag) return;
-        const dx = event.clientX - volumeDrag.x;
-        const dy = event.clientY - volumeDrag.y;
+      canvas.addEventListener("pointermove", async event => {
+        if (!volumeInteraction) return;
+        if (volumeInteraction.mode === "move_furniture") {
+          const item = customFurnitureItems.find(candidate => candidate.name === volumeInteraction.itemName);
+          const startState = volumeInteraction.startState;
+          if (!item || !startState) return;
+          moveCustomFurnitureFromDrag(
+            item.name,
+            startState,
+            event.clientX - volumeInteraction.x,
+            event.clientY - volumeInteraction.y
+          );
+          drawVolume();
+          return;
+        }
+        const dx = event.clientX - volumeInteraction.x;
+        const dy = event.clientY - volumeInteraction.y;
         volumeRotation.yaw += dx * 0.012;
         volumeRotation.pitch = clamp(volumeRotation.pitch + dy * 0.012, -1.35, 1.1);
-        volumeDrag = { x: event.clientX, y: event.clientY };
+        volumeInteraction = { ...volumeInteraction, x: event.clientX, y: event.clientY };
         drawVolume();
       });
-      canvas.addEventListener("pointerup", event => {
-        volumeDrag = null;
+      canvas.addEventListener("pointerup", async event => {
+        if (volumeInteraction?.mode === "move_furniture") {
+          volumeInteraction = null;
+          canvas.releasePointerCapture(event.pointerId);
+          syncCustomFurnitureList();
+          await refreshActiveContext();
+          return;
+        }
+        volumeInteraction = null;
         canvas.releasePointerCapture(event.pointerId);
       });
       canvas.addEventListener("pointercancel", () => {
-        volumeDrag = null;
+        volumeInteraction = null;
       });
       canvas.addEventListener("wheel", event => {
         event.preventDefault();
@@ -1184,8 +1438,10 @@ INDEX_HTML = """<!doctype html>
 
     function setVolumeData(data) {
       volumeData = data;
+      volumeFurnitureHandles = [];
       const estimatorLabel = data.estimator?.label ? `, estimator: ${data.estimator.label}` : "";
-      document.getElementById("volumeStatus").textContent = `${data.scenario}: ${data.points.length} samples, ${data.devices.length} appliance markers${estimatorLabel}.`;
+      const activeFurniture = (data.furniture || []).filter(item => Number(item.activation) > 0).length;
+      document.getElementById("volumeStatus").textContent = `${data.scenario}: ${data.points.length} samples, ${data.devices.length} appliance markers, ${activeFurniture} active furniture blockers${estimatorLabel}.`;
       drawVolume();
     }
 
@@ -1213,6 +1469,7 @@ INDEX_HTML = """<!doctype html>
       const projector = makeProjector(rect.width, rect.height, volumeData.room);
       drawRoomBox(ctx, projector);
       drawVolumePoints(ctx, projector);
+      drawFurnitureMarkers(ctx, projector);
       drawDeviceMarkers(ctx, projector);
       drawVolumeLegend(ctx, rect.width, volumeMetricRange(), volumeMetric);
     }
@@ -1310,6 +1567,149 @@ INDEX_HTML = """<!doctype html>
         ctx.fillStyle = "#17211b";
         ctx.fillText(label, projected.x + 18, projected.y - 10);
       });
+    }
+
+    function drawFurnitureMarkers(ctx, project) {
+      volumeFurnitureHandles = [];
+      (volumeData.furniture || [])
+        .filter(item => Number(item.activation) > 0)
+        .forEach(item => drawFurnitureBox(ctx, project, item));
+    }
+
+    function drawFurnitureBox(ctx, project, item) {
+      const minCorner = item.min_corner;
+      const maxCorner = item.max_corner;
+      const corners3d = [
+        { x: minCorner.x, y: minCorner.y, z: minCorner.z },
+        { x: maxCorner.x, y: minCorner.y, z: minCorner.z },
+        { x: maxCorner.x, y: maxCorner.y, z: minCorner.z },
+        { x: minCorner.x, y: maxCorner.y, z: minCorner.z },
+        { x: minCorner.x, y: minCorner.y, z: maxCorner.z },
+        { x: maxCorner.x, y: minCorner.y, z: maxCorner.z },
+        { x: maxCorner.x, y: maxCorner.y, z: maxCorner.z },
+        { x: minCorner.x, y: maxCorner.y, z: maxCorner.z }
+      ];
+      const corners = corners3d.map(project);
+      const color = furnitureColors[item.kind] || "#7a4a2c";
+      const faces = [
+        { indices: [0, 1, 2, 3], alpha: 0.08 },
+        { indices: [4, 5, 6, 7], alpha: 0.14 },
+        { indices: [0, 1, 5, 4], alpha: 0.16 },
+        { indices: [1, 2, 6, 5], alpha: 0.24 },
+        { indices: [2, 3, 7, 6], alpha: 0.2 },
+        { indices: [3, 0, 4, 7], alpha: 0.12 }
+      ]
+        .map(face => ({
+          ...face,
+          depth: face.indices.reduce((sum, index) => sum + corners[index].depth, 0) / face.indices.length
+        }))
+        .sort((a, b) => a.depth - b.depth);
+
+      faces.forEach(face => {
+        const points = face.indices.map(index => corners[index]);
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach(point => ctx.lineTo(point.x, point.y));
+        ctx.closePath();
+        ctx.fillStyle = colorWithAlpha(color, face.alpha);
+        ctx.strokeStyle = colorWithAlpha(color, 0.72);
+        ctx.lineWidth = 1.4;
+        ctx.fill();
+        ctx.stroke();
+      });
+
+      const center = project(item.center);
+      const label = furnitureLabel(item);
+      if (item.metadata?.custom) {
+        volumeFurnitureHandles.push({
+          name: item.name,
+          label,
+          x: center.x,
+          y: center.y,
+          radius: 20
+        });
+      }
+      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+      const labelWidth = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(255, 253, 247, 0.88)";
+      roundedRect(ctx, center.x + 12, center.y - 24, labelWidth + 12, 20, 8);
+      ctx.fill();
+      ctx.fillStyle = "#17211b";
+      ctx.fillText(label, center.x + 18, center.y - 10);
+    }
+
+    function findCustomFurnitureHandle(event) {
+      const canvas = document.getElementById("volumeCanvas");
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      let best = null;
+      volumeFurnitureHandles.forEach(handle => {
+        const dx = x - handle.x;
+        const dy = y - handle.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance > handle.radius) return;
+        if (!best || distance < best.distance) {
+          best = { ...handle, distance };
+        }
+      });
+      return best;
+    }
+
+    function snapshotCustomFurniture(name) {
+      const item = customFurnitureItems.find(candidate => candidate.name === name);
+      if (!item) return null;
+      return JSON.parse(JSON.stringify(item));
+    }
+
+    function moveCustomFurnitureFromDrag(name, startState, dxScreen, dyScreen) {
+      const item = customFurnitureItems.find(candidate => candidate.name === name);
+      if (!item || !startState) return;
+      const room = currentRoomDimensions();
+      const scale = currentVolumeScale();
+      if (scale <= 1e-9) return;
+      const roomDelta = projectScreenDeltaToRoomDelta(dxScreen, dyScreen, scale);
+      const sizeX = Number(startState.max_corner.x) - Number(startState.min_corner.x);
+      const sizeY = Number(startState.max_corner.y) - Number(startState.min_corner.y);
+      const minX = clamp(Number(startState.min_corner.x) + roomDelta.x, 0, room.width - sizeX);
+      const minY = clamp(Number(startState.min_corner.y) + roomDelta.y, 0, room.length - sizeY);
+      const minZ = Number(startState.min_corner.z);
+      const maxZ = Number(startState.max_corner.z);
+      item.min_corner = { x: minX, y: minY, z: minZ };
+      item.max_corner = { x: minX + sizeX, y: minY + sizeY, z: maxZ };
+      if (volumeData?.furniture) {
+        const target = volumeData.furniture.find(candidate => candidate.name === name);
+        if (target) {
+          target.min_corner = { ...item.min_corner };
+          target.max_corner = { ...item.max_corner };
+          target.center = {
+            x: (item.min_corner.x + item.max_corner.x) / 2,
+            y: (item.min_corner.y + item.max_corner.y) / 2,
+            z: (item.min_corner.z + item.max_corner.z) / 2,
+          };
+        }
+      }
+    }
+
+    function currentVolumeScale() {
+      const canvas = document.getElementById("volumeCanvas");
+      if (!canvas) return 1;
+      const rect = canvas.getBoundingClientRect();
+      return Math.min(rect.width / 9.2, rect.height / 6.3) * volumeZoom;
+    }
+
+    function projectScreenDeltaToRoomDelta(dxScreen, dyScreen, scale) {
+      const yaw = volumeRotation.yaw;
+      const pitch = volumeRotation.pitch;
+      const cy = Math.cos(yaw);
+      const sy = Math.sin(yaw);
+      const cp = Math.max(Math.cos(pitch), 1e-6);
+      const sx = dxScreen / scale;
+      const syProjected = dyScreen / scale;
+      return {
+        x: cy * sx + sy * (syProjected / cp),
+        y: -sy * sx + cy * (syProjected / cp),
+      };
     }
 
     function drawWallSurface(ctx, project, device) {
@@ -1422,9 +1822,30 @@ INDEX_HTML = """<!doctype html>
       return `${device.name} (${mode} ${target}°C, ${lr}, ${ud})`;
     }
 
+    function furnitureLabel(item) {
+      const label = item.metadata?.label || item.name;
+      return `${label} (${Math.round(Number(item.activation || 0) * 100)}%)`;
+    }
+
+    function currentRoomDimensions() {
+      if (volumeData?.room) {
+        return volumeData.room;
+      }
+      const scenario = scenarioMetadata[activeScenario];
+      if (scenario?.room) {
+        return scenario.room;
+      }
+      return { width: 6.0, length: 4.0, height: 3.0 };
+    }
+
+    function sanitizeFurnitureKind(value) {
+      const normalized = String(value || "custom").trim().toLowerCase().replace(/[^a-z0-9_\\-]/g, "_");
+      return normalized || "custom";
+    }
+
     function directWindowParams() {
       const preset = computeWindowPresetValues();
-      return new URLSearchParams({
+      const params = new URLSearchParams({
         outdoor_temperature: document.getElementById("directOutdoorTemperature").value,
         outdoor_humidity: String(Number(preset.outdoorHumidity.toFixed(2))),
         sunlight_illuminance: String(Number(preset.sunlightIlluminance.toFixed(2))),
@@ -1435,12 +1856,22 @@ INDEX_HTML = """<!doctype html>
         elapsed_minutes: String(selectedElapsedMinutes()),
         use_hybrid_residual: hybridResidualEnabled() ? "1" : "0"
       });
+      Object.entries(furnitureOverrides()).forEach(([name, value]) => {
+        params.set(name, String(value));
+      });
+      if (customFurnitureItems.length) {
+        params.set("custom_furniture", JSON.stringify(customFurniturePayload()));
+      }
+      return params;
     }
 
     function renderDirectWindowResult(data) {
       const container = document.getElementById("windowDirectResult");
+      const activeFurniture = (data.furniture || [])
+        .filter(item => Number(item.activation) > 0)
+        .map(item => item.metadata?.label || item.name);
       container.innerHTML = `
-        <p class="status">Direct input mode at ${fmt(data.input.elapsed_minutes)} min, window opening ${Math.round(data.input.opening_ratio * 100)}%, target zone: ${data.target_zone}, estimator: ${data.estimator?.label || "n/a"}.</p>
+        <p class="status">Direct input mode at ${fmt(data.input.elapsed_minutes)} min, window opening ${Math.round(data.input.opening_ratio * 100)}%, target zone: ${data.target_zone}, estimator: ${data.estimator?.label || "n/a"}, active blockers: ${activeFurniture.length ? activeFurniture.join(", ") : "none"}.</p>
         ${table(
           ["Input", "Window Zone", "Center Zone", "Door-Side Zone"],
           [[
@@ -1568,11 +1999,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_furniture_overrides(parsed.query),
                         _query_float(query, "indoor_temperature", 29.0),
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
+                        _query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1587,11 +2020,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
                         sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
                         opening_ratio=_query_float(query, "opening_ratio", 0.7),
+                        furniture_overrides=_query_furniture_overrides(parsed.query),
                         indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
+                        extra_furniture=_query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1603,11 +2038,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
                         sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
                         opening_ratio=_query_float(query, "opening_ratio", 0.7),
+                        furniture_overrides=_query_furniture_overrides(parsed.query),
                         indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
+                        extra_furniture=_query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1618,11 +2055,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_furniture_overrides(parsed.query),
                         _query_float(query, "indoor_temperature", 29.0),
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
+                        _query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1633,11 +2072,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_furniture_overrides(parsed.query),
                         _query_float(query, "indoor_temperature", 29.0),
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
+                        _query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1648,11 +2089,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_furniture_overrides(parsed.query),
                         _query_float(query, "indoor_temperature", 29.0),
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
+                        _query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1663,11 +2106,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_furniture_overrides(parsed.query),
                         _query_float(query, "indoor_temperature", 29.0),
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
+                        _query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1678,11 +2123,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_name(parsed.query),
                         _query_device_overrides(parsed.query),
                         _query_device_metadata_overrides(parsed.query),
+                        _query_furniture_overrides(parsed.query),
                         _query_float(query, "indoor_temperature", 29.0),
                         _query_float(query, "indoor_humidity", 67.0),
                         _query_float(query, "base_illuminance", 90.0),
                         _query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
+                        extra_furniture=_query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1694,11 +2141,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
                         sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
                         opening_ratio=_query_float(query, "opening_ratio", 0.7),
+                        furniture_overrides=_query_furniture_overrides(parsed.query),
                         indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
+                        extra_furniture=_query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1712,11 +2161,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         z=_query_float(query, "z", 1.5),
                         device_overrides=_query_device_overrides(parsed.query),
                         device_metadata_overrides=_query_device_metadata_overrides(parsed.query),
+                        furniture_overrides=_query_furniture_overrides(parsed.query),
                         indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
+                        extra_furniture=_query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1731,11 +2182,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         outdoor_humidity=_query_float(query, "outdoor_humidity", 74.0),
                         sunlight_illuminance=_query_float(query, "sunlight_illuminance", 32000.0),
                         opening_ratio=_query_float(query, "opening_ratio", 0.7),
+                        furniture_overrides=_query_furniture_overrides(parsed.query),
                         indoor_temperature=_query_float(query, "indoor_temperature", 29.0),
                         indoor_humidity=_query_float(query, "indoor_humidity", 67.0),
                         base_illuminance=_query_float(query, "base_illuminance", 90.0),
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
+                        extra_furniture=_query_custom_furniture(parsed.query),
                     )
                 )
                 return
@@ -1813,6 +2266,27 @@ def _query_device_overrides(query_string: str) -> Dict[str, float]:
         if name in query:
             overrides[name] = _query_float(query, name, 0.0)
     return overrides
+
+
+def _query_furniture_overrides(query_string: str) -> Dict[str, float]:
+    query = parse_qs(query_string)
+    overrides: Dict[str, float] = {}
+    for name in FURNITURE_OVERRIDE_NAMES:
+        if name in query:
+            overrides[name] = _query_float(query, name, 0.0)
+    return overrides
+
+
+def _query_custom_furniture(query_string: str):
+    query = parse_qs(query_string)
+    payload = query.get("custom_furniture", [None])[0]
+    if not payload:
+        return []
+    try:
+        decoded = json.loads(payload)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    return decoded if isinstance(decoded, list) else []
 
 
 def _query_device_metadata_overrides(query_string: str) -> Dict[str, Dict[str, object]]:

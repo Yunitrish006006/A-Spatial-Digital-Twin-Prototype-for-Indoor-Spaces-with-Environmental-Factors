@@ -12,7 +12,7 @@ from .demo import (
     learn_active_device_impacts,
     synthesize_sensor_observations,
 )
-from .entities import Vector3
+from .entities import Furniture, Vector3
 from .hybrid_residual import (
     HybridResidualModel,
     apply_hybrid_model_to_field,
@@ -55,20 +55,24 @@ def evaluate_scenario(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
         device_overrides,
         device_metadata_overrides,
+        furniture_overrides,
         indoor_temperature,
         indoor_humidity,
         base_illuminance,
         elapsed_minutes,
+        extra_furniture,
     )
     return _evaluate_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -78,12 +82,14 @@ def evaluate_window_direct(
     outdoor_humidity: float,
     sunlight_illuminance: float,
     opening_ratio: float = 0.7,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: float = 70.0,
     daylight_factor: float = 0.95,
     elapsed_minutes: float = 18.0,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -95,6 +101,13 @@ def evaluate_window_direct(
         base_illuminance=base_illuminance,
         daylight_factor=daylight_factor,
         elapsed_minutes=elapsed_minutes,
+    )
+    scenario = _scenario_with_overrides(
+        scenario,
+        None,
+        None,
+        furniture_overrides,
+        extra_furniture=extra_furniture,
     )
     result = _evaluate_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
     result["input"] = _window_direct_input_dict(
@@ -109,12 +122,14 @@ def evaluate_window_direct_dashboard(
     outdoor_humidity: float,
     sunlight_illuminance: float,
     opening_ratio: float = 0.7,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: float = 70.0,
     daylight_factor: float = 0.95,
     elapsed_minutes: float = 18.0,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -126,6 +141,13 @@ def evaluate_window_direct_dashboard(
         base_illuminance=base_illuminance,
         daylight_factor=daylight_factor,
         elapsed_minutes=elapsed_minutes,
+    )
+    scenario = _scenario_with_overrides(
+        scenario,
+        None,
+        None,
+        furniture_overrides,
+        extra_furniture=extra_furniture,
     )
     result = _evaluate_dashboard_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
     result["scenario"]["input"] = _window_direct_input_dict(
@@ -143,12 +165,14 @@ def sample_window_direct_point(
     outdoor_humidity: float,
     sunlight_illuminance: float,
     opening_ratio: float = 0.7,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: float = 70.0,
     daylight_factor: float = 0.95,
     elapsed_minutes: float = 18.0,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -160,6 +184,13 @@ def sample_window_direct_point(
         base_illuminance=base_illuminance,
         daylight_factor=daylight_factor,
         elapsed_minutes=elapsed_minutes,
+    )
+    scenario = _scenario_with_overrides(
+        scenario,
+        None,
+        None,
+        furniture_overrides,
+        extra_furniture=extra_furniture,
     )
     return _sample_scenario_object_point(
         scenario=scenario,
@@ -174,6 +205,7 @@ def get_scenario_timeline(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
@@ -181,15 +213,18 @@ def get_scenario_timeline(
     duration_minutes: float = 120.0,
     steps: int = 13,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
         device_overrides,
         device_metadata_overrides,
+        furniture_overrides,
         indoor_temperature,
         indoor_humidity,
         base_illuminance,
         elapsed_minutes,
+        extra_furniture,
     )
     return _build_scenario_timeline(
         scenario,
@@ -204,6 +239,7 @@ def get_window_direct_timeline(
     outdoor_humidity: float,
     sunlight_illuminance: float,
     opening_ratio: float = 0.7,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: float = 70.0,
@@ -212,6 +248,7 @@ def get_window_direct_timeline(
     duration_minutes: float = 120.0,
     steps: int = 13,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -223,6 +260,13 @@ def get_window_direct_timeline(
         base_illuminance=base_illuminance,
         daylight_factor=daylight_factor,
         elapsed_minutes=elapsed_minutes,
+    )
+    scenario = _scenario_with_overrides(
+        scenario,
+        None,
+        None,
+        furniture_overrides,
+        extra_furniture=extra_furniture,
     )
     timeline = _build_scenario_timeline(
         scenario,
@@ -257,6 +301,7 @@ def _evaluate_scenario_object(scenario: Scenario, use_hybrid_residual: bool = Fa
         room=scenario.room,
         environment=scenario.environment,
         devices=scenario.devices,
+        furniture=scenario.furniture,
         sensors=scenario.sensors,
         zones=scenario.zones,
         elapsed_minutes=scenario.elapsed_minutes,
@@ -269,6 +314,7 @@ def _evaluate_scenario_object(scenario: Scenario, use_hybrid_residual: bool = Fa
         room=scenario.room,
         environment=scenario.environment,
         devices=before_devices,
+        furniture=scenario.furniture,
         sensors=scenario.sensors,
         zones=scenario.zones,
         elapsed_minutes=scenario.elapsed_minutes,
@@ -294,6 +340,7 @@ def _evaluate_scenario_object(scenario: Scenario, use_hybrid_residual: bool = Fa
             "sunlight_illuminance": scenario.environment.sunlight_illuminance,
             "daylight_factor": scenario.environment.daylight_factor,
         },
+        "furniture": [_furniture_dict(item) for item in scenario.furniture],
         "field_mae": field_mae,
         "idw_field_mae": idw_field_mae,
         "idw_zone_mae": compare_zone_averages(idw_zone_averages, truth_result.zone_averages),
@@ -304,7 +351,9 @@ def _evaluate_scenario_object(scenario: Scenario, use_hybrid_residual: bool = Fa
         "device_power_calibration": _device_power_calibration(estimated_result.calibrated_devices),
         "learned_device_impacts": learn_active_device_impacts(
             model=model,
+            room=scenario.room,
             scenario_devices=scenario.devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             before_observations=before_observations,
             after_observations=observed_sensors,
@@ -391,20 +440,24 @@ def get_scenario_volume(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
         device_overrides,
         device_metadata_overrides,
+        furniture_overrides,
         indoor_temperature,
         indoor_humidity,
         base_illuminance,
         elapsed_minutes,
+        extra_furniture,
     )
     return _get_scenario_object_volume(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -413,20 +466,24 @@ def rank_scenario_actions(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
         device_overrides,
         device_metadata_overrides,
+        furniture_overrides,
         indoor_temperature,
         indoor_humidity,
         base_illuminance,
         elapsed_minutes,
+        extra_furniture,
     )
     return _rank_scenario_object_actions(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -438,20 +495,24 @@ def sample_scenario_point(
     z: float,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
         device_overrides,
         device_metadata_overrides,
+        furniture_overrides,
         indoor_temperature,
         indoor_humidity,
         base_illuminance,
         elapsed_minutes,
+        extra_furniture,
     )
     return _sample_scenario_object_point(scenario, x, y, z, use_hybrid_residual=use_hybrid_residual)
 
@@ -460,20 +521,24 @@ def compare_scenario_baseline(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
         device_overrides,
         device_metadata_overrides,
+        furniture_overrides,
         indoor_temperature,
         indoor_humidity,
         base_illuminance,
         elapsed_minutes,
+        extra_furniture,
     )
     return _compare_scenario_object_baseline(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -482,20 +547,24 @@ def learn_scenario_impacts(
     scenario_name: str,
     device_overrides: Optional[Dict[str, float]] = None,
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
         device_overrides,
         device_metadata_overrides,
+        furniture_overrides,
         indoor_temperature,
         indoor_humidity,
         base_illuminance,
         elapsed_minutes,
+        extra_furniture,
     )
     return _learn_scenario_object_impacts(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -547,6 +616,10 @@ def _get_scenario_object_volume(scenario: Scenario, use_hybrid_residual: bool = 
             }
             for device in estimated_result.calibrated_devices
         ],
+        "furniture": [
+            _furniture_dict(item)
+            for item in scenario.furniture
+        ],
         "points": points,
     }
 
@@ -568,6 +641,7 @@ def _rank_scenario_object_actions(scenario: Scenario, use_hybrid_residual: bool 
             room=scenario.room,
             environment=scenario.environment,
             devices=candidate_devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             zones=scenario.zones,
             elapsed_minutes=scenario.elapsed_minutes,
@@ -622,6 +696,7 @@ def _sample_scenario_object_point(
         room=scenario.room,
         environment=scenario.environment,
         devices=estimated_result.calibrated_devices,
+        furniture=scenario.furniture,
         elapsed_minutes=scenario.elapsed_minutes,
         corrections=estimated_result.corrections,
     )
@@ -680,6 +755,7 @@ def _learn_scenario_object_impacts(scenario: Scenario, use_hybrid_residual: bool
         room=scenario.room,
         environment=scenario.environment,
         devices=before_devices,
+        furniture=scenario.furniture,
         sensors=scenario.sensors,
         zones=scenario.zones,
         elapsed_minutes=scenario.elapsed_minutes,
@@ -693,7 +769,9 @@ def _learn_scenario_object_impacts(scenario: Scenario, use_hybrid_residual: bool
         "estimator_note": "Impact coefficients remain observation-driven. The hybrid residual estimator affects field reconstruction and ranking, but the coefficient fitting still uses before/after sensor deltas.",
         "learned_device_impacts": learn_active_device_impacts(
             model=model,
+            room=scenario.room,
             scenario_devices=scenario.devices,
+            furniture=scenario.furniture,
             sensors=scenario.sensors,
             before_observations=before_observations,
             after_observations=observed_sensors,
@@ -761,6 +839,7 @@ def _build_estimation_bundle(scenario: Scenario, use_hybrid_residual: bool = Fal
         room=scenario.room,
         environment=scenario.environment,
         devices=scenario.devices,
+        furniture=scenario.furniture,
         sensors=scenario.sensors,
         zones=scenario.zones,
         elapsed_minutes=scenario.elapsed_minutes,
@@ -866,14 +945,18 @@ def _scenario_with_overrides(
     scenario: Scenario,
     device_overrides: Optional[Dict[str, float]],
     device_metadata_overrides: Optional[Dict[str, Dict[str, object]]],
+    furniture_overrides: Optional[Dict[str, float]] = None,
     indoor_temperature: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
 ) -> Scenario:
     if (
         not device_overrides
         and not device_metadata_overrides
+        and not furniture_overrides
+        and not extra_furniture
         and indoor_temperature is None
         and indoor_humidity is None
         and base_illuminance is None
@@ -889,6 +972,15 @@ def _scenario_with_overrides(
             if device_metadata_overrides and device.name in device_metadata_overrides:
                 device.metadata.update(deepcopy(device_metadata_overrides[device.name]))
         updates["devices"] = devices
+    if furniture_overrides or extra_furniture:
+        furniture = deepcopy(scenario.furniture)
+        if furniture_overrides:
+            for item in furniture:
+                if item.name in furniture_overrides:
+                    item.activation = max(0.0, min(1.0, float(furniture_overrides[item.name])))
+        if extra_furniture:
+            furniture.extend(_extra_furniture_from_specs(extra_furniture, scenario.room, furniture))
+        updates["furniture"] = furniture
     room_updates = {}
     if indoor_temperature is not None:
         room_updates["base_temperature"] = float(indoor_temperature)
@@ -919,6 +1011,10 @@ def _scenario_metadata(scenario: Scenario) -> Dict:
                 "metadata": _device_metadata(device),
             }
             for device in scenario.devices
+        ],
+        "furniture": [
+            _furniture_dict(item)
+            for item in scenario.furniture
         ],
     }
 
@@ -960,6 +1056,66 @@ def _device_metadata(device) -> Dict[str, object]:
     return metadata
 
 
+def _furniture_dict(item) -> Dict[str, object]:
+    return {
+        "name": item.name,
+        "kind": item.kind,
+        "activation": round(item.activation, 4),
+        "min_corner": _vector_to_dict(item.min_corner),
+        "max_corner": _vector_to_dict(item.max_corner),
+        "center": _vector_to_dict(item.center),
+        "size": _vector_to_dict(item.size),
+        "metadata": deepcopy(item.metadata),
+    }
+
+
+def _extra_furniture_from_specs(
+    specs: List[Dict[str, object]],
+    room,
+    existing_furniture,
+) -> List[Furniture]:
+    existing_names = {item.name for item in existing_furniture}
+    created: List[Furniture] = []
+    for index, spec in enumerate(specs):
+        try:
+            name = str(spec.get("name") or f"custom_furniture_{index + 1}")
+            if name in existing_names:
+                name = f"{name}_{index + 1}"
+            min_corner = _vector_from_mapping(spec.get("min_corner"), default=Vector3(0.0, 0.0, 0.0))
+            max_corner = _vector_from_mapping(spec.get("max_corner"), default=Vector3(0.8, 0.8, 0.8))
+            x0 = clamp(min(min_corner.x, max_corner.x), 0.0, room.width)
+            y0 = clamp(min(min_corner.y, max_corner.y), 0.0, room.length)
+            z0 = clamp(min(min_corner.z, max_corner.z), 0.0, room.height)
+            x1 = clamp(max(min_corner.x, max_corner.x), 0.0, room.width)
+            y1 = clamp(max(min_corner.y, max_corner.y), 0.0, room.length)
+            z1 = clamp(max(min_corner.z, max_corner.z), 0.0, room.height)
+            if (x1 - x0) <= 1e-6 or (y1 - y0) <= 1e-6 or (z1 - z0) <= 1e-6:
+                continue
+            metadata = deepcopy(spec.get("metadata") or {})
+            block_strength = clamp(float(metadata.get("block_strength", spec.get("block_strength", 0.3))), 0.05, 0.95)
+            metadata["block_strength"] = block_strength
+            metadata.setdefault("label", str(spec.get("label") or name))
+            metadata.setdefault("kind", str(spec.get("kind") or "custom"))
+            metadata.setdefault("window_block", block_strength)
+            metadata.setdefault("light_block", min(0.98, block_strength * 1.05))
+            metadata.setdefault("ac_block", max(0.05, block_strength * 0.9))
+            metadata.setdefault("mixing_penalty", clamp(block_strength * 0.12, 0.01, 0.16))
+            created.append(
+                Furniture(
+                    name=name,
+                    kind=str(spec.get("kind") or metadata.get("kind") or "custom"),
+                    min_corner=Vector3(x0, y0, z0),
+                    max_corner=Vector3(x1, y1, z1),
+                    activation=clamp(float(spec.get("activation", 1.0)), 0.0, 1.0),
+                    metadata=metadata,
+                )
+            )
+            existing_names.add(name)
+        except (AttributeError, TypeError, ValueError):
+            continue
+    return created
+
+
 def _dimension_items(keys, profiles) -> List[Dict]:
     return [{"name": key, "label": str(profiles[key]["zh"])} for key in keys]
 
@@ -970,6 +1126,7 @@ def _simulate_truth(model: DigitalTwinModel, scenario: Scenario):
         room=scenario.room,
         environment=scenario.environment,
         devices=truth_devices,
+        furniture=scenario.furniture,
         sensors=scenario.sensors,
         zones=scenario.zones,
         elapsed_minutes=scenario.elapsed_minutes,
@@ -996,3 +1153,16 @@ def _round_zone_dict(values: Dict[str, Dict[str, float]]) -> Dict[str, Dict[str,
 
 def _vector_to_dict(vector: Vector3) -> Dict[str, float]:
     return {"x": vector.x, "y": vector.y, "z": vector.z}
+
+
+def _vector_from_mapping(payload, default: Vector3) -> Vector3:
+    if not isinstance(payload, dict):
+        return default
+    try:
+        return Vector3(
+            x=float(payload.get("x", default.x)),
+            y=float(payload.get("y", default.y)),
+            z=float(payload.get("z", default.z)),
+        )
+    except (TypeError, ValueError):
+        return default

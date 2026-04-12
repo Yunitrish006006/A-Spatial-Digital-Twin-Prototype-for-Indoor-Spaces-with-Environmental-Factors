@@ -3,8 +3,10 @@ import unittest
 from digital_twin.web_demo import (
     INDEX_HTML,
     _query_bool,
+    _query_custom_furniture,
     _query_device_metadata_overrides,
     _query_device_overrides,
+    _query_furniture_overrides,
     _query_float,
     _query_name,
 )
@@ -43,6 +45,15 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("estimatorStatus", INDEX_HTML)
         self.assertIn("Window Controls", INDEX_HTML)
         self.assertIn("sidebar-form-grid", INDEX_HTML)
+        self.assertIn("Furniture Blocking", INDEX_HTML)
+        self.assertIn("furnitureControls", INDEX_HTML)
+        self.assertIn("Custom Furniture", INDEX_HTML)
+        self.assertIn("customFurnitureList", INDEX_HTML)
+        self.assertIn("addCustomFurniture", INDEX_HTML)
+        self.assertIn("clearCustomFurniture", INDEX_HTML)
+        self.assertIn("Drag a custom furniture box to reposition it on the floor plane", INDEX_HTML)
+        self.assertIn("moveCustomFurnitureFromDrag", INDEX_HTML)
+        self.assertIn("findCustomFurnitureHandle", INDEX_HTML)
         self.assertIn("Outdoor Season", INDEX_HTML)
         self.assertIn("windowSeasonControls", INDEX_HTML)
         self.assertIn("windowWeatherControls", INDEX_HTML)
@@ -92,6 +103,22 @@ class WebDemoTests(unittest.TestCase):
         self.assertEqual(overrides["ac_main"]["horizontal_angle_deg"], 60.0)
         self.assertEqual(overrides["ac_main"]["vertical_mode"], "fixed")
         self.assertEqual(overrides["ac_main"]["vertical_angle_deg"], 0.0)
+
+    def test_query_furniture_overrides(self) -> None:
+        overrides = _query_furniture_overrides("name=idle&cabinet_window=1&sofa_main=0.5&table_center=0")
+        self.assertEqual(overrides["cabinet_window"], 1.0)
+        self.assertEqual(overrides["sofa_main"], 0.5)
+        self.assertEqual(overrides["table_center"], 0.0)
+
+    def test_query_custom_furniture(self) -> None:
+        payload = _query_custom_furniture(
+            'name=idle&custom_furniture=[{"name":"custom_furniture_1","kind":"custom","activation":1,'
+            '"min_corner":{"x":1.0,"y":1.0,"z":0.0},"max_corner":{"x":2.0,"y":2.0,"z":1.2},'
+            '"metadata":{"label":"Desk Divider","block_strength":0.35}}]'
+        )
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["name"], "custom_furniture_1")
+        self.assertEqual(payload[0]["metadata"]["label"], "Desk Divider")
 
 
 if __name__ == "__main__":

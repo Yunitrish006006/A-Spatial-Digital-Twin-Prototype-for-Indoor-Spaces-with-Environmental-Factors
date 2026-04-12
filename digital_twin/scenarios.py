@@ -7,6 +7,7 @@ from .entities import (
     ComfortTarget,
     Device,
     Environment,
+    Furniture,
     GridResolution,
     Room,
     Sensor,
@@ -24,6 +25,7 @@ class Scenario:
     room: Room
     environment: Environment
     devices: List[Device]
+    furniture: List[Furniture]
     sensors: List[Sensor]
     zones: List[Zone]
     resolution: GridResolution
@@ -124,6 +126,56 @@ def build_standard_devices() -> List[Device]:
             activation=0.0,
             response_time_minutes=0.5,
             metadata={"illuminance_gain": 1050.0, "heat_gain": 0.8, "direction_floor": 0.4},
+        ),
+    ]
+
+
+def build_standard_furniture() -> List[Furniture]:
+    return [
+        Furniture(
+            name="cabinet_window",
+            kind="cabinet",
+            min_corner=Vector3(0.45, 1.15, 0.0),
+            max_corner=Vector3(1.2, 2.85, 2.05),
+            activation=0.0,
+            metadata={
+                "label": "Window Cabinet",
+                "block_strength": 0.46,
+                "window_block": 0.58,
+                "light_block": 0.52,
+                "ac_block": 0.18,
+                "mixing_penalty": 0.04,
+            },
+        ),
+        Furniture(
+            name="sofa_main",
+            kind="sofa",
+            min_corner=Vector3(2.05, 0.95, 0.0),
+            max_corner=Vector3(3.75, 1.95, 1.05),
+            activation=0.0,
+            metadata={
+                "label": "Main Sofa",
+                "block_strength": 0.28,
+                "window_block": 0.16,
+                "light_block": 0.21,
+                "ac_block": 0.34,
+                "mixing_penalty": 0.08,
+            },
+        ),
+        Furniture(
+            name="table_center",
+            kind="table",
+            min_corner=Vector3(2.2, 1.55, 0.0),
+            max_corner=Vector3(3.85, 2.75, 0.82),
+            activation=0.0,
+            metadata={
+                "label": "Center Table",
+                "block_strength": 0.2,
+                "window_block": 0.12,
+                "light_block": 0.18,
+                "ac_block": 0.14,
+                "mixing_penalty": 0.03,
+            },
         ),
     ]
 
@@ -345,6 +397,7 @@ def build_validation_scenarios() -> List[Scenario]:
                 room=room,
                 environment=environment,
                 devices=devices,
+                furniture=build_standard_furniture(),
                 sensors=sensors,
                 zones=zones,
                 resolution=resolution,
@@ -386,6 +439,7 @@ def build_window_matrix_scenarios() -> List[Scenario]:
                         room=room,
                         environment=environment,
                         devices=devices,
+                        furniture=build_standard_furniture(),
                         sensors=sensors,
                         zones=zones,
                         resolution=resolution,
@@ -432,6 +486,7 @@ def build_direct_window_scenario(
     sensors = create_corner_sensors(room)
     zones = build_standard_zones(room)
     devices = build_standard_devices()
+    furniture = build_standard_furniture()
     activation = max(0.0, min(1.0, float(opening_ratio)))
     for device in devices:
         device.activation = activation if device.name == "window_main" else 0.0
@@ -448,6 +503,7 @@ def build_direct_window_scenario(
         room=room,
         environment=environment,
         devices=devices,
+        furniture=furniture,
         sensors=sensors,
         zones=zones,
         resolution=build_high_precision_resolution(),

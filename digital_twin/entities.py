@@ -61,6 +61,32 @@ class Device:
     metadata: Dict[str, object] = field(default_factory=dict)
 
 
+@dataclass
+class Furniture:
+    name: str
+    kind: str
+    min_corner: Vector3
+    max_corner: Vector3
+    activation: float = 0.0
+    metadata: Dict[str, object] = field(default_factory=dict)
+
+    @property
+    def center(self) -> Vector3:
+        return Vector3(
+            x=(self.min_corner.x + self.max_corner.x) / 2.0,
+            y=(self.min_corner.y + self.max_corner.y) / 2.0,
+            z=(self.min_corner.z + self.max_corner.z) / 2.0,
+        )
+
+    @property
+    def size(self) -> Vector3:
+        return Vector3(
+            x=max(0.0, self.max_corner.x - self.min_corner.x),
+            y=max(0.0, self.max_corner.y - self.min_corner.y),
+            z=max(0.0, self.max_corner.z - self.min_corner.z),
+        )
+
+
 @dataclass(frozen=True)
 class GridResolution:
     nx: int

@@ -21,6 +21,7 @@ from .service import (
 DEFAULT_MODEL = "gemma4:26b"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEVICE_OVERRIDE_KEYS = ("ac_main", "window_main", "light_main")
+FURNITURE_OVERRIDE_KEYS = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = {"cool", "dry", "heat", "fan"}
 AC_SWING_OPTIONS = {"fixed", "swing"}
 
@@ -104,11 +105,13 @@ def available_tools() -> Dict[str, ToolFunction]:
             _required_string(arguments, "scenario_name"),
             _device_overrides(arguments),
             _device_metadata_overrides(arguments),
+            _furniture_overrides(arguments),
         ),
         "rank_actions": lambda arguments: rank_scenario_actions(
             _required_string(arguments, "scenario_name"),
             _device_overrides(arguments),
             _device_metadata_overrides(arguments),
+            _furniture_overrides(arguments),
         ),
         "sample_point": lambda arguments: sample_scenario_point(
             scenario_name=_required_string(arguments, "scenario_name"),
@@ -117,16 +120,19 @@ def available_tools() -> Dict[str, ToolFunction]:
             z=_required_number(arguments, "z"),
             device_overrides=_device_overrides(arguments),
             device_metadata_overrides=_device_metadata_overrides(arguments),
+            furniture_overrides=_furniture_overrides(arguments),
         ),
         "compare_baseline": lambda arguments: compare_scenario_baseline(
             _required_string(arguments, "scenario_name"),
             _device_overrides(arguments),
             _device_metadata_overrides(arguments),
+            _furniture_overrides(arguments),
         ),
         "learn_impacts": lambda arguments: learn_scenario_impacts(
             _required_string(arguments, "scenario_name"),
             _device_overrides(arguments),
             _device_metadata_overrides(arguments),
+            _furniture_overrides(arguments),
         ),
         "run_window_matrix": lambda _arguments: evaluate_window_matrix(),
         "run_window_direct": lambda arguments: evaluate_window_direct(
@@ -134,6 +140,7 @@ def available_tools() -> Dict[str, ToolFunction]:
             outdoor_humidity=_required_number(arguments, "outdoor_humidity"),
             sunlight_illuminance=_required_number(arguments, "sunlight_illuminance"),
             opening_ratio=_optional_number(arguments, "opening_ratio", 0.7),
+            furniture_overrides=_furniture_overrides(arguments),
             indoor_temperature=_optional_nullable_number(arguments, "indoor_temperature"),
             indoor_humidity=_optional_nullable_number(arguments, "indoor_humidity"),
             base_illuminance=_optional_number(arguments, "base_illuminance", 70.0),
@@ -153,13 +160,13 @@ def build_tool_selection_prompt(question: str) -> str:
 可用工具：
 1. list_scenarios: 列出內建情境。arguments={{}}
 2. list_window_scenarios: 列出 48 個窗戶時段/天氣/季節情境。arguments={{}}
-3. run_scenario: 執行情境。arguments={{"scenario_name":"情境名稱","ac_main":0到1,"window_main":0到1,"light_main":0到1,"ac_mode":"cool|dry|heat|fan","ac_target_temperature":20到33,"ac_horizontal_mode":"fixed|swing","ac_horizontal_angle_deg":-60到60,"ac_vertical_mode":"fixed|swing","ac_vertical_angle_deg":0到40}}
+3. run_scenario: 執行情境。arguments={{"scenario_name":"情境名稱","ac_main":0到1,"window_main":0到1,"light_main":0到1,"cabinet_window":0到1,"sofa_main":0到1,"table_center":0到1,"ac_mode":"cool|dry|heat|fan","ac_target_temperature":20到33,"ac_horizontal_mode":"fixed|swing","ac_horizontal_angle_deg":-60到60,"ac_vertical_mode":"fixed|swing","ac_vertical_angle_deg":0到40}}
 4. rank_actions: 排序設備候選動作。arguments 與 run_scenario 相同。
-5. sample_point: 查詢座標估計值。arguments={{"scenario_name":"情境名稱","x":數字,"y":數字,"z":數字}}，也可附加 run_scenario 的可選冷氣與設備參數。
+5. sample_point: 查詢座標估計值。arguments={{"scenario_name":"情境名稱","x":數字,"y":數字,"z":數字}}，也可附加 run_scenario 的可選冷氣、設備與家具參數。
 6. compare_baseline: 比較本研究模型與 IDW baseline。arguments 與 run_scenario 相同。
 7. learn_impacts: 從前後感測資料學習非連網裝置影響。arguments 與 run_scenario 相同。
 8. run_window_matrix: 執行全部 48 個窗戶矩陣模擬。arguments={{}}
-9. run_window_direct: 直接提供窗戶外部條件並執行窗戶模擬。arguments={{"outdoor_temperature":數字,"outdoor_humidity":數字,"sunlight_illuminance":數字,"opening_ratio":0到1數字}}
+9. run_window_direct: 直接提供窗戶外部條件並執行窗戶模擬。arguments={{"outdoor_temperature":數字,"outdoor_humidity":數字,"sunlight_illuminance":數字,"opening_ratio":0到1數字,"cabinet_window":0到1,"sofa_main":0到1,"table_center":0到1}}
 10. none: 不需要工具。
 
 可用情境名稱：
@@ -254,6 +261,14 @@ def _parse_direct_window_arguments(text: str) -> Optional[Dict[str, float]]:
 def _device_overrides(arguments: Dict[str, Any]) -> Dict[str, float]:
     overrides: Dict[str, float] = {}
     for key in DEVICE_OVERRIDE_KEYS:
+        if key in arguments:
+            overrides[key] = max(0.0, min(1.0, _required_number(arguments, key)))
+    return overrides
+
+
+def _furniture_overrides(arguments: Dict[str, Any]) -> Dict[str, float]:
+    overrides: Dict[str, float] = {}
+    for key in FURNITURE_OVERRIDE_KEYS:
         if key in arguments:
             overrides[key] = max(0.0, min(1.0, _required_number(arguments, key)))
     return overrides

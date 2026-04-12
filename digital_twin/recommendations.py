@@ -2,7 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List
 
-from .entities import Action, ComfortTarget, Device, Environment, GridResolution, Room, Sensor, Zone
+from .entities import Action, ComfortTarget, Device, Environment, Furniture, GridResolution, Room, Sensor, Zone
 from .model import DigitalTwinModel, METRICS
 
 
@@ -45,6 +45,7 @@ def rank_actions(
     room: Room,
     environment: Environment,
     devices: List[Device],
+    furniture: List[Furniture],
     sensors: List[Sensor],
     zones: List[Zone],
     target_zone_name: str,
@@ -58,6 +59,7 @@ def rank_actions(
         room=room,
         environment=environment,
         devices=devices,
+        furniture=furniture,
         sensors=sensors,
         zones=zones,
         elapsed_minutes=elapsed_minutes,
@@ -76,6 +78,7 @@ def rank_actions(
             room=room,
             environment=environment,
             devices=candidate_devices,
+            furniture=furniture,
             sensors=sensors,
             zones=zones,
             elapsed_minutes=elapsed_minutes,

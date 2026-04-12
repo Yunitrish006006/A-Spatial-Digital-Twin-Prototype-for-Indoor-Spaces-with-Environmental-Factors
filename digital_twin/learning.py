@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
-from .entities import Device, Sensor
+from typing import Optional
+
+from .entities import Device, Furniture, Room, Sensor
 from .math_utils import solve_linear_system
 from .model import DigitalTwinModel, METRICS
 
@@ -17,13 +19,21 @@ class LearnedImpact:
 def learn_device_impact_from_sensor_delta(
     model: DigitalTwinModel,
     device: Device,
+    room: Optional[Room],
+    furniture: Optional[List[Furniture]],
     sensors: List[Sensor],
     before_observations: Dict[str, Dict[str, float]],
     after_observations: Dict[str, Dict[str, float]],
     elapsed_minutes: float,
 ) -> LearnedImpact:
     basis_by_sensor = {
-        sensor.name: model.influence_envelope(device, sensor.position, elapsed_minutes)
+        sensor.name: model.influence_envelope(
+            device,
+            sensor.position,
+            elapsed_minutes,
+            room=room,
+            furniture=furniture,
+        )
         for sensor in sensors
     }
     metric_coefficients: Dict[str, float] = {}
@@ -67,6 +77,8 @@ def learn_device_impact_from_sensor_delta(
 def learn_active_device_impacts_from_observations(
     model: DigitalTwinModel,
     active_devices: List[Device],
+    room: Optional[Room],
+    furniture: Optional[List[Furniture]],
     sensors: List[Sensor],
     before_observations: Dict[str, Dict[str, float]],
     after_observations: Dict[str, Dict[str, float]],
@@ -78,7 +90,13 @@ def learn_active_device_impacts_from_observations(
 
     basis_by_sensor = {
         sensor.name: [
-            model.influence_envelope(device, sensor.position, elapsed_minutes)
+            model.influence_envelope(
+                device,
+                sensor.position,
+                elapsed_minutes,
+                room=room,
+                furniture=furniture,
+            )
             for device in active_devices
         ]
         for sensor in sensors

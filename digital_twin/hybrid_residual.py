@@ -340,7 +340,13 @@ def build_point_features(
             [
                 device.activation,
                 device.power,
-                model.influence_envelope(device, point, scenario.elapsed_minutes),
+                model.influence_envelope(
+                    device,
+                    point,
+                    scenario.elapsed_minutes,
+                    room=scenario.room,
+                    furniture=scenario.furniture,
+                ),
             ]
         )
 
@@ -475,6 +481,7 @@ def _truth_and_estimated_results(model: DigitalTwinModel, scenario: Scenario):
         room=scenario.room,
         environment=scenario.environment,
         devices=truth_devices,
+        furniture=scenario.furniture,
         sensors=scenario.sensors,
         zones=scenario.zones,
         elapsed_minutes=scenario.elapsed_minutes,
@@ -485,6 +492,7 @@ def _truth_and_estimated_results(model: DigitalTwinModel, scenario: Scenario):
         room=scenario.room,
         environment=scenario.environment,
         devices=scenario.devices,
+        furniture=scenario.furniture,
         sensors=scenario.sensors,
         zones=scenario.zones,
         elapsed_minutes=scenario.elapsed_minutes,

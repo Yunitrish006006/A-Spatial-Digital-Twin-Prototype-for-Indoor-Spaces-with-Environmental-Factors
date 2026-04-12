@@ -16,6 +16,7 @@ from digital_twin.scenarios import (
     build_direct_window_scenario,
     build_standard_devices,
     build_standard_environment,
+    build_standard_furniture,
     build_standard_room,
     build_standard_zones,
     build_window_matrix_scenarios,
@@ -29,6 +30,7 @@ class DigitalTwinTests(unittest.TestCase):
         self.room = build_standard_room()
         self.environment = build_standard_environment()
         self.devices = build_standard_devices()
+        self.furniture = build_standard_furniture()
         self.sensors = create_corner_sensors(self.room)
         self.zones = build_standard_zones(self.room)
         self.resolution = GridResolution(nx=10, ny=8, nz=4)
@@ -39,6 +41,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -54,6 +57,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -67,6 +71,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -88,6 +93,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=hot_room,
             environment=self.environment,
             devices=devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=120.0,
@@ -112,6 +118,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=cool_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         heat_values = self.model.sample_point(
@@ -119,6 +126,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=heat_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         self.assertLess(cool_values["temperature"], heat_values["temperature"])
@@ -139,6 +147,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=cool_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         dry_values = self.model.sample_point(
@@ -146,6 +155,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=dry_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         self.assertLess(dry_values["humidity"], cool_values["humidity"])
@@ -169,6 +179,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=right_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         right_south = self.model.sample_point(
@@ -176,6 +187,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=right_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         left_north = self.model.sample_point(
@@ -183,6 +195,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=left_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         left_south = self.model.sample_point(
@@ -190,6 +203,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=left_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         self.assertLess(right_north["temperature"], right_south["temperature"])
@@ -214,6 +228,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=shallow_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         shallow_high = self.model.sample_point(
@@ -221,6 +236,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=shallow_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         steep_low = self.model.sample_point(
@@ -228,6 +244,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=steep_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         steep_high = self.model.sample_point(
@@ -235,6 +252,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=steep_devices,
+            furniture=self.furniture,
             elapsed_minutes=self.elapsed_minutes,
         )
         self.assertLess(steep_low["temperature"], shallow_low["temperature"])
@@ -245,6 +263,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -258,6 +277,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -267,6 +287,60 @@ class DigitalTwinTests(unittest.TestCase):
             on_result.zone_averages["center_zone"]["illuminance"],
             off_result.zone_averages["center_zone"]["illuminance"],
         )
+
+    def test_window_cabinet_blocks_window_heat_and_daylight(self) -> None:
+        point = Vector3(1.5, 2.0, 1.4)
+        devices = build_standard_devices()
+        window = next(device for device in devices if device.name == "window_main")
+        window.activation = 0.8
+        cabinet = next(item for item in self.furniture if item.name == "cabinet_window")
+        cabinet.activation = 1.0
+
+        open_path = self.model.sample_point(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=[],
+            elapsed_minutes=30.0,
+        )
+        blocked_path = self.model.sample_point(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=self.furniture,
+            elapsed_minutes=30.0,
+        )
+        self.assertLess(blocked_path["illuminance"], open_path["illuminance"])
+        self.assertLess(blocked_path["temperature"], open_path["temperature"])
+
+    def test_sofa_blocks_ac_cooling_path(self) -> None:
+        point = Vector3(3.5, 1.5, 0.9)
+        devices = build_standard_devices()
+        ac = next(device for device in devices if device.name == "ac_main")
+        ac.activation = 0.85
+        sofa = next(item for item in self.furniture if item.name == "sofa_main")
+        sofa.activation = 1.0
+
+        open_path = self.model.sample_point(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=[],
+            elapsed_minutes=45.0,
+        )
+        blocked_path = self.model.sample_point(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=self.furniture,
+            elapsed_minutes=45.0,
+        )
+        self.assertGreater(blocked_path["temperature"], open_path["temperature"])
+        self.assertGreater(blocked_path["humidity"], open_path["humidity"])
 
     def test_sensor_calibration_reduces_sensor_error(self) -> None:
         truth_devices = apply_truth_adjustments(
@@ -279,6 +353,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=truth_devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -289,6 +364,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -298,6 +374,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -322,6 +399,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=truth_devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -332,6 +410,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,
@@ -352,6 +431,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             elapsed_minutes=self.elapsed_minutes,
         )
@@ -364,6 +444,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             elapsed_minutes=self.elapsed_minutes,
         )
@@ -374,12 +455,15 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             elapsed_minutes=self.elapsed_minutes,
         )
         learned = learn_device_impact_from_sensor_delta(
             model=self.model,
             device=ac_device,
+            room=self.room,
+            furniture=self.furniture,
             sensors=self.sensors,
             before_observations=before,
             after_observations=after,
@@ -407,6 +491,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             target_zone_name="center_zone",
@@ -418,6 +503,7 @@ class DigitalTwinTests(unittest.TestCase):
                 room=self.room,
                 environment=self.environment,
                 devices=self.devices,
+                furniture=self.furniture,
                 sensors=self.sensors,
                 elapsed_minutes=self.elapsed_minutes,
             ),
@@ -463,6 +549,7 @@ class DigitalTwinTests(unittest.TestCase):
             room=self.room,
             environment=self.environment,
             devices=self.devices,
+            furniture=self.furniture,
             sensors=self.sensors,
             zones=self.zones,
             elapsed_minutes=self.elapsed_minutes,

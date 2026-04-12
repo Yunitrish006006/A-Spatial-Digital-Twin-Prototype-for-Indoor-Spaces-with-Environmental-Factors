@@ -26,6 +26,8 @@ class ServiceTests(unittest.TestCase):
         names = {scenario["name"] for scenario in scenarios}
         self.assertIn("idle", names)
         self.assertIn("all_active", names)
+        idle = next(item for item in scenarios if item["name"] == "idle")
+        self.assertEqual({item["name"] for item in idle["furniture"]}, {"cabinet_window", "sofa_main", "table_center"})
 
     def test_list_window_scenarios_returns_48_cases(self) -> None:
         scenarios = list_window_scenario_metadata()
@@ -189,11 +191,59 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(len(result["points"]), resolution["nx"] * resolution["ny"] * resolution["nz"])
         self.assertEqual(resolution, {"nx": 16, "ny": 12, "nz": 6})
         self.assertEqual({device["name"] for device in result["devices"]}, {"ac_main", "window_main", "light_main"})
+        self.assertEqual({item["name"] for item in result["furniture"]}, {"cabinet_window", "sofa_main", "table_center"})
         self.assertIn("temperature", result["points"][0])
         ac = next(device for device in result["devices"] if device["name"] == "ac_main")
         window = next(device for device in result["devices"] if device["name"] == "window_main")
         self.assertEqual(ac["geometry"]["shape"], "wall_bar")
         self.assertEqual(window["geometry"]["shape"], "wall_rectangle")
+
+    def test_furniture_overrides_change_volume_furniture_activation(self) -> None:
+        result = get_scenario_volume("idle", furniture_overrides={"cabinet_window": 1.0, "sofa_main": 0.5})
+        activations = {item["name"]: item["activation"] for item in result["furniture"]}
+        self.assertEqual(activations["cabinet_window"], 1.0)
+        self.assertEqual(activations["sofa_main"], 0.5)
+        self.assertEqual(activations["table_center"], 0.0)
+
+    def test_furniture_override_blocks_window_effect_at_sample_point(self) -> None:
+        open_point = sample_scenario_point(
+            "window_only",
+            x=1.5,
+            y=2.0,
+            z=1.4,
+        )
+        blocked_point = sample_scenario_point(
+            "window_only",
+            x=1.5,
+            y=2.0,
+            z=1.4,
+            furniture_overrides={"cabinet_window": 1.0},
+        )
+        self.assertLess(blocked_point["values"]["illuminance"], open_point["values"]["illuminance"])
+        self.assertLess(blocked_point["values"]["temperature"], open_point["values"]["temperature"])
+
+    def test_extra_furniture_can_be_appended_from_web_payload(self) -> None:
+        extra_furniture = [
+            {
+                "name": "custom_furniture_1",
+                "kind": "custom",
+                "activation": 1.0,
+                "min_corner": {"x": 1.8, "y": 1.4, "z": 0.0},
+                "max_corner": {"x": 2.8, "y": 2.6, "z": 1.6},
+                "metadata": {"label": "Desk Divider", "block_strength": 0.4},
+            }
+        ]
+        volume = get_scenario_volume("window_only", extra_furniture=extra_furniture)
+        self.assertIn("custom_furniture_1", {item["name"] for item in volume["furniture"]})
+        baseline = sample_scenario_point("window_only", x=2.4, y=2.0, z=1.0)
+        blocked = sample_scenario_point(
+            "window_only",
+            x=2.4,
+            y=2.0,
+            z=1.0,
+            extra_furniture=extra_furniture,
+        )
+        self.assertLess(blocked["values"]["illuminance"], baseline["values"]["illuminance"])
 
     def test_device_overrides_change_volume_device_activation(self) -> None:
         result = get_scenario_volume("idle", {"ac_main": 0.8, "window_main": 0.7, "light_main": 0.0})
@@ -317,6 +367,41 @@ class MCPServerTests(unittest.TestCase):
         cool_payload = json.loads(cool_response["result"]["content"][0]["text"])
         heat_payload = json.loads(heat_response["result"]["content"][0]["text"])
         self.assertLess(cool_payload["target_zone_estimated"]["temperature"], heat_payload["target_zone_estimated"]["temperature"])
+
+    def test_run_scenario_tool_call_accepts_furniture_overrides(self) -> None:
+        open_response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 33,
+                "method": "tools/call",
+                "params": {
+                    "name": "run_scenario",
+                    "arguments": {
+                        "scenario_name": "window_only",
+                    },
+                },
+            }
+        )
+        blocked_response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 34,
+                "method": "tools/call",
+                "params": {
+                    "name": "run_scenario",
+                    "arguments": {
+                        "scenario_name": "window_only",
+                        "cabinet_window": 1.0,
+                    },
+                },
+            }
+        )
+        open_payload = json.loads(open_response["result"]["content"][0]["text"])
+        blocked_payload = json.loads(blocked_response["result"]["content"][0]["text"])
+        self.assertLess(
+            blocked_payload["target_zone_estimated"]["illuminance"],
+            open_payload["target_zone_estimated"]["illuminance"],
+        )
 
     def test_compare_baseline_tool_call(self) -> None:
         response = self.server.handle_message(
