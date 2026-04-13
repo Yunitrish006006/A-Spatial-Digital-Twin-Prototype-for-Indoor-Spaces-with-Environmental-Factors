@@ -72,6 +72,14 @@ SCENARIO_OVERRIDE_PROPERTIES = {
         "type": "number",
         "description": "Optional fixed up/down angle in degrees, clamped to 0 to 40.",
     },
+    "extra_devices": {
+        "type": "array",
+        "description": "Optional custom device specs to append, for example extra AC units, windows, or lights.",
+    },
+    "device_specs": {
+        "type": "array",
+        "description": "Optional authoritative or partial device spec overrides for built-in or custom devices, including remove or duplicate behavior.",
+    },
 }
 
 
@@ -228,6 +236,10 @@ TOOLS = [
                     "type": "number",
                     "description": "Optional elapsed minutes after opening the window. Defaults to 18.",
                 },
+                "extra_devices": {
+                    "type": "array",
+                    "description": "Optional custom device specs to append, for example extra AC units, windows, or lights.",
+                },
             },
             "required": ["outdoor_temperature", "outdoor_humidity", "sunlight_illuminance"],
             "additionalProperties": False,
@@ -286,6 +298,8 @@ class LocalMCPServer:
                 _device_overrides(arguments),
                 _device_metadata_overrides(arguments),
                 _furniture_overrides(arguments),
+                extra_devices=_extra_devices(arguments),
+                device_specs=_device_specs(arguments),
             )
         elif tool_name == "rank_actions":
             payload = rank_scenario_actions(
@@ -293,6 +307,8 @@ class LocalMCPServer:
                 _device_overrides(arguments),
                 _device_metadata_overrides(arguments),
                 _furniture_overrides(arguments),
+                extra_devices=_extra_devices(arguments),
+                device_specs=_device_specs(arguments),
             )
         elif tool_name == "sample_point":
             payload = sample_scenario_point(
@@ -303,6 +319,8 @@ class LocalMCPServer:
                 device_overrides=_device_overrides(arguments),
                 device_metadata_overrides=_device_metadata_overrides(arguments),
                 furniture_overrides=_furniture_overrides(arguments),
+                extra_devices=_extra_devices(arguments),
+                device_specs=_device_specs(arguments),
             )
         elif tool_name == "compare_baseline":
             payload = compare_scenario_baseline(
@@ -310,6 +328,8 @@ class LocalMCPServer:
                 _device_overrides(arguments),
                 _device_metadata_overrides(arguments),
                 _furniture_overrides(arguments),
+                extra_devices=_extra_devices(arguments),
+                device_specs=_device_specs(arguments),
             )
         elif tool_name == "learn_impacts":
             payload = learn_scenario_impacts(
@@ -317,6 +337,8 @@ class LocalMCPServer:
                 _device_overrides(arguments),
                 _device_metadata_overrides(arguments),
                 _furniture_overrides(arguments),
+                extra_devices=_extra_devices(arguments),
+                device_specs=_device_specs(arguments),
             )
         elif tool_name == "run_window_matrix":
             payload = evaluate_window_matrix()
@@ -332,6 +354,8 @@ class LocalMCPServer:
                 base_illuminance=_optional_number(arguments, "base_illuminance", 70.0),
                 daylight_factor=_optional_number(arguments, "daylight_factor", 0.95),
                 elapsed_minutes=_optional_number(arguments, "elapsed_minutes", 18.0),
+                extra_devices=_extra_devices(arguments),
+                device_specs=_device_specs(arguments),
             )
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
@@ -426,6 +450,16 @@ def _device_metadata_overrides(arguments: Dict[str, Any]) -> Dict[str, Dict[str,
     if not ac_metadata:
         return {}
     return {"ac_main": ac_metadata}
+
+
+def _extra_devices(arguments: Dict[str, Any]) -> Optional[list]:
+    value = arguments.get("extra_devices")
+    return value if isinstance(value, list) else None
+
+
+def _device_specs(arguments: Dict[str, Any]) -> Optional[list]:
+    value = arguments.get("device_specs")
+    return value if isinstance(value, list) else None
 
 
 def serve_stdio() -> None:

@@ -18,6 +18,55 @@ from digital_twin.core.entities import (
 from digital_twin.physics.recommendations import apply_action
 
 
+DEVICE_KIND_DEFAULTS: Dict[str, Dict[str, object]] = {
+    "ac": {
+        "orientation": Vector3(-1.0, 0.0, -0.25),
+        "influence_radius": 3.2,
+        "response_time_minutes": 12.0,
+        "metadata": {
+            "cooling_delta": 8.5,
+            "drying_delta": 5.0,
+            "direction_floor": 0.25,
+            "surface_width": 1.35,
+            "surface_height": 0.32,
+            "ac_mode": "cool",
+            "target_temperature": 24.0,
+            "horizontal_mode": "fixed",
+            "horizontal_angle_deg": 0.0,
+            "horizontal_swing_range_deg": 45.0,
+            "horizontal_swing_period_minutes": 0.8,
+            "vertical_mode": "fixed",
+            "vertical_angle_deg": 15.0,
+            "vertical_swing_angles_deg": [5.0, 15.0, 25.0, 35.0],
+            "vertical_swing_period_minutes": 1.2,
+        },
+    },
+    "window": {
+        "orientation": Vector3(1.0, 0.0, 0.0),
+        "influence_radius": 2.6,
+        "response_time_minutes": 2.0,
+        "metadata": {
+            "thermal_exchange": 0.35,
+            "humidity_exchange": 0.26,
+            "solar_gain": 0.02,
+            "direction_floor": 0.2,
+            "surface_width": 1.55,
+            "surface_height": 1.25,
+        },
+    },
+    "light": {
+        "orientation": Vector3(0.0, 0.0, -1.0),
+        "influence_radius": 2.4,
+        "response_time_minutes": 0.5,
+        "metadata": {
+            "illuminance_gain": 1050.0,
+            "heat_gain": 0.8,
+            "direction_floor": 0.4,
+        },
+    },
+}
+
+
 @dataclass(frozen=True)
 class Scenario:
     name: str
@@ -71,63 +120,43 @@ def build_standard_zones(room: Room) -> List[Zone]:
 
 def build_standard_devices() -> List[Device]:
     return [
-        Device(
-            name="ac_main",
-            kind="ac",
-            position=Vector3(5.4, 2.0, 2.75),
-            orientation=Vector3(-1.0, 0.0, -0.25),
-            influence_radius=3.2,
-            power=1.0,
-            activation=0.0,
-            response_time_minutes=12.0,
-            metadata={
-                "cooling_delta": 8.5,
-                "drying_delta": 5.0,
-                "direction_floor": 0.25,
-                "surface_width": 1.35,
-                "surface_height": 0.32,
-                "ac_mode": "cool",
-                "target_temperature": 24.0,
-                "horizontal_mode": "fixed",
-                "horizontal_angle_deg": 0.0,
-                "horizontal_swing_range_deg": 45.0,
-                "horizontal_swing_period_minutes": 0.8,
-                "vertical_mode": "fixed",
-                "vertical_angle_deg": 15.0,
-                "vertical_swing_angles_deg": [5.0, 15.0, 25.0, 35.0],
-                "vertical_swing_period_minutes": 1.2,
-            },
-        ),
-        Device(
-            name="window_main",
-            kind="window",
-            position=Vector3(0.0, 2.0, 1.4),
-            orientation=Vector3(1.0, 0.0, 0.0),
-            influence_radius=2.6,
-            power=1.0,
-            activation=0.0,
-            response_time_minutes=2.0,
-            metadata={
-                "thermal_exchange": 0.35,
-                "humidity_exchange": 0.26,
-                "solar_gain": 0.02,
-                "direction_floor": 0.2,
-                "surface_width": 1.55,
-                "surface_height": 1.25,
-            },
-        ),
-        Device(
-            name="light_main",
-            kind="light",
-            position=Vector3(3.0, 2.0, 2.85),
-            orientation=Vector3(0.0, 0.0, -1.0),
-            influence_radius=2.4,
-            power=1.0,
-            activation=0.0,
-            response_time_minutes=0.5,
-            metadata={"illuminance_gain": 1050.0, "heat_gain": 0.8, "direction_floor": 0.4},
-        ),
+        build_device(name="ac_main", kind="ac", position=Vector3(5.4, 2.0, 2.75)),
+        build_device(name="window_main", kind="window", position=Vector3(0.0, 2.0, 1.4)),
+        build_device(name="light_main", kind="light", position=Vector3(3.0, 2.0, 2.85)),
     ]
+
+
+def build_device(
+    name: str,
+    kind: str,
+    position: Vector3,
+    orientation: Optional[Vector3] = None,
+    influence_radius: Optional[float] = None,
+    power: float = 1.0,
+    activation: float = 0.0,
+    response_time_minutes: Optional[float] = None,
+    metadata: Optional[Dict[str, object]] = None,
+) -> Device:
+    normalized_kind = str(kind).lower()
+    if normalized_kind not in DEVICE_KIND_DEFAULTS:
+        raise ValueError(f"Unsupported device kind: {kind}")
+    defaults = DEVICE_KIND_DEFAULTS[normalized_kind]
+    merged_metadata = dict(defaults["metadata"])
+    if metadata:
+        merged_metadata.update(metadata)
+    return Device(
+        name=name,
+        kind=normalized_kind,
+        position=position,
+        orientation=orientation or defaults["orientation"],
+        influence_radius=float(influence_radius if influence_radius is not None else defaults["influence_radius"]),
+        power=float(power),
+        activation=float(activation),
+        response_time_minutes=float(
+            response_time_minutes if response_time_minutes is not None else defaults["response_time_minutes"]
+        ),
+        metadata=merged_metadata,
+    )
 
 
 def build_standard_furniture() -> List[Furniture]:

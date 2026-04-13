@@ -106,12 +106,16 @@ def available_tools() -> Dict[str, ToolFunction]:
             _device_overrides(arguments),
             _device_metadata_overrides(arguments),
             _furniture_overrides(arguments),
+            extra_devices=_extra_devices(arguments),
+            device_specs=_device_specs(arguments),
         ),
         "rank_actions": lambda arguments: rank_scenario_actions(
             _required_string(arguments, "scenario_name"),
             _device_overrides(arguments),
             _device_metadata_overrides(arguments),
             _furniture_overrides(arguments),
+            extra_devices=_extra_devices(arguments),
+            device_specs=_device_specs(arguments),
         ),
         "sample_point": lambda arguments: sample_scenario_point(
             scenario_name=_required_string(arguments, "scenario_name"),
@@ -121,18 +125,24 @@ def available_tools() -> Dict[str, ToolFunction]:
             device_overrides=_device_overrides(arguments),
             device_metadata_overrides=_device_metadata_overrides(arguments),
             furniture_overrides=_furniture_overrides(arguments),
+            extra_devices=_extra_devices(arguments),
+            device_specs=_device_specs(arguments),
         ),
         "compare_baseline": lambda arguments: compare_scenario_baseline(
             _required_string(arguments, "scenario_name"),
             _device_overrides(arguments),
             _device_metadata_overrides(arguments),
             _furniture_overrides(arguments),
+            extra_devices=_extra_devices(arguments),
+            device_specs=_device_specs(arguments),
         ),
         "learn_impacts": lambda arguments: learn_scenario_impacts(
             _required_string(arguments, "scenario_name"),
             _device_overrides(arguments),
             _device_metadata_overrides(arguments),
             _furniture_overrides(arguments),
+            extra_devices=_extra_devices(arguments),
+            device_specs=_device_specs(arguments),
         ),
         "run_window_matrix": lambda _arguments: evaluate_window_matrix(),
         "run_window_direct": lambda arguments: evaluate_window_direct(
@@ -146,6 +156,8 @@ def available_tools() -> Dict[str, ToolFunction]:
             base_illuminance=_optional_number(arguments, "base_illuminance", 70.0),
             daylight_factor=_optional_number(arguments, "daylight_factor", 0.95),
             elapsed_minutes=_optional_number(arguments, "elapsed_minutes", 18.0),
+            extra_devices=_extra_devices(arguments),
+            device_specs=_device_specs(arguments),
         ),
         "none": lambda _arguments: {"message": "No tool was required."},
     }
@@ -160,13 +172,13 @@ def build_tool_selection_prompt(question: str) -> str:
 可用工具：
 1. list_scenarios: 列出內建情境。arguments={{}}
 2. list_window_scenarios: 列出 48 個窗戶時段/天氣/季節情境。arguments={{}}
-3. run_scenario: 執行情境。arguments={{"scenario_name":"情境名稱","ac_main":0到1,"window_main":0到1,"light_main":0到1,"cabinet_window":0到1,"sofa_main":0到1,"table_center":0到1,"ac_mode":"cool|dry|heat|fan","ac_target_temperature":20到33,"ac_horizontal_mode":"fixed|swing","ac_horizontal_angle_deg":-60到60,"ac_vertical_mode":"fixed|swing","ac_vertical_angle_deg":0到40}}
+3. run_scenario: 執行情境。arguments={{"scenario_name":"情境名稱","ac_main":0到1,"window_main":0到1,"light_main":0到1,"cabinet_window":0到1,"sofa_main":0到1,"table_center":0到1,"ac_mode":"cool|dry|heat|fan","ac_target_temperature":20到33,"ac_horizontal_mode":"fixed|swing","ac_horizontal_angle_deg":-60到60,"ac_vertical_mode":"fixed|swing","ac_vertical_angle_deg":0到40,"extra_devices":[{{"name":"extra_ac_1","kind":"ac","activation":1.0,"power":1.1,"influence_radius":2.8,"position":{{"x":4.8,"y":2.0,"z":2.6}},"metadata":{{"label":"Extra AC","ac_mode":"cool","target_temperature":23}}}}],"device_specs":[{{"name":"window_main","removed":true}},{{"name":"light_main","activation":1.0,"power":1.4,"position":{{"x":2.4,"y":2.0,"z":2.8}}}}]}}
 4. rank_actions: 排序設備候選動作。arguments 與 run_scenario 相同。
 5. sample_point: 查詢座標估計值。arguments={{"scenario_name":"情境名稱","x":數字,"y":數字,"z":數字}}，也可附加 run_scenario 的可選冷氣、設備與家具參數。
 6. compare_baseline: 比較本研究模型與 IDW baseline。arguments 與 run_scenario 相同。
 7. learn_impacts: 從前後感測資料學習非連網裝置影響。arguments 與 run_scenario 相同。
 8. run_window_matrix: 執行全部 48 個窗戶矩陣模擬。arguments={{}}
-9. run_window_direct: 直接提供窗戶外部條件並執行窗戶模擬。arguments={{"outdoor_temperature":數字,"outdoor_humidity":數字,"sunlight_illuminance":數字,"opening_ratio":0到1數字,"cabinet_window":0到1,"sofa_main":0到1,"table_center":0到1}}
+9. run_window_direct: 直接提供窗戶外部條件並執行窗戶模擬。arguments={{"outdoor_temperature":數字,"outdoor_humidity":數字,"sunlight_illuminance":數字,"opening_ratio":0到1數字,"cabinet_window":0到1,"sofa_main":0到1,"table_center":0到1,"extra_devices":[{{"name":"extra_light_1","kind":"light","activation":1.0,"power":0.9,"position":{{"x":3.0,"y":2.0,"z":2.8}},"metadata":{{"label":"Task Light","illuminance_gain":900}}}}],"device_specs":[{{"name":"window_main","surface_width":2.1,"surface_height":1.4}}]}}
 10. none: 不需要工具。
 
 可用情境名稱：
@@ -311,6 +323,16 @@ def _device_metadata_overrides(arguments: Dict[str, Any]) -> Dict[str, Dict[str,
     if not ac_metadata:
         return {}
     return {"ac_main": ac_metadata}
+
+
+def _extra_devices(arguments: Dict[str, Any]) -> Optional[list]:
+    value = arguments.get("extra_devices")
+    return value if isinstance(value, list) else None
+
+
+def _device_specs(arguments: Dict[str, Any]) -> Optional[list]:
+    value = arguments.get("device_specs")
+    return value if isinstance(value, list) else None
 
 
 def find_scenario_name(text: str) -> Optional[str]:

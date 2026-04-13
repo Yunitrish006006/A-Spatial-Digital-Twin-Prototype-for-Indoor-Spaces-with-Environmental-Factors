@@ -240,6 +240,10 @@ INDEX_HTML = """<!doctype html>
       padding: 12px;
       background: #fffdf7;
     }
+    .item-card.disabled-card {
+      opacity: 0.68;
+      background: rgba(255, 250, 240, 0.72);
+    }
     .item-field-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -453,8 +457,41 @@ INDEX_HTML = """<!doctype html>
   <main>
     <aside class="panel">
       <div class="sidebar-section">
-        <label>Device Toggles</label>
+        <label>Devices</label>
         <div class="device-controls" id="deviceControls"></div>
+      </div>
+      <div class="sidebar-section">
+        <label>Custom Devices</label>
+        <p class="status">Add extra AC units, windows, or lights as modular devices. These are appended to the room model without replacing the default three appliances.</p>
+        <div class="control-group">
+          <label>Device Kind</label>
+          <div class="metric-controls" id="customDeviceKindControls"></div>
+        </div>
+        <div class="sidebar-form-grid">
+          <div><label for="customDeviceLabel">Label</label><input id="customDeviceLabel" type="text" value="Extra AC"></div>
+          <div><label for="customDeviceX">X</label><input id="customDeviceX" type="number" step="0.1" value="4.8"></div>
+          <div><label for="customDeviceY">Y</label><input id="customDeviceY" type="number" step="0.1" value="2.0"></div>
+          <div><label for="customDeviceZ">Z</label><input id="customDeviceZ" type="number" step="0.1" value="2.6"></div>
+          <div><label for="customDevicePower">Power</label><input id="customDevicePower" type="number" min="0" max="4" step="0.1" value="1.0"></div>
+          <div><label for="customDeviceRadius">Radius</label><input id="customDeviceRadius" type="number" min="0.2" step="0.1" value="2.8"></div>
+          <div><label for="customDeviceSurfaceWidth">Surface W</label><input id="customDeviceSurfaceWidth" type="number" min="0.1" step="0.1" value="1.4"></div>
+          <div><label for="customDeviceSurfaceHeight">Surface H</label><input id="customDeviceSurfaceHeight" type="number" min="0.1" step="0.1" value="0.4"></div>
+          <div><label for="customDeviceTargetTemperature">Target °C</label><input id="customDeviceTargetTemperature" type="number" min="20" max="33" step="1" value="24"></div>
+          <div><label for="customDeviceIlluminanceGain">Light Gain</label><input id="customDeviceIlluminanceGain" type="number" min="0" step="10" value="1050"></div>
+        </div>
+        <div class="control-group">
+          <label>AC Mode For AC Devices</label>
+          <div class="metric-controls" id="customDeviceAcModeControls"></div>
+        </div>
+        <label class="device-toggle" style="margin-top: 12px;">
+          <input id="customDeviceActive" type="checkbox" checked>
+          <span>Enable On Add<small>New custom devices start active and immediately affect the simulation.</small></span>
+        </label>
+        <div class="sidebar-actions">
+          <button class="secondary" id="addCustomDeviceButton" onclick="addCustomDevice()">Add Custom Device</button>
+          <button class="secondary" id="clearCustomDeviceButton" onclick="clearCustomDevices()">Clear Custom Devices</button>
+        </div>
+        <div class="item-list" id="customDeviceList"></div>
       </div>
       <div class="sidebar-section">
         <label>AC Controls</label>
@@ -640,7 +677,7 @@ INDEX_HTML = """<!doctype html>
     const units = { temperature: "°C", humidity: "%", illuminance: "lx" };
     const deviceColors = { ac: "#2b5c7c", window: "#2f855a", light: "#c58b2d" };
     const furnitureColors = { cabinet: "#7a4a2c", sofa: "#87546a", table: "#8d7a2f" };
-    const deviceDefaultActivation = { ac_main: 0.8, window_main: 0.7, light_main: 0.8 };
+    const customDeviceKindLabels = { ac: "AC", window: "Window", light: "Light" };
     const acModeLabels = { cool: "Cool", dry: "Dry", heat: "Heat", fan: "Fan" };
     const acSwingLabels = { fixed: "Fixed", swing: "Swing" };
     const acHorizontalAngles = [-45, -20, 0, 20, 45];
@@ -655,6 +692,8 @@ INDEX_HTML = """<!doctype html>
     let activeScenario = "idle";
     let activeContext = { kind: "scenario", name: "idle" };
     let scenarioMetadata = {};
+    let defaultDeviceItems = [];
+    let defaultDeviceBaselineItems = [];
     let currentTimeline = null;
     let volumeData = null;
     let volumeMetric = "temperature";
@@ -665,6 +704,8 @@ INDEX_HTML = """<!doctype html>
     let elapsedPlayback = { running: false, stepMinutes: 5, delayMs: 180 };
     let customFurnitureItems = [];
     let customFurnitureCounter = 1;
+    let customDeviceItems = [];
+    let customDeviceCounter = 1;
 
     async function getJSON(url) {
       const response = await fetch(url);
@@ -684,6 +725,7 @@ INDEX_HTML = """<!doctype html>
       setupElapsedTimeControl();
       setupIndoorBaselineControls();
       setupHybridEstimatorControls();
+      setupCustomDeviceControls();
       setupCustomFurnitureControls();
       syncDeviceControlsFromScenario(activeScenario);
       syncFurnitureControlsFromScenario(activeScenario);
@@ -751,6 +793,12 @@ INDEX_HTML = """<!doctype html>
       setEstimatorStatus(null);
     }
 
+    function setupCustomDeviceControls() {
+      renderRadioGroup("customDeviceKindControls", "customDeviceKind", ["ac", "window", "light"], "ac", customDeviceKindLabels);
+      renderRadioGroup("customDeviceAcModeControls", "customDeviceAcMode", Object.keys(acModeLabels), "cool", acModeLabels);
+      syncCustomDeviceList();
+    }
+
     function setupCustomFurnitureControls() {
       syncCustomFurnitureList();
     }
@@ -793,20 +841,156 @@ INDEX_HTML = """<!doctype html>
         container.innerHTML = "";
         return;
       }
-      container.innerHTML = scenario.devices.map(device => {
-        const activeLevel = device.activation > 0 ? device.activation : (deviceDefaultActivation[device.name] || 1.0);
-        const checked = device.activation > 0 ? "checked" : "";
-        const shape = device.geometry?.shape === "wall_bar" ? "bar" : (device.geometry?.shape === "wall_rectangle" ? "surface" : "point");
+      defaultDeviceBaselineItems = (scenario.devices || []).map(device => ({
+        name: device.name,
+        kind: device.kind,
+        activation: Number(device.activation ?? 0),
+        power: Number(device.power ?? 1.0),
+        influence_radius: Number(device.influence_radius ?? 2.4),
+        response_time_minutes: Number(device.response_time_minutes ?? 1.0),
+        position: { ...(device.position || { x: 0, y: 0, z: 0 }) },
+        orientation: device.orientation ? { ...device.orientation } : null,
+        metadata: { ...(device.metadata || {}) },
+        removed: false
+      }));
+      defaultDeviceItems = defaultDeviceBaselineItems.map(item => JSON.parse(JSON.stringify(item)));
+      renderDefaultDeviceList();
+    }
+
+    function renderDefaultDeviceList() {
+      const container = document.getElementById("deviceControls");
+      if (!defaultDeviceItems.length) {
+        container.innerHTML = `<p class="status">No built-in devices are available in this scenario.</p>`;
+        return;
+      }
+      container.innerHTML = defaultDeviceItems.map((item, index) => {
+        const removed = Boolean(item.removed);
+        const label = item.metadata?.label || item.name;
         return `
-          <label class="device-toggle">
-            <input type="checkbox" data-device="${device.name}" data-activation="${activeLevel}" ${checked}>
-            <span>${device.name}<small>${device.kind}, ${shape}, ${Math.round(activeLevel * 100)}% when checked</small></span>
-          </label>
+          <div class="item-card ${removed ? "disabled-card" : ""}">
+            <label class="device-toggle">
+              <input type="checkbox" data-default-device-index="${index}" ${Number(item.activation) > 0 && !removed ? "checked" : ""} ${removed ? "disabled" : ""}>
+              <span>${label}<small>${customDeviceKindLabels[item.kind] || item.kind}, ${removed ? "removed from scenario" : `position (${fmt(item.position.x)}, ${fmt(item.position.y)}, ${fmt(item.position.z)})`}</small></span>
+            </label>
+            <p class="status">${removed ? "This built-in device is currently removed from the scenario. Use Restore to bring it back." : defaultDeviceSummary(item)}</p>
+            <div class="item-field-grid">
+              <div><label>X</label><input type="number" step="0.1" value="${Number(item.position.x).toFixed(1)}" data-edit-default-device="${index}" data-field="x" ${removed ? "disabled" : ""}></div>
+              <div><label>Y</label><input type="number" step="0.1" value="${Number(item.position.y).toFixed(1)}" data-edit-default-device="${index}" data-field="y" ${removed ? "disabled" : ""}></div>
+              <div><label>Z</label><input type="number" step="0.1" value="${Number(item.position.z).toFixed(1)}" data-edit-default-device="${index}" data-field="z" ${removed ? "disabled" : ""}></div>
+              <div><label>Power</label><input type="number" min="0" max="4" step="0.1" value="${Number(item.power).toFixed(1)}" data-edit-default-device="${index}" data-field="power" ${removed ? "disabled" : ""}></div>
+              <div><label>Radius</label><input type="number" min="0.2" step="0.1" value="${Number(item.influence_radius).toFixed(1)}" data-edit-default-device="${index}" data-field="radius" ${removed ? "disabled" : ""}></div>
+              ${item.kind === "light" ? `<div><label>Gain</label><input type="number" min="0" step="10" value="${Number(item.metadata?.illuminance_gain || 1050).toFixed(0)}" data-edit-default-device="${index}" data-field="illuminance_gain" ${removed ? "disabled" : ""}></div>` : ""}
+              ${item.kind !== "light" ? `<div><label>Surface W</label><input type="number" min="0.1" step="0.1" value="${Number(item.metadata?.surface_width || 1.4).toFixed(1)}" data-edit-default-device="${index}" data-field="surface_width" ${removed ? "disabled" : ""}></div>` : ""}
+              ${item.kind !== "light" ? `<div><label>Surface H</label><input type="number" min="0.1" step="0.1" value="${Number(item.metadata?.surface_height || 0.4).toFixed(1)}" data-edit-default-device="${index}" data-field="surface_height" ${removed ? "disabled" : ""}></div>` : ""}
+            </div>
+            <div class="item-actions">
+              <button class="secondary" data-duplicate-default-device="${index}">Duplicate</button>
+              <button class="secondary" data-reset-default-device="${index}">Reset</button>
+              <button class="secondary remove" data-remove-default-device="${index}">${removed ? "Restore" : "Remove"}</button>
+            </div>
+          </div>
         `;
       }).join("");
-      container.querySelectorAll("input[type='checkbox']").forEach(input => {
-        input.addEventListener("change", () => loadScenario());
+      container.querySelectorAll("input[data-default-device-index]").forEach(input => {
+        input.addEventListener("change", async event => {
+          const index = Number(event.currentTarget.dataset.defaultDeviceIndex);
+          defaultDeviceItems[index].activation = event.currentTarget.checked ? 1.0 : 0.0;
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
       });
+      container.querySelectorAll("input[data-edit-default-device]").forEach(input => {
+        input.addEventListener("change", async event => {
+          const target = event.currentTarget;
+          updateDefaultDeviceField(Number(target.dataset.editDefaultDevice), String(target.dataset.field || ""), Number(target.value || "0"));
+          renderDefaultDeviceList();
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+      container.querySelectorAll("button[data-duplicate-default-device]").forEach(button => {
+        button.addEventListener("click", async event => {
+          duplicateDefaultDevice(Number(event.currentTarget.dataset.duplicateDefaultDevice));
+          syncCustomDeviceList();
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+      container.querySelectorAll("button[data-reset-default-device]").forEach(button => {
+        button.addEventListener("click", async event => {
+          resetDefaultDevice(Number(event.currentTarget.dataset.resetDefaultDevice));
+          renderDefaultDeviceList();
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+      container.querySelectorAll("button[data-remove-default-device]").forEach(button => {
+        button.addEventListener("click", async event => {
+          toggleDefaultDeviceRemoved(Number(event.currentTarget.dataset.removeDefaultDevice));
+          renderDefaultDeviceList();
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+    }
+
+    function defaultDeviceSummary(item) {
+      const parts = [
+        `Power ${fmt(item.power)}`,
+        `Radius ${fmt(item.influence_radius)}`
+      ];
+      if (item.kind === "ac") {
+        parts.push(`Primary AC settings stay linked to the AC Controls section`);
+      } else if (item.kind === "window") {
+        parts.push(`Surface ${fmt(item.metadata?.surface_width || 1.55)} × ${fmt(item.metadata?.surface_height || 1.25)} m`);
+      } else if (item.kind === "light") {
+        parts.push(`Gain ${fmt(item.metadata?.illuminance_gain || 1050)} lx`);
+      }
+      return parts.join(", ");
+    }
+
+    function updateDefaultDeviceField(index, field, rawValue) {
+      const item = defaultDeviceItems[index];
+      if (!item) return;
+      const room = currentRoomDimensions();
+      if (field === "x") item.position.x = clamp(rawValue, 0, room.width);
+      if (field === "y") item.position.y = clamp(rawValue, 0, room.length);
+      if (field === "z") item.position.z = clamp(rawValue, 0, room.height);
+      if (field === "power") item.power = clamp(rawValue, 0, 4);
+      if (field === "radius") item.influence_radius = Math.max(0.2, rawValue);
+      if (field === "illuminance_gain" && item.kind === "light") item.metadata.illuminance_gain = Math.max(0, rawValue);
+      if (field === "surface_width" && item.kind !== "light") item.metadata.surface_width = Math.max(0.1, rawValue);
+      if (field === "surface_height" && item.kind !== "light") item.metadata.surface_height = Math.max(0.1, rawValue);
+    }
+
+    function duplicateDefaultDevice(index) {
+      const item = defaultDeviceItems[index];
+      if (!item) return;
+      const copy = JSON.parse(JSON.stringify(item));
+      copy.name = `custom_device_${item.kind}_${customDeviceCounter++}`;
+      copy.metadata = { ...(copy.metadata || {}), label: `${copy.metadata?.label || item.name} Copy`, custom: true };
+      copy.removed = false;
+      customDeviceItems.push(copy);
+    }
+
+    function resetDefaultDevice(index) {
+      const baseline = defaultDeviceBaselineItems[index];
+      if (!baseline) return;
+      defaultDeviceItems[index] = JSON.parse(JSON.stringify(baseline));
+    }
+
+    function toggleDefaultDeviceRemoved(index) {
+      const item = defaultDeviceItems[index];
+      if (!item) return;
+      item.removed = !item.removed;
+      if (item.removed) {
+        item.activation = 0.0;
+        return;
+      }
+      const baseline = defaultDeviceBaselineItems[index];
+      if (baseline && Number(item.activation) <= 0) {
+        item.activation = Number(baseline.activation ?? 1.0);
+      }
     }
 
     function syncFurnitureControlsFromScenario(name) {
@@ -833,6 +1017,146 @@ INDEX_HTML = """<!doctype html>
           await refreshActiveContext();
         });
       });
+    }
+
+    async function addCustomDevice() {
+      const room = currentRoomDimensions();
+      const kind = sanitizeDeviceKind(selectedChoice("customDeviceKind", "ac"));
+      const label = document.getElementById("customDeviceLabel").value.trim() || `Custom ${customDeviceKindLabels[kind]} ${customDeviceCounter}`;
+      const x = clamp(Number(document.getElementById("customDeviceX").value || room.width / 2), 0, room.width);
+      const y = clamp(Number(document.getElementById("customDeviceY").value || room.length / 2), 0, room.length);
+      const z = clamp(Number(document.getElementById("customDeviceZ").value || room.height / 2), 0, room.height);
+      const power = clamp(Number(document.getElementById("customDevicePower").value || 1.0), 0, 4);
+      const influenceRadius = Math.max(0.2, Number(document.getElementById("customDeviceRadius").value || 2.5));
+      const activation = document.getElementById("customDeviceActive").checked ? 1.0 : 0.0;
+      const surfaceWidth = Math.max(0.1, Number(document.getElementById("customDeviceSurfaceWidth").value || 1.4));
+      const surfaceHeight = Math.max(0.1, Number(document.getElementById("customDeviceSurfaceHeight").value || 0.4));
+      const metadata = {
+        label,
+        custom: true,
+        kind,
+        surface_width: surfaceWidth,
+        surface_height: surfaceHeight
+      };
+      if (kind === "ac") {
+        metadata.ac_mode = selectedChoice("customDeviceAcMode", "cool");
+        metadata.target_temperature = clamp(Number(document.getElementById("customDeviceTargetTemperature").value || 24), 20, 33);
+      }
+      if (kind === "light") {
+        metadata.illuminance_gain = Math.max(0, Number(document.getElementById("customDeviceIlluminanceGain").value || 1050));
+      }
+
+      customDeviceItems.push({
+        name: `custom_device_${kind}_${customDeviceCounter++}`,
+        kind,
+        activation,
+        power,
+        influence_radius: influenceRadius,
+        position: { x, y, z },
+        metadata
+      });
+      syncCustomDeviceList();
+      stopElapsedPlayback();
+      await refreshActiveContext();
+    }
+
+    async function clearCustomDevices() {
+      customDeviceItems = [];
+      syncCustomDeviceList();
+      stopElapsedPlayback();
+      await refreshActiveContext();
+    }
+
+    function syncCustomDeviceList() {
+      const container = document.getElementById("customDeviceList");
+      if (!customDeviceItems.length) {
+        container.innerHTML = `<p class="status">No custom devices yet. Add extra AC units, windows, or lights here.</p>`;
+        return;
+      }
+      container.innerHTML = customDeviceItems.map((item, index) => {
+        const label = item.metadata?.label || item.name;
+        const summary = customDeviceSummary(item);
+        return `
+          <div class="item-card">
+            <label class="device-toggle">
+              <input type="checkbox" data-custom-device-index="${index}" ${Number(item.activation) > 0 ? "checked" : ""}>
+              <span>${label}<small>${customDeviceKindLabels[item.kind] || item.kind}, position (${fmt(item.position.x)}, ${fmt(item.position.y)}, ${fmt(item.position.z)})</small></span>
+            </label>
+            <p class="status">${summary}</p>
+            <div class="item-field-grid">
+              <div><label>X</label><input type="number" step="0.1" value="${Number(item.position.x).toFixed(1)}" data-edit-device="${index}" data-field="x"></div>
+              <div><label>Y</label><input type="number" step="0.1" value="${Number(item.position.y).toFixed(1)}" data-edit-device="${index}" data-field="y"></div>
+              <div><label>Z</label><input type="number" step="0.1" value="${Number(item.position.z).toFixed(1)}" data-edit-device="${index}" data-field="z"></div>
+              <div><label>Power</label><input type="number" min="0" max="4" step="0.1" value="${Number(item.power).toFixed(1)}" data-edit-device="${index}" data-field="power"></div>
+              <div><label>Radius</label><input type="number" min="0.2" step="0.1" value="${Number(item.influence_radius).toFixed(1)}" data-edit-device="${index}" data-field="radius"></div>
+              ${item.kind === "ac" ? `<div><label>Target °C</label><input type="number" min="20" max="33" step="1" value="${Number(item.metadata?.target_temperature || 24).toFixed(0)}" data-edit-device="${index}" data-field="target_temperature"></div>` : ""}
+              ${item.kind === "light" ? `<div><label>Gain</label><input type="number" min="0" step="10" value="${Number(item.metadata?.illuminance_gain || 1050).toFixed(0)}" data-edit-device="${index}" data-field="illuminance_gain"></div>` : ""}
+              ${item.kind !== "light" ? `<div><label>Surface W</label><input type="number" min="0.1" step="0.1" value="${Number(item.metadata?.surface_width || 1.4).toFixed(1)}" data-edit-device="${index}" data-field="surface_width"></div>` : ""}
+              ${item.kind !== "light" ? `<div><label>Surface H</label><input type="number" min="0.1" step="0.1" value="${Number(item.metadata?.surface_height || 0.4).toFixed(1)}" data-edit-device="${index}" data-field="surface_height"></div>` : ""}
+            </div>
+            <div class="item-actions">
+              <button class="secondary remove" data-remove-device="${index}">Remove</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+      container.querySelectorAll("input[data-custom-device-index]").forEach(input => {
+        input.addEventListener("change", async event => {
+          const index = Number(event.currentTarget.dataset.customDeviceIndex);
+          customDeviceItems[index].activation = event.currentTarget.checked ? 1.0 : 0.0;
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+      container.querySelectorAll("input[data-edit-device]").forEach(input => {
+        input.addEventListener("change", async event => {
+          const target = event.currentTarget;
+          updateCustomDeviceField(Number(target.dataset.editDevice), String(target.dataset.field || ""), Number(target.value || "0"));
+          syncCustomDeviceList();
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+      container.querySelectorAll("button[data-remove-device]").forEach(button => {
+        button.addEventListener("click", async event => {
+          const index = Number(event.currentTarget.dataset.removeDevice);
+          customDeviceItems.splice(index, 1);
+          syncCustomDeviceList();
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
+    }
+
+    function customDeviceSummary(item) {
+      const parts = [
+        `Power ${fmt(item.power)}`,
+        `Radius ${fmt(item.influence_radius)}`
+      ];
+      if (item.kind === "ac") {
+        parts.push(`Mode ${(item.metadata?.ac_mode || "cool").toUpperCase()}`);
+        parts.push(`Target ${fmt(item.metadata?.target_temperature || 24)}°C`);
+      } else if (item.kind === "window") {
+        parts.push(`Surface ${fmt(item.metadata?.surface_width || 1.55)} × ${fmt(item.metadata?.surface_height || 1.25)} m`);
+      } else if (item.kind === "light") {
+        parts.push(`Gain ${fmt(item.metadata?.illuminance_gain || 1050)} lx`);
+      }
+      return parts.join(", ");
+    }
+
+    function updateCustomDeviceField(index, field, rawValue) {
+      const item = customDeviceItems[index];
+      if (!item) return;
+      const room = currentRoomDimensions();
+      if (field === "x") item.position.x = clamp(rawValue, 0, room.width);
+      if (field === "y") item.position.y = clamp(rawValue, 0, room.length);
+      if (field === "z") item.position.z = clamp(rawValue, 0, room.height);
+      if (field === "power") item.power = clamp(rawValue, 0, 4);
+      if (field === "radius") item.influence_radius = Math.max(0.2, rawValue);
+      if (field === "target_temperature" && item.kind === "ac") item.metadata.target_temperature = clamp(rawValue, 20, 33);
+      if (field === "illuminance_gain" && item.kind === "light") item.metadata.illuminance_gain = Math.max(0, rawValue);
+      if (field === "surface_width" && item.kind !== "light") item.metadata.surface_width = Math.max(0.1, rawValue);
+      if (field === "surface_height" && item.kind !== "light") item.metadata.surface_height = Math.max(0.1, rawValue);
     }
 
     async function addCustomFurniture() {
@@ -1166,41 +1490,28 @@ INDEX_HTML = """<!doctype html>
     }
 
     function resetDeviceControls() {
-      document.querySelectorAll("#deviceControls input[type='checkbox']").forEach(input => {
-        input.checked = false;
-      });
+      defaultDeviceItems = defaultDeviceBaselineItems.map(item => JSON.parse(JSON.stringify(item)));
+      customDeviceItems = [];
+      renderDefaultDeviceList();
+      syncCustomDeviceList();
       loadScenario();
     }
 
     function scenarioQuery() {
       const params = new URLSearchParams({ name: activeScenario });
-      Object.entries(deviceOverrides()).forEach(([name, value]) => {
-        params.set(name, String(value));
-      });
       Object.entries(furnitureOverrides()).forEach(([name, value]) => {
-        params.set(name, String(value));
-      });
-      Object.entries(acSettings()).forEach(([name, value]) => {
         params.set(name, String(value));
       });
       Object.entries(indoorBaselineParams()).forEach(([name, value]) => {
         params.set(name, String(value));
       });
+      params.set("device_specs", JSON.stringify(deviceSpecsPayload()));
       if (customFurnitureItems.length) {
         params.set("custom_furniture", JSON.stringify(customFurniturePayload()));
       }
       params.set("elapsed_minutes", String(selectedElapsedMinutes()));
       params.set("use_hybrid_residual", hybridResidualEnabled() ? "1" : "0");
       return params.toString();
-    }
-
-    function deviceOverrides() {
-      const overrides = {};
-      document.querySelectorAll("#deviceControls input[type='checkbox']").forEach(input => {
-        const activation = Number(input.dataset.activation || "1");
-        overrides[input.dataset.device] = input.checked ? activation : 0.0;
-      });
-      return overrides;
     }
 
     function furnitureOverrides() {
@@ -1223,15 +1534,51 @@ INDEX_HTML = """<!doctype html>
       }));
     }
 
+    function customDevicePayload() {
+      return customDeviceItems.map(item => ({
+        name: item.name,
+        kind: item.kind,
+        activation: item.activation,
+        power: item.power,
+        influence_radius: item.influence_radius,
+        position: item.position,
+        orientation: item.orientation,
+        response_time_minutes: item.response_time_minutes,
+        metadata: item.metadata
+      }));
+    }
+
+    function deviceSpecsPayload() {
+      applyAcSettingsToDefaultDevices();
+      return [...defaultDeviceItems, ...customDeviceItems].map(item => ({
+        name: item.name,
+        kind: item.kind,
+        activation: item.activation,
+        power: item.power,
+        influence_radius: item.influence_radius,
+        response_time_minutes: item.response_time_minutes,
+        position: item.position,
+        orientation: item.orientation,
+        removed: Boolean(item.removed),
+        metadata: item.metadata
+      }));
+    }
+
     function acSettings() {
       return {
         ac_mode: selectedChoice("acMode", "cool"),
-        ac_target_temperature: Number(document.getElementById("acTargetTemperature").value || "24"),
-        ac_horizontal_mode: selectedChoice("acHorizontalMode", "fixed"),
-        ac_horizontal_angle_deg: Number(selectedChoice("acHorizontalAngle", "0")),
-        ac_vertical_mode: selectedChoice("acVerticalMode", "fixed"),
-        ac_vertical_angle_deg: Number(selectedChoice("acVerticalAngle", "15"))
+        target_temperature: Number(document.getElementById("acTargetTemperature").value || "24"),
+        horizontal_mode: selectedChoice("acHorizontalMode", "fixed"),
+        horizontal_angle_deg: Number(selectedChoice("acHorizontalAngle", "0")),
+        vertical_mode: selectedChoice("acVerticalMode", "fixed"),
+        vertical_angle_deg: Number(selectedChoice("acVerticalAngle", "15"))
       };
+    }
+
+    function applyAcSettingsToDefaultDevices() {
+      const ac = defaultDeviceItems.find(item => item.name === "ac_main");
+      if (!ac) return;
+      ac.metadata = { ...(ac.metadata || {}), ...acSettings() };
     }
 
     function indoorBaselineParams() {
@@ -1972,6 +2319,14 @@ INDEX_HTML = """<!doctype html>
       return { width: 6.0, length: 4.0, height: 3.0 };
     }
 
+    function sanitizeDeviceKind(value) {
+      const normalized = String(value || "light").trim().toLowerCase().replace(/[^a-z0-9_\\-]/g, "_");
+      if (["ac", "window", "light"].includes(normalized)) {
+        return normalized;
+      }
+      return "light";
+    }
+
     function sanitizeFurnitureKind(value) {
       const normalized = String(value || "custom").trim().toLowerCase().replace(/[^a-z0-9_\\-]/g, "_");
       return normalized || "custom";
@@ -1993,6 +2348,7 @@ INDEX_HTML = """<!doctype html>
       Object.entries(furnitureOverrides()).forEach(([name, value]) => {
         params.set(name, String(value));
       });
+      params.set("device_specs", JSON.stringify(deviceSpecsPayload()));
       if (customFurnitureItems.length) {
         params.set("custom_furniture", JSON.stringify(customFurniturePayload()));
       }
@@ -2140,6 +2496,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
                         _query_custom_furniture(parsed.query),
+                        _query_custom_devices(parsed.query),
+                        _query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2161,6 +2519,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                         extra_furniture=_query_custom_furniture(parsed.query),
+                        extra_devices=_query_custom_devices(parsed.query),
+                        device_specs=_query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2179,6 +2539,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                         extra_furniture=_query_custom_furniture(parsed.query),
+                        extra_devices=_query_custom_devices(parsed.query),
+                        device_specs=_query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2196,6 +2558,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
                         _query_custom_furniture(parsed.query),
+                        _query_custom_devices(parsed.query),
+                        _query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2213,6 +2577,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
                         _query_custom_furniture(parsed.query),
+                        _query_custom_devices(parsed.query),
+                        _query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2230,6 +2596,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
                         _query_custom_furniture(parsed.query),
+                        _query_custom_devices(parsed.query),
+                        _query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2247,6 +2615,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "elapsed_minutes", 18.0),
                         _query_bool(query, "use_hybrid_residual", False),
                         _query_custom_furniture(parsed.query),
+                        _query_custom_devices(parsed.query),
+                        _query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2264,6 +2634,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         _query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                         extra_furniture=_query_custom_furniture(parsed.query),
+                        extra_devices=_query_custom_devices(parsed.query),
+                        device_specs=_query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2282,6 +2654,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                         extra_furniture=_query_custom_furniture(parsed.query),
+                        extra_devices=_query_custom_devices(parsed.query),
+                        device_specs=_query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2302,6 +2676,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                         extra_furniture=_query_custom_furniture(parsed.query),
+                        extra_devices=_query_custom_devices(parsed.query),
+                        device_specs=_query_device_specs(parsed.query),
                     )
                 )
                 return
@@ -2323,6 +2699,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                         elapsed_minutes=_query_float(query, "elapsed_minutes", 18.0),
                         use_hybrid_residual=_query_bool(query, "use_hybrid_residual", False),
                         extra_furniture=_query_custom_furniture(parsed.query),
+                        extra_devices=_query_custom_devices(parsed.query),
                     )
                 )
                 return
@@ -2414,6 +2791,30 @@ def _query_furniture_overrides(query_string: str) -> Dict[str, float]:
 def _query_custom_furniture(query_string: str):
     query = parse_qs(query_string)
     payload = query.get("custom_furniture", [None])[0]
+    if not payload:
+        return []
+    try:
+        decoded = json.loads(payload)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    return decoded if isinstance(decoded, list) else []
+
+
+def _query_custom_devices(query_string: str):
+    query = parse_qs(query_string)
+    payload = query.get("custom_devices", [None])[0]
+    if not payload:
+        return []
+    try:
+        decoded = json.loads(payload)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    return decoded if isinstance(decoded, list) else []
+
+
+def _query_device_specs(query_string: str):
+    query = parse_qs(query_string)
+    payload = query.get("device_specs", [None])[0]
     if not payload:
         return []
     try:

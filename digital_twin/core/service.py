@@ -11,7 +11,7 @@ from digital_twin.core.demo import (
     learn_active_device_impacts,
     synthesize_sensor_observations,
 )
-from digital_twin.core.entities import Furniture, Vector3
+from digital_twin.core.entities import Device, Furniture, Vector3
 from digital_twin.core.math_utils import clamp
 from digital_twin.core.scenarios import (
     SEASON_PROFILES,
@@ -22,6 +22,7 @@ from digital_twin.core.scenarios import (
     WINDOW_WEATHER_ORDER,
     Scenario,
     apply_truth_adjustments,
+    build_device,
     build_direct_window_scenario,
     build_validation_scenarios,
     build_window_matrix_scenarios,
@@ -65,6 +66,8 @@ def evaluate_scenario(
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -76,6 +79,8 @@ def evaluate_scenario(
         base_illuminance,
         elapsed_minutes,
         extra_furniture,
+        extra_devices,
+        device_specs,
     )
     return _evaluate_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -93,6 +98,8 @@ def evaluate_window_direct(
     elapsed_minutes: float = 18.0,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -111,6 +118,8 @@ def evaluate_window_direct(
         None,
         furniture_overrides,
         extra_furniture=extra_furniture,
+        extra_devices=extra_devices,
+        device_specs=device_specs,
     )
     result = _evaluate_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
     result["input"] = _window_direct_input_dict(
@@ -133,6 +142,8 @@ def evaluate_window_direct_dashboard(
     elapsed_minutes: float = 18.0,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -151,6 +162,8 @@ def evaluate_window_direct_dashboard(
         None,
         furniture_overrides,
         extra_furniture=extra_furniture,
+        extra_devices=extra_devices,
+        device_specs=device_specs,
     )
     result = _evaluate_dashboard_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
     result["scenario"]["input"] = _window_direct_input_dict(
@@ -176,6 +189,8 @@ def sample_window_direct_point(
     elapsed_minutes: float = 18.0,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -194,6 +209,8 @@ def sample_window_direct_point(
         None,
         furniture_overrides,
         extra_furniture=extra_furniture,
+        extra_devices=extra_devices,
+        device_specs=device_specs,
     )
     return _sample_scenario_object_point(
         scenario=scenario,
@@ -217,6 +234,8 @@ def get_scenario_timeline(
     steps: int = 13,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -228,6 +247,8 @@ def get_scenario_timeline(
         base_illuminance,
         elapsed_minutes,
         extra_furniture,
+        extra_devices,
+        device_specs,
     )
     return _build_scenario_timeline(
         scenario,
@@ -252,6 +273,8 @@ def get_window_direct_timeline(
     steps: int = 13,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = build_direct_window_scenario(
         outdoor_temperature=outdoor_temperature,
@@ -270,6 +293,8 @@ def get_window_direct_timeline(
         None,
         furniture_overrides,
         extra_furniture=extra_furniture,
+        extra_devices=extra_devices,
+        device_specs=device_specs,
     )
     timeline = _build_scenario_timeline(
         scenario,
@@ -450,6 +475,8 @@ def get_scenario_volume(
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -461,6 +488,8 @@ def get_scenario_volume(
         base_illuminance,
         elapsed_minutes,
         extra_furniture,
+        extra_devices,
+        device_specs,
     )
     return _get_scenario_object_volume(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -476,6 +505,8 @@ def rank_scenario_actions(
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -487,6 +518,8 @@ def rank_scenario_actions(
         base_illuminance,
         elapsed_minutes,
         extra_furniture,
+        extra_devices,
+        device_specs,
     )
     return _rank_scenario_object_actions(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -505,6 +538,8 @@ def sample_scenario_point(
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -516,6 +551,8 @@ def sample_scenario_point(
         base_illuminance,
         elapsed_minutes,
         extra_furniture,
+        extra_devices,
+        device_specs,
     )
     return _sample_scenario_object_point(scenario, x, y, z, use_hybrid_residual=use_hybrid_residual)
 
@@ -531,6 +568,8 @@ def compare_scenario_baseline(
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -542,6 +581,8 @@ def compare_scenario_baseline(
         base_illuminance,
         elapsed_minutes,
         extra_furniture,
+        extra_devices,
+        device_specs,
     )
     return _compare_scenario_object_baseline(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -557,6 +598,8 @@ def learn_scenario_impacts(
     elapsed_minutes: Optional[float] = None,
     use_hybrid_residual: bool = False,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -568,6 +611,8 @@ def learn_scenario_impacts(
         base_illuminance,
         elapsed_minutes,
         extra_furniture,
+        extra_devices,
+        device_specs,
     )
     return _learn_scenario_object_impacts(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -606,19 +651,7 @@ def _get_scenario_object_volume(scenario: Scenario, use_hybrid_residual: bool = 
             "ny": scenario.resolution.ny,
             "nz": scenario.resolution.nz,
         },
-        "devices": [
-            {
-                "name": device.name,
-                "kind": device.kind,
-                "activation": round(device.activation, 4),
-                "power": round(device.power, 4),
-                "calibrated_power_scale": round(float(device.metadata.get("calibrated_power_scale", 1.0)), 4),
-                "position": _vector_to_dict(device.position),
-                "geometry": _device_geometry(device),
-                "metadata": _device_metadata(device),
-            }
-            for device in estimated_result.calibrated_devices
-        ],
+        "devices": [_device_dict(device, include_power=True) for device in estimated_result.calibrated_devices],
         "furniture": [
             _furniture_dict(item)
             for item in scenario.furniture
@@ -954,12 +987,16 @@ def _scenario_with_overrides(
     base_illuminance: Optional[float] = None,
     elapsed_minutes: Optional[float] = None,
     extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
 ) -> Scenario:
     if (
         not device_overrides
         and not device_metadata_overrides
         and not furniture_overrides
         and not extra_furniture
+        and not extra_devices
+        and not device_specs
         and indoor_temperature is None
         and indoor_humidity is None
         and base_illuminance is None
@@ -967,13 +1004,17 @@ def _scenario_with_overrides(
     ):
         return scenario
     updates = {}
-    if device_overrides or device_metadata_overrides:
+    if device_overrides or device_metadata_overrides or extra_devices or device_specs:
         devices = deepcopy(scenario.devices)
+        if device_specs:
+            devices = _merge_device_specs(devices, device_specs, scenario.room)
         for device in devices:
             if device_overrides and device.name in device_overrides:
                 device.activation = max(0.0, min(1.0, float(device_overrides[device.name])))
             if device_metadata_overrides and device.name in device_metadata_overrides:
                 device.metadata.update(deepcopy(device_metadata_overrides[device.name]))
+        if extra_devices:
+            devices.extend(_extra_devices_from_specs(extra_devices, scenario.room, devices))
         updates["devices"] = devices
     if furniture_overrides or extra_furniture:
         furniture = deepcopy(scenario.furniture)
@@ -1004,22 +1045,30 @@ def _scenario_metadata(scenario: Scenario) -> Dict:
         "description": scenario.description,
         "target_zone": scenario.target_zone_name,
         "metadata": scenario.metadata,
-        "devices": [
-            {
-                "name": device.name,
-                "kind": device.kind,
-                "activation": device.activation,
-                "position": _vector_to_dict(device.position),
-                "geometry": _device_geometry(device),
-                "metadata": _device_metadata(device),
-            }
-            for device in scenario.devices
-        ],
+        "devices": [_device_dict(device, include_power=True) for device in scenario.devices],
         "furniture": [
             _furniture_dict(item)
             for item in scenario.furniture
         ],
     }
+
+
+def _device_dict(device, include_power: bool = False) -> Dict[str, object]:
+    payload: Dict[str, object] = {
+        "name": device.name,
+        "kind": device.kind,
+        "activation": round(device.activation, 4),
+        "position": _vector_to_dict(device.position),
+        "orientation": _vector_to_dict(device.orientation),
+        "influence_radius": round(device.influence_radius, 4),
+        "response_time_minutes": round(device.response_time_minutes, 4),
+        "geometry": _device_geometry(device),
+        "metadata": _device_metadata(device),
+    }
+    if include_power:
+        payload["power"] = round(device.power, 4)
+        payload["calibrated_power_scale"] = round(float(device.metadata.get("calibrated_power_scale", 1.0)), 4)
+    return payload
 
 
 def _device_geometry(device) -> Dict:
@@ -1070,6 +1119,195 @@ def _furniture_dict(item) -> Dict[str, object]:
         "size": _vector_to_dict(item.size),
         "metadata": deepcopy(item.metadata),
     }
+
+
+def _default_device_position(kind: str, room) -> Vector3:
+    if kind == "ac":
+        return Vector3(room.width * 0.9, room.length / 2.0, room.height - 0.25)
+    if kind == "window":
+        return Vector3(0.0, room.length / 2.0, room.height * 0.47)
+    return Vector3(room.width / 2.0, room.length / 2.0, room.height - 0.15)
+
+
+def _default_device_orientation(kind: str) -> Vector3:
+    if kind == "ac":
+        return Vector3(-1.0, 0.0, -0.25)
+    if kind == "window":
+        return Vector3(1.0, 0.0, 0.0)
+    return Vector3(0.0, 0.0, -1.0)
+
+
+def _merge_device_specs(
+    devices: List[Device],
+    specs: List[Dict[str, object]],
+    room,
+) -> List[Device]:
+    by_name = {device.name: deepcopy(device) for device in devices}
+    order = [device.name for device in devices]
+
+    for index, spec in enumerate(specs):
+        try:
+            name = str(spec.get("name") or f"custom_device_{index + 1}")
+            removed = bool(spec.get("removed", False))
+            if removed:
+                by_name.pop(name, None)
+                order = [item for item in order if item != name]
+                continue
+
+            template = by_name.get(name)
+            metadata = deepcopy(template.metadata if template else {})
+            metadata.update(deepcopy(spec.get("metadata") or {}))
+            kind = str(spec.get("kind") or metadata.get("kind") or (template.kind if template else "light")).lower()
+            if kind not in {"ac", "window", "light"}:
+                continue
+
+            default_position = template.position if template else _default_device_position(kind, room)
+            position = _vector_from_mapping(spec.get("position"), default=default_position)
+            clamped_position = Vector3(
+                clamp(position.x, 0.0, room.width),
+                clamp(position.y, 0.0, room.length),
+                clamp(position.z, 0.0, room.height),
+            )
+            orientation = _vector_from_mapping(
+                spec.get("orientation"),
+                default=template.orientation if template else _default_device_orientation(kind),
+            )
+            influence_radius = clamp(
+                float(
+                    spec.get(
+                        "influence_radius",
+                        spec.get(
+                            "radius",
+                            metadata.get(
+                                "influence_radius",
+                                template.influence_radius if template else 0.0,
+                            ),
+                        ),
+                    )
+                    or 0.0
+                ),
+                0.2,
+                max(room.width, room.length, room.height) * 2.0,
+            )
+            response_time = clamp(
+                float(
+                    spec.get(
+                        "response_time_minutes",
+                        metadata.get(
+                            "response_time_minutes",
+                            template.response_time_minutes if template else 0.0,
+                        ),
+                    )
+                    or 0.0
+                ),
+                0.1,
+                180.0,
+            )
+            power = clamp(float(spec.get("power", template.power if template else 1.0)), 0.0, 4.0)
+            activation = clamp(float(spec.get("activation", template.activation if template else 1.0)), 0.0, 1.0)
+            metadata.setdefault("label", str(spec.get("label") or metadata.get("label") or name))
+            metadata["kind"] = kind
+
+            for key in (
+                "surface_width",
+                "surface_height",
+                "ac_mode",
+                "target_temperature",
+                "horizontal_mode",
+                "horizontal_angle_deg",
+                "vertical_mode",
+                "vertical_angle_deg",
+                "illuminance_gain",
+            ):
+                if key in spec:
+                    metadata[key] = spec[key]
+
+            merged = build_device(
+                name=name,
+                kind=kind,
+                position=clamped_position,
+                orientation=orientation,
+                influence_radius=influence_radius if influence_radius > 0.0 else None,
+                power=power,
+                activation=activation,
+                response_time_minutes=response_time if response_time > 0.0 else None,
+                metadata=metadata,
+            )
+            by_name[name] = merged
+            if name not in order:
+                order.append(name)
+        except (AttributeError, TypeError, ValueError):
+            continue
+
+    return [by_name[name] for name in order if name in by_name]
+
+
+def _extra_devices_from_specs(
+    specs: List[Dict[str, object]],
+    room,
+    existing_devices,
+) -> List[Device]:
+    existing_names = {item.name for item in existing_devices}
+    created: List[Device] = []
+    for index, spec in enumerate(specs):
+        try:
+            metadata = deepcopy(spec.get("metadata") or {})
+            kind = str(spec.get("kind") or metadata.get("kind") or "light").lower()
+            if kind not in {"ac", "window", "light"}:
+                continue
+            name = str(spec.get("name") or f"custom_device_{kind}_{index + 1}")
+            if name in existing_names:
+                name = f"{name}_{index + 1}"
+            default_position = _default_device_position(kind, room)
+            position = _vector_from_mapping(spec.get("position"), default=default_position)
+            clamped_position = Vector3(
+                clamp(position.x, 0.0, room.width),
+                clamp(position.y, 0.0, room.length),
+                clamp(position.z, 0.0, room.height),
+            )
+            orientation = _vector_from_mapping(spec.get("orientation"), default=_default_device_orientation(kind))
+            influence_radius = clamp(
+                float(spec.get("influence_radius", spec.get("radius", metadata.get("influence_radius", 0.0)) or 0.0)),
+                0.2,
+                max(room.width, room.length, room.height) * 2.0,
+            )
+            response_time = clamp(
+                float(spec.get("response_time_minutes", metadata.get("response_time_minutes", 0.0)) or 0.0),
+                0.1,
+                180.0,
+            )
+            power = clamp(float(spec.get("power", 1.0)), 0.0, 4.0)
+            activation = clamp(float(spec.get("activation", 1.0)), 0.0, 1.0)
+            metadata.setdefault("label", str(spec.get("label") or name))
+            metadata.setdefault("kind", kind)
+            if "surface_width" in spec:
+                metadata["surface_width"] = max(0.1, float(spec["surface_width"]))
+            if "surface_height" in spec:
+                metadata["surface_height"] = max(0.1, float(spec["surface_height"]))
+            if kind == "ac":
+                if "ac_mode" in spec:
+                    metadata["ac_mode"] = str(spec["ac_mode"])
+                if "target_temperature" in spec:
+                    metadata["target_temperature"] = clamp(float(spec["target_temperature"]), 20.0, 33.0)
+            if kind == "light" and "illuminance_gain" in spec:
+                metadata["illuminance_gain"] = max(0.0, float(spec["illuminance_gain"]))
+            created.append(
+                build_device(
+                    name=name,
+                    kind=kind,
+                    position=clamped_position,
+                    orientation=orientation,
+                    influence_radius=influence_radius if influence_radius > 0.0 else None,
+                    power=power,
+                    activation=activation,
+                    response_time_minutes=response_time if response_time > 0.0 else None,
+                    metadata=metadata,
+                )
+            )
+            existing_names.add(name)
+        except (AttributeError, TypeError, ValueError):
+            continue
+    return created
 
 
 def _extra_furniture_from_specs(

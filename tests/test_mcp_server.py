@@ -252,6 +252,62 @@ class ServiceTests(unittest.TestCase):
         )
         self.assertLess(blocked["values"]["illuminance"], baseline["values"]["illuminance"])
 
+    def test_extra_devices_can_be_appended_from_web_payload(self) -> None:
+        extra_devices = [
+            {
+                "name": "extra_ac_1",
+                "kind": "ac",
+                "activation": 1.0,
+                "power": 1.1,
+                "influence_radius": 2.8,
+                "position": {"x": 4.8, "y": 2.0, "z": 2.6},
+                "metadata": {"label": "Extra AC", "ac_mode": "cool", "target_temperature": 22.0},
+            }
+        ]
+        volume = get_scenario_volume("idle", extra_devices=extra_devices)
+        self.assertIn("extra_ac_1", {item["name"] for item in volume["devices"]})
+        baseline = sample_scenario_point("idle", x=4.5, y=2.0, z=1.4)
+        cooled = sample_scenario_point(
+            "idle",
+            x=4.5,
+            y=2.0,
+            z=1.4,
+            extra_devices=extra_devices,
+        )
+        self.assertLess(cooled["values"]["temperature"], baseline["values"]["temperature"])
+
+    def test_device_specs_can_edit_and_remove_built_in_devices(self) -> None:
+        baseline = sample_scenario_point("idle", x=3.0, y=2.0, z=1.2)
+        adjusted = sample_scenario_point(
+            "idle",
+            x=3.0,
+            y=2.0,
+            z=1.2,
+            device_specs=[
+                {"name": "light_main", "removed": True},
+                {
+                    "name": "ac_main",
+                    "power": 1.3,
+                    "activation": 1.0,
+                    "position": {"x": 3.8, "y": 2.0, "z": 2.6},
+                },
+            ],
+        )
+        volume = get_scenario_volume(
+            "idle",
+            device_specs=[
+                {"name": "light_main", "removed": True},
+                {
+                    "name": "ac_main",
+                    "power": 1.3,
+                    "activation": 1.0,
+                    "position": {"x": 3.8, "y": 2.0, "z": 2.6},
+                },
+            ],
+        )
+        self.assertNotIn("light_main", {item["name"] for item in volume["devices"]})
+        self.assertLess(adjusted["values"]["temperature"], baseline["values"]["temperature"])
+
     def test_device_overrides_change_volume_device_activation(self) -> None:
         result = get_scenario_volume("idle", {"ac_main": 0.8, "window_main": 0.7, "light_main": 0.0})
         activations = {device["name"]: device["activation"] for device in result["devices"]}
@@ -323,6 +379,9 @@ class MCPServerTests(unittest.TestCase):
                 "run_window_direct",
             },
         )
+        run_scenario = next(tool for tool in response["result"]["tools"] if tool["name"] == "run_scenario")
+        self.assertIn("extra_devices", run_scenario["inputSchema"]["properties"])
+        self.assertIn("device_specs", run_scenario["inputSchema"]["properties"])
 
     def test_tool_call(self) -> None:
         response = self.server.handle_message(
@@ -470,6 +529,68 @@ class MCPServerTests(unittest.TestCase):
         self.assertEqual(payload["name"], "window_direct_input")
         self.assertEqual(payload["input"]["opening_ratio"], 0.45)
         self.assertEqual(payload["target_zone"], "window_zone")
+
+    def test_run_scenario_tool_call_accepts_extra_devices(self) -> None:
+        response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 8,
+                "method": "tools/call",
+                "params": {
+                    "name": "run_scenario",
+                    "arguments": {
+                        "scenario_name": "idle",
+                        "extra_devices": [
+                            {
+                                "name": "extra_ac_1",
+                                "kind": "ac",
+                                "activation": 1.0,
+                                "power": 1.1,
+                                "influence_radius": 2.8,
+                                "position": {"x": 4.8, "y": 2.0, "z": 2.6},
+                                "metadata": {
+                                    "label": "Extra AC",
+                                    "ac_mode": "cool",
+                                    "target_temperature": 22.0,
+                                },
+                            }
+                        ],
+                    },
+                },
+            }
+        )
+        payload = json.loads(response["result"]["content"][0]["text"])
+        self.assertLess(payload["target_zone_estimated"]["temperature"], 29.0)
+
+    def test_run_window_direct_tool_call_accepts_extra_devices(self) -> None:
+        response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 9,
+                "method": "tools/call",
+                "params": {
+                    "name": "run_window_direct",
+                    "arguments": {
+                        "outdoor_temperature": 30.0,
+                        "outdoor_humidity": 70.0,
+                        "sunlight_illuminance": 0.0,
+                        "opening_ratio": 0.3,
+                        "extra_devices": [
+                            {
+                                "name": "extra_light_1",
+                                "kind": "light",
+                                "activation": 1.0,
+                                "power": 1.0,
+                                "position": {"x": 2.8, "y": 2.0, "z": 2.7},
+                                "metadata": {"label": "Task Light", "illuminance_gain": 1200.0},
+                            }
+                        ],
+                    },
+                },
+            }
+        )
+        payload = json.loads(response["result"]["content"][0]["text"])
+        self.assertGreater(payload["zone_estimated"]["center_zone"]["illuminance"], 70.0)
 
 
 if __name__ == "__main__":

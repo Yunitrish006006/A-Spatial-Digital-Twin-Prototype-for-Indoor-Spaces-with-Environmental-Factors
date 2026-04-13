@@ -10,7 +10,9 @@ if root_str not in sys.path:
 from digital_twin.web.web_demo import (
     INDEX_HTML,
     _query_bool,
+    _query_custom_devices,
     _query_custom_furniture,
+    _query_device_specs,
     _query_device_metadata_overrides,
     _query_device_overrides,
     _query_furniture_overrides,
@@ -39,8 +41,15 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("Reset To 0", INDEX_HTML)
         self.assertIn("elapsedTimelineStatus", INDEX_HTML)
         self.assertIn("volumeCanvas", INDEX_HTML)
-        self.assertIn("Device Toggles", INDEX_HTML)
+        self.assertIn("Devices", INDEX_HTML)
         self.assertIn("deviceControls", INDEX_HTML)
+        self.assertIn("Custom Devices", INDEX_HTML)
+        self.assertIn("customDeviceList", INDEX_HTML)
+        self.assertIn("addCustomDeviceButton", INDEX_HTML)
+        self.assertIn("clearCustomDeviceButton", INDEX_HTML)
+        self.assertIn("customDeviceKindControls", INDEX_HTML)
+        self.assertIn("Duplicate", INDEX_HTML)
+        self.assertIn("Reset", INDEX_HTML)
         self.assertIn("metricControls", INDEX_HTML)
         self.assertIn("Indoor Baseline", INDEX_HTML)
         self.assertIn("baselineIndoorTemperature", INDEX_HTML)
@@ -131,6 +140,27 @@ class WebDemoTests(unittest.TestCase):
         self.assertEqual(len(payload), 1)
         self.assertEqual(payload[0]["name"], "custom_furniture_1")
         self.assertEqual(payload[0]["metadata"]["label"], "Desk Divider")
+
+    def test_query_custom_devices(self) -> None:
+        payload = _query_custom_devices(
+            'name=idle&custom_devices=[{"name":"custom_device_ac_1","kind":"ac","activation":1,'
+            '"power":1.1,"influence_radius":2.8,"position":{"x":4.8,"y":2.0,"z":2.6},'
+            '"metadata":{"label":"Extra AC","ac_mode":"cool","target_temperature":22}}]'
+        )
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["name"], "custom_device_ac_1")
+        self.assertEqual(payload[0]["kind"], "ac")
+        self.assertEqual(payload[0]["metadata"]["label"], "Extra AC")
+
+    def test_query_device_specs(self) -> None:
+        payload = _query_device_specs(
+            'name=idle&device_specs=[{"name":"ac_main","kind":"ac","activation":0.6,"power":1.2,'
+            '"influence_radius":3.1,"position":{"x":5.0,"y":2.0,"z":2.7},"metadata":{"label":"Main AC"}}]'
+        )
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["name"], "ac_main")
+        self.assertEqual(payload[0]["power"], 1.2)
+        self.assertEqual(payload[0]["metadata"]["label"], "Main AC")
 
 
 if __name__ == "__main__":
