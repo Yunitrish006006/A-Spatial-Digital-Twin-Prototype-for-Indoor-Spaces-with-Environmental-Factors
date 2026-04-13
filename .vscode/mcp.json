@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "singleRoomTwin": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "${workspaceFolder}/scripts/run_mcp_server.py"
+      ]
+    }
+  }
+}

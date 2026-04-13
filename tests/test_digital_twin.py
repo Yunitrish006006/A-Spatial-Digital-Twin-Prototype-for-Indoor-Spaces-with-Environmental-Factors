@@ -2,6 +2,12 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+root_str = str(ROOT)
+if root_str not in sys.path:
+    sys.path.insert(0, root_str)
 
 from digital_twin.core.demo import compare_sensors, synthesize_sensor_observations
 from digital_twin.core.entities import ComfortTarget, Furniture, GridResolution, Vector3, create_corner_sensors
