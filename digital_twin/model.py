@@ -1,7 +1,7 @@
 import math
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .entities import Device, Environment, Furniture, GridResolution, Room, Sensor, Vector3, Zone
 from .math_utils import clamp, distance, dot, normalize, solve_linear_system, spaced_values, subtract
@@ -603,7 +603,8 @@ class DigitalTwinModel:
             activation = clamp(item.activation, 0.0, 1.0)
             if activation <= 0.0:
                 continue
-            if not self._segment_intersects_box(device.position, point, item.min_corner, item.max_corner):
+            overlap_ratio = self._segment_box_overlap_ratio(device.position, point, item.min_corner, item.max_corner)
+            if overlap_ratio <= 0.0:
                 continue
             block_strength = float(
                 item.metadata.get(
@@ -611,28 +612,107 @@ class DigitalTwinModel:
                     item.metadata.get("block_strength", 0.32),
                 )
             )
-            factor *= clamp(1.0 - activation * block_strength, 0.08, 1.0)
+            adaptive_block = self._adaptive_obstruction_strength(
+                room=room,
+                start=device.position,
+                end=point,
+                item=item,
+                base_strength=block_strength,
+                overlap_ratio=overlap_ratio,
+            )
+            factor *= clamp(1.0 - activation * adaptive_block, 0.04, 1.0)
         return factor
 
     def _furniture_mixing_penalty(self, room: Room, furniture: Optional[List[Furniture]]) -> float:
         if not furniture:
             return 0.0
-        room_volume = max(room.width * room.length * room.height, 1e-9)
         penalty = 0.0
         for item in furniture:
             activation = clamp(item.activation, 0.0, 1.0)
             if activation <= 0.0:
                 continue
-            volume = max(
-                0.0,
-                (item.max_corner.x - item.min_corner.x)
-                * (item.max_corner.y - item.min_corner.y)
-                * (item.max_corner.z - item.min_corner.z),
-            )
-            volume_fraction = volume / room_volume
-            mixing_penalty = float(item.metadata.get("mixing_penalty", 0.05))
-            penalty += activation * mixing_penalty * min(volume_fraction * 10.0, 1.0)
-        return clamp(penalty, 0.0, 0.18)
+            adaptive_penalty = self._adaptive_mixing_penalty(room, item)
+            penalty += activation * adaptive_penalty
+        return clamp(penalty, 0.0, 0.24)
+
+    def _adaptive_obstruction_strength(
+        self,
+        room: Room,
+        start: Vector3,
+        end: Vector3,
+        item: Furniture,
+        base_strength: float,
+        overlap_ratio: float,
+    ) -> float:
+        direction = subtract(end, start)
+        projected_coverage = self._projected_face_coverage(room, item, direction)
+        span_factor = self._barrier_span_factor(room, item)
+        center_factor = self._barrier_center_factor(room, item)
+        geometry_factor = clamp(
+            0.08 + 0.42 * overlap_ratio + 0.34 * projected_coverage + 0.24 * span_factor + 0.12 * center_factor,
+            0.05,
+            1.35,
+        )
+        return clamp(base_strength * geometry_factor, 0.02, 0.98)
+
+    def _adaptive_mixing_penalty(self, room: Room, item: Furniture) -> float:
+        size = item.size
+        room_volume = max(room.width * room.length * room.height, 1e-9)
+        volume_fraction = (size.x * size.y * size.z) / room_volume
+        yz_coverage = (size.y / max(room.length, 1e-9)) * (size.z / max(room.height, 1e-9))
+        xz_coverage = (size.x / max(room.width, 1e-9)) * (size.z / max(room.height, 1e-9))
+        cross_section = max(yz_coverage, xz_coverage)
+        span_factor = self._barrier_span_factor(room, item)
+        center_factor = self._barrier_center_factor(room, item)
+        base_penalty = float(item.metadata.get("mixing_penalty", item.metadata.get("block_strength", 0.3) * 0.12))
+        adaptive_scale = clamp(
+            0.35 + 0.65 * min(volume_fraction * 6.0, 1.0) + 0.75 * cross_section + 0.45 * span_factor + 0.25 * center_factor,
+            0.2,
+            2.2,
+        )
+        return clamp(base_penalty * adaptive_scale, 0.0, 0.2)
+
+    def _projected_face_coverage(self, room: Room, item: Furniture, direction: Vector3) -> float:
+        magnitude = abs(direction.x) + abs(direction.y) + abs(direction.z)
+        if magnitude <= 1e-9:
+            return 0.0
+        size = item.size
+        yz_coverage = (size.y / max(room.length, 1e-9)) * (size.z / max(room.height, 1e-9))
+        xz_coverage = (size.x / max(room.width, 1e-9)) * (size.z / max(room.height, 1e-9))
+        xy_coverage = (size.x / max(room.width, 1e-9)) * (size.y / max(room.length, 1e-9))
+        wx = abs(direction.x) / magnitude
+        wy = abs(direction.y) / magnitude
+        wz = abs(direction.z) / magnitude
+        return clamp(wx * yz_coverage + wy * xz_coverage + wz * xy_coverage, 0.0, 1.0)
+
+    def _barrier_span_factor(self, room: Room, item: Furniture) -> float:
+        size = item.size
+        yz_coverage = (size.y / max(room.length, 1e-9)) * (size.z / max(room.height, 1e-9))
+        xz_coverage = (size.x / max(room.width, 1e-9)) * (size.z / max(room.height, 1e-9))
+        xy_coverage = (size.x / max(room.width, 1e-9)) * (size.y / max(room.length, 1e-9))
+        return clamp(max(yz_coverage, xz_coverage, xy_coverage), 0.0, 1.0)
+
+    def _barrier_center_factor(self, room: Room, item: Furniture) -> float:
+        center = item.center
+        room_center_x = room.width / 2.0
+        room_center_y = room.length / 2.0
+        max_distance = math.sqrt(room_center_x ** 2 + room_center_y ** 2)
+        if max_distance <= 1e-9:
+            return 1.0
+        distance_to_center = math.sqrt((center.x - room_center_x) ** 2 + (center.y - room_center_y) ** 2)
+        return clamp(1.0 - distance_to_center / max_distance, 0.0, 1.0)
+
+    def _segment_box_overlap_ratio(
+        self,
+        start: Vector3,
+        end: Vector3,
+        min_corner: Vector3,
+        max_corner: Vector3,
+    ) -> float:
+        intersects, t_min, t_max = self._segment_box_overlap(start, end, min_corner, max_corner)
+        if not intersects:
+            return 0.0
+        return clamp(t_max - t_min, 0.0, 1.0)
 
     def _segment_intersects_box(
         self,
@@ -641,6 +721,16 @@ class DigitalTwinModel:
         min_corner: Vector3,
         max_corner: Vector3,
     ) -> bool:
+        intersects, _, _ = self._segment_box_overlap(start, end, min_corner, max_corner)
+        return intersects
+
+    def _segment_box_overlap(
+        self,
+        start: Vector3,
+        end: Vector3,
+        min_corner: Vector3,
+        max_corner: Vector3,
+    ) -> Tuple[bool, float, float]:
         direction = Vector3(end.x - start.x, end.y - start.y, end.z - start.z)
         t_min = 0.0
         t_max = 1.0
@@ -652,7 +742,7 @@ class DigitalTwinModel:
         ):
             if abs(direction_axis) <= 1e-9:
                 if start_axis < min_axis or start_axis > max_axis:
-                    return False
+                    return False, 0.0, 0.0
                 continue
 
             inverse = 1.0 / direction_axis
@@ -663,8 +753,8 @@ class DigitalTwinModel:
             t_min = max(t_min, near)
             t_max = min(t_max, far)
             if t_min > t_max:
-                return False
-        return True
+                return False, 0.0, 0.0
+        return True, t_min, t_max
 
     def _ac_bulk_delta(
         self,

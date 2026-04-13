@@ -21,7 +21,7 @@ from digital_twin.scenarios import (
     build_standard_zones,
     build_window_matrix_scenarios,
 )
-from digital_twin.entities import ComfortTarget, GridResolution, Vector3, create_corner_sensors
+from digital_twin.entities import ComfortTarget, Furniture, GridResolution, Vector3, create_corner_sensors
 
 
 class DigitalTwinTests(unittest.TestCase):
@@ -341,6 +341,112 @@ class DigitalTwinTests(unittest.TestCase):
         )
         self.assertGreater(blocked_path["temperature"], open_path["temperature"])
         self.assertGreater(blocked_path["humidity"], open_path["humidity"])
+
+    def test_taller_partition_blocks_cross_room_transfer_more_than_low_divider(self) -> None:
+        devices = build_standard_devices()
+        for device in devices:
+            if device.name == "ac_main":
+                device.activation = 0.85
+                device.metadata.update({"ac_mode": "cool", "target_temperature": 24.0})
+            elif device.name == "window_main":
+                device.activation = 0.75
+            elif device.name == "light_main":
+                device.activation = 0.0
+
+        low_divider = Furniture(
+            name="low_divider",
+            kind="partition",
+            min_corner=Vector3(2.75, 0.2, 0.0),
+            max_corner=Vector3(3.05, 3.8, 1.0),
+            activation=1.0,
+            metadata={"block_strength": 0.9, "ac_block": 0.9, "window_block": 0.9, "light_block": 0.9},
+        )
+        tall_partition = Furniture(
+            name="tall_partition",
+            kind="partition",
+            min_corner=Vector3(2.75, 0.0, 0.0),
+            max_corner=Vector3(3.05, 4.0, 2.85),
+            activation=1.0,
+            metadata={"block_strength": 0.9, "ac_block": 0.9, "window_block": 0.9, "light_block": 0.9},
+        )
+
+        low_result = self.model.simulate(
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=[low_divider],
+            sensors=self.sensors,
+            zones=self.zones,
+            elapsed_minutes=45.0,
+            resolution=self.resolution,
+        )
+        tall_result = self.model.simulate(
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=[tall_partition],
+            sensors=self.sensors,
+            zones=self.zones,
+            elapsed_minutes=45.0,
+            resolution=self.resolution,
+        )
+        self.assertGreater(
+            tall_result.zone_averages["window_zone"]["temperature"],
+            low_result.zone_averages["window_zone"]["temperature"],
+        )
+
+    def test_off_path_partition_blocks_less_than_center_partition(self) -> None:
+        devices = build_standard_devices()
+        for device in devices:
+            if device.name == "ac_main":
+                device.activation = 0.85
+                device.metadata.update({"ac_mode": "cool", "target_temperature": 24.0})
+            elif device.name == "window_main":
+                device.activation = 0.75
+            elif device.name == "light_main":
+                device.activation = 0.0
+
+        center_partition = Furniture(
+            name="center_partition",
+            kind="partition",
+            min_corner=Vector3(2.75, 0.0, 0.0),
+            max_corner=Vector3(3.05, 4.0, 2.85),
+            activation=1.0,
+            metadata={"block_strength": 0.9, "ac_block": 0.9, "window_block": 0.9, "light_block": 0.9},
+        )
+        edge_partition = Furniture(
+            name="edge_partition",
+            kind="partition",
+            min_corner=Vector3(2.75, 0.0, 0.0),
+            max_corner=Vector3(3.05, 1.0, 2.85),
+            activation=1.0,
+            metadata={"block_strength": 0.9, "ac_block": 0.9, "window_block": 0.9, "light_block": 0.9},
+        )
+
+        center_result = self.model.simulate(
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=[center_partition],
+            sensors=self.sensors,
+            zones=self.zones,
+            elapsed_minutes=45.0,
+            resolution=self.resolution,
+        )
+        edge_result = self.model.simulate(
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=[edge_partition],
+            sensors=self.sensors,
+            zones=self.zones,
+            elapsed_minutes=45.0,
+            resolution=self.resolution,
+        )
+        self.assertGreater(
+            center_result.zone_averages["window_zone"]["temperature"],
+            edge_result.zone_averages["window_zone"]["temperature"],
+        )
 
     def test_sensor_calibration_reduces_sensor_error(self) -> None:
         truth_devices = apply_truth_adjustments(

@@ -239,6 +239,20 @@ INDEX_HTML = """<!doctype html>
       padding: 12px;
       background: #fffdf7;
     }
+    .item-field-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .item-field-grid label {
+      margin-bottom: 4px;
+      font-size: 0.68rem;
+    }
+    .item-field-grid input {
+      padding: 9px 10px;
+      font-size: 0.84rem;
+    }
     .item-actions {
       display: flex;
       gap: 8px;
@@ -425,6 +439,7 @@ INDEX_HTML = """<!doctype html>
       .volume-toolbar { display: block; }
       .volume-toolbar button { width: 100%; margin-top: 14px; }
       .volume-canvas { height: 420px; }
+      .item-field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -508,7 +523,7 @@ INDEX_HTML = """<!doctype html>
       </div>
       <div class="sidebar-section">
         <label>Furniture Blocking</label>
-        <p class="status">Toggle simplified furniture blockers to attenuate airflow, daylight, and window exchange along their paths.</p>
+        <p class="status">Toggle simplified furniture blockers to attenuate airflow, daylight, and window exchange along their paths. Custom furniture snaps to a 0.1 m grid and avoids overlapping active blockers.</p>
         <div class="device-controls" id="furnitureControls"></div>
         <div class="control-group">
           <label>Custom Furniture</label>
@@ -882,18 +897,23 @@ INDEX_HTML = """<!doctype html>
         return;
       }
       container.innerHTML = customFurnitureItems.map((item, index) => {
-        const size = {
-          x: Number(item.max_corner.x) - Number(item.min_corner.x),
-          y: Number(item.max_corner.y) - Number(item.min_corner.y),
-          z: Number(item.max_corner.z) - Number(item.min_corner.z)
-        };
+        const view = customFurnitureView(item);
         return `
           <div class="item-card">
             <label class="device-toggle">
               <input type="checkbox" data-custom-index="${index}" ${Number(item.activation) > 0 ? "checked" : ""}>
-              <span>${item.metadata?.label || item.name}<small>${item.kind}, center (${fmt((item.min_corner.x + item.max_corner.x) / 2)}, ${fmt((item.min_corner.y + item.max_corner.y) / 2)}, ${fmt(item.min_corner.z)})</small></span>
+              <span>${item.metadata?.label || item.name}<small>${item.kind}, center (${fmt(view.centerX)}, ${fmt(view.centerY)}, ${fmt(view.baseZ)})</small></span>
             </label>
-            <p class="status">Size ${fmt(size.x)} × ${fmt(size.y)} × ${fmt(size.z)} m, block ${Math.round(Number(item.metadata?.block_strength || 0.3) * 100)}%.</p>
+            <p class="status">Min (${fmt(item.min_corner.x)}, ${fmt(item.min_corner.y)}, ${fmt(item.min_corner.z)}), max (${fmt(item.max_corner.x)}, ${fmt(item.max_corner.y)}, ${fmt(item.max_corner.z)}), block ${Math.round(Number(item.metadata?.block_strength || 0.3) * 100)}%.</p>
+            <div class="item-field-grid">
+              <div><label>Center X</label><input type="number" step="0.1" value="${view.centerX.toFixed(1)}" data-edit-custom="${index}" data-field="center_x"></div>
+              <div><label>Center Y</label><input type="number" step="0.1" value="${view.centerY.toFixed(1)}" data-edit-custom="${index}" data-field="center_y"></div>
+              <div><label>Base Z</label><input type="number" step="0.1" value="${view.baseZ.toFixed(1)}" data-edit-custom="${index}" data-field="base_z"></div>
+              <div><label>Width X</label><input type="number" min="0.1" step="0.1" value="${view.width.toFixed(1)}" data-edit-custom="${index}" data-field="width"></div>
+              <div><label>Length Y</label><input type="number" min="0.1" step="0.1" value="${view.length.toFixed(1)}" data-edit-custom="${index}" data-field="length"></div>
+              <div><label>Height Z</label><input type="number" min="0.1" step="0.1" value="${view.height.toFixed(1)}" data-edit-custom="${index}" data-field="height"></div>
+              <div><label>Block</label><input type="number" min="0.05" max="0.95" step="0.05" value="${Number(item.metadata?.block_strength || 0.3).toFixed(2)}" data-edit-custom="${index}" data-field="block_strength"></div>
+            </div>
             <div class="item-actions">
               <button class="secondary remove" data-remove-custom="${index}">Remove</button>
             </div>
@@ -908,6 +928,19 @@ INDEX_HTML = """<!doctype html>
           await refreshActiveContext();
         });
       });
+      container.querySelectorAll("input[data-edit-custom]").forEach(input => {
+        input.addEventListener("change", async event => {
+          const target = event.currentTarget;
+          updateCustomFurnitureField(
+            Number(target.dataset.editCustom),
+            String(target.dataset.field || ""),
+            Number(target.value || "0")
+          );
+          syncCustomFurnitureList();
+          stopElapsedPlayback();
+          await refreshActiveContext();
+        });
+      });
       container.querySelectorAll("button[data-remove-custom]").forEach(button => {
         button.addEventListener("click", async event => {
           const index = Number(event.currentTarget.dataset.removeCustom);
@@ -917,6 +950,72 @@ INDEX_HTML = """<!doctype html>
           await refreshActiveContext();
         });
       });
+    }
+
+    function customFurnitureView(item) {
+      return {
+        centerX: (Number(item.min_corner.x) + Number(item.max_corner.x)) / 2,
+        centerY: (Number(item.min_corner.y) + Number(item.max_corner.y)) / 2,
+        baseZ: Number(item.min_corner.z),
+        width: Number(item.max_corner.x) - Number(item.min_corner.x),
+        length: Number(item.max_corner.y) - Number(item.min_corner.y),
+        height: Number(item.max_corner.z) - Number(item.min_corner.z),
+      };
+    }
+
+    function updateCustomFurnitureField(index, field, rawValue) {
+      const item = customFurnitureItems[index];
+      if (!item) return;
+      const room = currentRoomDimensions();
+      const view = customFurnitureView(item);
+      const next = { ...view };
+
+      if (field === "center_x") next.centerX = rawValue;
+      if (field === "center_y") next.centerY = rawValue;
+      if (field === "base_z") next.baseZ = rawValue;
+      if (field === "width") next.width = Math.max(0.1, rawValue);
+      if (field === "length") next.length = Math.max(0.1, rawValue);
+      if (field === "height") next.height = Math.max(0.1, rawValue);
+      if (field === "block_strength") {
+        const block = clamp(rawValue, 0.05, 0.95);
+        item.metadata.block_strength = block;
+        item.metadata.window_block = block;
+        item.metadata.light_block = clamp(block * 1.05, 0.05, 0.98);
+        item.metadata.ac_block = clamp(block * 0.9, 0.05, 0.95);
+        item.metadata.mixing_penalty = clamp(block * 0.12, 0.01, 0.16);
+        syncLiveFurnitureData(item);
+        return;
+      }
+
+      const geometry = normalizedFurnitureGeometry(next, room);
+      if (customFurnitureCollides(item.name, geometry.minCorner, geometry.maxCorner)) {
+        document.getElementById("status").textContent = `${item.metadata?.label || item.name} would overlap another active blocker. The change was rejected.`;
+        return;
+      }
+      item.min_corner = geometry.minCorner;
+      item.max_corner = geometry.maxCorner;
+      syncLiveFurnitureData(item);
+    }
+
+    function normalizedFurnitureGeometry(view, room) {
+      const width = Math.max(0.1, Number(view.width));
+      const length = Math.max(0.1, Number(view.length));
+      const height = Math.max(0.1, Number(view.height));
+      const centerX = snapToGrid(clamp(Number(view.centerX), width / 2, room.width - width / 2));
+      const centerY = snapToGrid(clamp(Number(view.centerY), length / 2, room.length - length / 2));
+      const baseZ = snapToGrid(clamp(Number(view.baseZ), 0, room.height - height));
+      return {
+        minCorner: {
+          x: snapToGrid(clamp(centerX - width / 2, 0, room.width - width)),
+          y: snapToGrid(clamp(centerY - length / 2, 0, room.length - length)),
+          z: baseZ,
+        },
+        maxCorner: {
+          x: snapToGrid(clamp(centerX - width / 2, 0, room.width - width) + width),
+          y: snapToGrid(clamp(centerY - length / 2, 0, room.length - length) + length),
+          z: snapToGrid(baseZ + height),
+        }
+      };
     }
 
     function syncAcControlsFromScenario(name) {
@@ -1671,24 +1770,21 @@ INDEX_HTML = """<!doctype html>
       const roomDelta = projectScreenDeltaToRoomDelta(dxScreen, dyScreen, scale);
       const sizeX = Number(startState.max_corner.x) - Number(startState.min_corner.x);
       const sizeY = Number(startState.max_corner.y) - Number(startState.min_corner.y);
-      const minX = clamp(Number(startState.min_corner.x) + roomDelta.x, 0, room.width - sizeX);
-      const minY = clamp(Number(startState.min_corner.y) + roomDelta.y, 0, room.length - sizeY);
+      const minX = snapToGrid(clamp(Number(startState.min_corner.x) + roomDelta.x, 0, room.width - sizeX));
+      const minY = snapToGrid(clamp(Number(startState.min_corner.y) + roomDelta.y, 0, room.length - sizeY));
       const minZ = Number(startState.min_corner.z);
       const maxZ = Number(startState.max_corner.z);
-      item.min_corner = { x: minX, y: minY, z: minZ };
-      item.max_corner = { x: minX + sizeX, y: minY + sizeY, z: maxZ };
-      if (volumeData?.furniture) {
-        const target = volumeData.furniture.find(candidate => candidate.name === name);
-        if (target) {
-          target.min_corner = { ...item.min_corner };
-          target.max_corner = { ...item.max_corner };
-          target.center = {
-            x: (item.min_corner.x + item.max_corner.x) / 2,
-            y: (item.min_corner.y + item.max_corner.y) / 2,
-            z: (item.min_corner.z + item.max_corner.z) / 2,
-          };
-        }
+      const maxX = snapToGrid(minX + sizeX);
+      const maxY = snapToGrid(minY + sizeY);
+      const proposedMin = { x: minX, y: minY, z: minZ };
+      const proposedMax = { x: maxX, y: maxY, z: maxZ };
+      if (customFurnitureCollides(name, proposedMin, proposedMax)) {
+        document.getElementById("status").textContent = `${item.metadata?.label || item.name} cannot overlap another active blocker.`;
+        return;
       }
+      item.min_corner = proposedMin;
+      item.max_corner = proposedMax;
+      syncLiveFurnitureData(item);
     }
 
     function currentVolumeScale() {
@@ -1710,6 +1806,43 @@ INDEX_HTML = """<!doctype html>
         x: cy * sx + sy * (syProjected / cp),
         y: -sy * sx + cy * (syProjected / cp),
       };
+    }
+
+    function syncLiveFurnitureData(item) {
+      if (!volumeData?.furniture) return;
+      const target = volumeData.furniture.find(candidate => candidate.name === item.name);
+      if (!target) return;
+      target.activation = item.activation;
+      target.min_corner = { ...item.min_corner };
+      target.max_corner = { ...item.max_corner };
+      target.center = {
+        x: (Number(item.min_corner.x) + Number(item.max_corner.x)) / 2,
+        y: (Number(item.min_corner.y) + Number(item.max_corner.y)) / 2,
+        z: (Number(item.min_corner.z) + Number(item.max_corner.z)) / 2,
+      };
+      target.size = {
+        x: Number(item.max_corner.x) - Number(item.min_corner.x),
+        y: Number(item.max_corner.y) - Number(item.min_corner.y),
+        z: Number(item.max_corner.z) - Number(item.min_corner.z),
+      };
+      target.metadata = { ...item.metadata };
+    }
+
+    function snapToGrid(value, step = 0.1) {
+      return Math.round(Number(value) / step) * step;
+    }
+
+    function customFurnitureCollides(name, minCorner, maxCorner) {
+      const activeFurniture = (volumeData?.furniture || []).filter(item => Number(item.activation) > 0 && item.name !== name);
+      return activeFurniture.some(item => boxesOverlap(minCorner, maxCorner, item.min_corner, item.max_corner));
+    }
+
+    function boxesOverlap(aMin, aMax, bMin, bMax) {
+      return (
+        Number(aMin.x) < Number(bMax.x) && Number(aMax.x) > Number(bMin.x) &&
+        Number(aMin.y) < Number(bMax.y) && Number(aMax.y) > Number(bMin.y) &&
+        Number(aMin.z) < Number(bMax.z) && Number(aMax.z) > Number(bMin.z)
+      );
     }
 
     function drawWallSurface(ctx, project, device) {
