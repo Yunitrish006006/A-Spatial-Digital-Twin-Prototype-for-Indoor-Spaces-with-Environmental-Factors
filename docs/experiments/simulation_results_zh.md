@@ -79,4 +79,4 @@
 3. 夏季窗戶主要呈現增溫與增亮風險；冬季雨夜則呈現降溫與濕度偏移。
 4. 這組矩陣能支撐論文中「環境變數或非連網裝置安裝/啟用後，如何估計其區域影響」的研究問題。
 
-詳細設定請見 `docs/window_matrix_simulation_zh.md`。
+詳細設定請見 `docs/experiments/window_matrix_simulation_zh.md`。

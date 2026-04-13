@@ -627,7 +627,7 @@ def main() -> None:
     DOCS.mkdir(exist_ok=True)
     OUTPUTS.mkdir(exist_ok=True)
     blocks = build_blocks()
-    markdown_path = DOCS / "thesis_draft_zh.md"
+    markdown_path = DOCS / "thesis" / "thesis_draft_zh.md"
     docx_path = OUTPUTS / "thesis_draft_zh.docx"
     write_markdown(markdown_path, blocks)
     write_docx(docx_path, blocks)

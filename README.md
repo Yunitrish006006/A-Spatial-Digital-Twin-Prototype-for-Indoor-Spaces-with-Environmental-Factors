@@ -40,19 +40,31 @@
   基本單元測試與行為驗證。
 - `digital_twin/neural/hybrid_residual.py`
   混合式殘差神經網路實驗模組，以現有 `bulk + local field` 模型為主體，再用小型 MLP 學習剩餘誤差。
-- `docs/thesis_guide_zh.md`
+- `docs/thesis/`
+  中文論文草稿、論文章節規劃、研究計畫與題目定位。
+- `docs/models/`
+  數學模型、參考模型、文獻閱讀與 hybrid residual neural network 說明。
+- `docs/mcp/`
+  MCP server 與 Gemma/Ollama bridge 說明。
+- `docs/web/`
+  Web demo 啟動與展示說明。
+- `docs/experiments/`
+  baseline、窗戶矩陣、模擬結果與重複性分析。
+- `docs/admin/`
+  畢業條件與行政 checklist。
+- `docs/thesis/thesis_guide_zh.md`
   將此原型對應到碩士論文撰寫的章節與方法說明。
-- `docs/problem_statement_zh.md`
+- `docs/thesis/problem_statement_zh.md`
   說明本研究要解決的非連網家電環境影響學習問題。
-- `docs/graduation_requirements_checklist_zh.md`
+- `docs/admin/graduation_requirements_checklist_zh.md`
   整理資工系碩士畢業條件、學位考試流程與口試文件 checklist。
-- `docs/baseline_and_learning_results_zh.md`
+- `docs/experiments/baseline_and_learning_results_zh.md`
   整理 IDW baseline 比較與非連網裝置影響學習結果。
-- `docs/window_matrix_simulation_zh.md`
+- `docs/experiments/window_matrix_simulation_zh.md`
   說明窗戶在時段、天氣、季節矩陣下的 48 組模擬設定與結果。
-- `docs/hybrid_residual_model_zh.md`
+- `docs/models/hybrid_residual_model_zh.md`
   說明 hybrid residual neural network 的定位、公式與實驗方式。
-- `docs/web_demo_zh.md`
+- `docs/web/web_demo_zh.md`
   說明本地 web demo 的啟動方式與公開展示流程。
 - `ieee_paper/`
   IEEE conference-style 英文論文初稿，包含 `paper.tex` 與 `references.bib`。
@@ -112,7 +124,7 @@ python3 scripts/run_mcp_server.py
 - `run_window_matrix`
 - `run_window_direct`
 
-詳細設定請見 `docs/mcp_service_zh.md`。
+詳細設定請見 `docs/mcp/mcp_service_zh.md`。
 
 ## Hybrid Residual Neural Network
 
@@ -127,7 +139,7 @@ F_final(p, t) = F_physics(p, t) + f_theta(features(p, t))
 - `F_physics` 是目前的 `bulk + local field` 主模型
 - `f_theta` 是小型 MLP，用來學習主模型在特定座標、設備組合與環境條件下的殘差
 
-這個設計比純黑盒神經網路更適合目前題目，因為它保留了裝置影響函數、時間響應與感測器校正的可解釋性，同時允許你在論文中把 neural network 定位成「第二層殘差修正器」而非主體模型。詳細說明請見 `docs/hybrid_residual_model_zh.md`。
+這個設計比純黑盒神經網路更適合目前題目，因為它保留了裝置影響函數、時間響應與感測器校正的可解釋性，同時允許你在論文中把 neural network 定位成「第二層殘差修正器」而非主體模型。詳細說明請見 `docs/models/hybrid_residual_model_zh.md`。
 
 ## Gemma4 / Ollama Bridge
 
@@ -143,7 +155,7 @@ python3 scripts/ask_gemma.py "idle 情境下建議做什麼動作？"
 python3 scripts/ask_gemma.py "idle 情境下建議做什麼動作？" --tool-only
 ```
 
-詳細說明請見 `docs/gemma_ollama_bridge_zh.md`。
+詳細說明請見 `docs/mcp/gemma_ollama_bridge_zh.md`。
 
 ## Web Demo
 
@@ -154,7 +166,7 @@ python3 scripts/run_demo.py
 python3 scripts/run_web_demo.py
 ```
 
-開啟 `http://127.0.0.1:8765`。詳細說明請見 `docs/web_demo_zh.md`。
+開啟 `http://127.0.0.1:8765`。詳細說明請見 `docs/web/web_demo_zh.md`。
 
 Web demo 內含可拖曳旋轉與縮放的 3D 三因子熱區預覽，並標示冷氣、窗戶與照明位置。冷氣以牆面橫條顯示、窗戶以牆面矩形顯示，不再只是單一點；左側提供每個裝置的 checkbox，可直接覆寫裝置啟用狀態並重新計算結果。頁面主操作已移除下拉式選單，設備與 metric 都改為勾選式控制。窗戶模擬除了 48 組列舉矩陣，也提供 direct input，可直接輸入外部溫度、外部濕度、日照照度與開窗比例。
 
