@@ -33,6 +33,7 @@ from digital_twin.core.scenarios import (
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS = ROOT / "outputs"
+OUTPUTS_FIGURES = OUTPUTS / "figures"
 DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
 FURNITURE_OVERRIDE_NAMES = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = ("cool", "dry", "heat", "fan")
@@ -1439,7 +1440,7 @@ INDEX_HTML = """<!doctype html>
 
     function renderHeatmapsForScenario(name) {
       document.getElementById("heatmaps").innerHTML = metrics.map(metric => `
-        <img src="/outputs/${name}_${metric}_3d.svg" alt="${name} ${metric} 3D heatmap">
+        <img src="/outputs/figures/${name}_${metric}_3d.svg" alt="${name} ${metric} 3D heatmap">
       `).join("");
     }
 

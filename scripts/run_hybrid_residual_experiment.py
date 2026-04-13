@@ -11,7 +11,7 @@ from digital_twin.core.service import run_hybrid_residual_experiment
 
 
 def main() -> None:
-    output_dir = "outputs"
+    output_dir = "outputs/data"
     os.makedirs(output_dir, exist_ok=True)
 
     result = run_hybrid_residual_experiment(

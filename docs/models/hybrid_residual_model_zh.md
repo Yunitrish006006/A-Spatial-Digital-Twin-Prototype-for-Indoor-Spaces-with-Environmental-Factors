@@ -95,8 +95,8 @@ python3 scripts/run_hybrid_residual_experiment.py
 
 輸出：
 
-- `outputs/hybrid_residual_summary.json`
-- `outputs/hybrid_residual_checkpoint.json`
+- `outputs/data/hybrid_residual_summary.json`
+- `outputs/data/hybrid_residual_checkpoint.json`
 
 `summary` 會包含：
 

@@ -1,6 +1,6 @@
 # 初步模擬結果分析
 
-本文件整理 `outputs/validation_summary.json` 中的 8 組標準情境結果，可作為第五章「模擬案例與結果分析」的初稿材料。
+本文件整理 `outputs/data/validation_summary.json` 中的 8 組標準情境結果，可作為第五章「模擬案例與結果分析」的初稿材料。
 
 ## 情境設定
 
@@ -62,7 +62,7 @@
 
 ## 窗戶矩陣模擬補充
 
-新增 `outputs/window_matrix_summary.json`，用來整理窗戶在 4 個時段、3 種天氣、4 個季節下的 48 組情境。這組結果可作為第五章的外部環境變數敏感度分析。
+新增 `outputs/data/window_matrix_summary.json`，用來整理窗戶在 4 個時段、3 種天氣、4 個季節下的 48 組情境。這組結果可作為第五章的外部環境變數敏感度分析。
 
 目前代表性結果如下：
 

@@ -67,12 +67,12 @@ http://127.0.0.1:8765
 - `/api/compare_baseline?name=light_only`
 - `/api/learn_impacts?name=ac_only`
 - `/api/sample?name=light_only&x=3&y=2&z=1.5`
-- `/outputs/<scenario>_<metric>_3d.svg`
+- `/outputs/figures/<scenario>_<metric>_3d.svg`
 
 ## 目前限制
 
 - Web demo 是本地展示用，不含登入與權限管理。
 - Web demo 主操作以 `idle` 背景加 checkbox 覆寫設備狀態；內建標準案例與窗戶矩陣案例仍保留在 service/API 內。
-- 可旋轉 3D 預覽使用 `/api/volume` 即時計算資料；靜態 3D SVG 使用 `scripts/run_demo.py` 產生的 `*_3d.svg` 檔案。
+- 可旋轉 3D 預覽使用 `/api/volume` 即時計算資料；靜態 3D SVG 使用 `scripts/run_demo.py` 產生於 `outputs/figures/` 的 `*_3d.svg` 檔案。
 - 圖中方形標記代表點狀設備座標與啟用比例；冷氣以牆面橫條表示，窗戶以牆面矩形面表示。
 - 尚未提供即時 ESP32 資料串流。

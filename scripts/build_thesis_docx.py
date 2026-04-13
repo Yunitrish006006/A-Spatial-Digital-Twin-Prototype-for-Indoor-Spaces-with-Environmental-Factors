@@ -8,6 +8,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 OUTPUTS = ROOT / "outputs"
+PAPERS = OUTPUTS / "papers"
 
 
 Block = Dict[str, object]
@@ -625,10 +626,10 @@ def styles_xml() -> str:
 
 def main() -> None:
     DOCS.mkdir(exist_ok=True)
-    OUTPUTS.mkdir(exist_ok=True)
+    PAPERS.mkdir(parents=True, exist_ok=True)
     blocks = build_blocks()
     markdown_path = DOCS / "thesis" / "thesis_draft_zh.md"
-    docx_path = OUTPUTS / "thesis_draft_zh.docx"
+    docx_path = PAPERS / "thesis_draft_zh.docx"
     write_markdown(markdown_path, blocks)
     write_docx(docx_path, blocks)
     print(f"Wrote {markdown_path}")

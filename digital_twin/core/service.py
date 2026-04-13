@@ -39,7 +39,10 @@ from digital_twin.physics.recommendations import apply_action
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS = ROOT / "outputs"
-HYBRID_CHECKPOINT_PATH = OUTPUTS / "hybrid_residual_checkpoint.json"
+OUTPUTS_DATA = OUTPUTS / "data"
+OUTPUTS_FIGURES = OUTPUTS / "figures"
+OUTPUTS_PAPERS = OUTPUTS / "papers"
+HYBRID_CHECKPOINT_PATH = OUTPUTS_DATA / "hybrid_residual_checkpoint.json"
 _HYBRID_MODEL_CACHE: Dict[str, object] = {"mtime": None, "model": None}
 
 

@@ -8,13 +8,14 @@ from typing import Dict, Iterable, List
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent
 OUTPUTS = ROOT / "outputs"
+PAPERS = OUTPUTS / "papers"
 
 sys.path.insert(0, str(SCRIPT_DIR))
 from build_thesis_docx import Block, build_blocks  # noqa: E402
 
 
-TEX_PATH = OUTPUTS / "thesis_draft_zh.tex"
-PDF_PATH = OUTPUTS / "thesis_draft_zh.pdf"
+TEX_PATH = PAPERS / "thesis_draft_zh.tex"
+PDF_PATH = PAPERS / "thesis_draft_zh.pdf"
 
 
 def latex_escape(text: object) -> str:
@@ -160,7 +161,7 @@ def compile_pdf(tex_path: Path) -> None:
         tectonic,
         "--keep-logs",
         "--outdir",
-        str(OUTPUTS),
+        str(PAPERS),
         str(tex_path),
     ]
     completed = subprocess.run(
@@ -179,7 +180,7 @@ def compile_pdf(tex_path: Path) -> None:
 
 
 def main() -> None:
-    OUTPUTS.mkdir(exist_ok=True)
+    PAPERS.mkdir(parents=True, exist_ok=True)
     blocks = build_blocks()
     write_latex(TEX_PATH, blocks)
     compile_pdf(TEX_PATH)

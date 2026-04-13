@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from copy import deepcopy
 from typing import Dict, List
 
@@ -12,7 +13,11 @@ from digital_twin.web.render import ensure_directory, export_field_csv, export_j
 
 
 def run_validation_suite(output_dir: str = "outputs") -> Dict:
-    ensure_directory(output_dir)
+    output_root = Path(output_dir)
+    figures_dir = output_root / "figures"
+    data_dir = output_root / "data"
+    ensure_directory(str(figures_dir))
+    ensure_directory(str(data_dir))
     model = DigitalTwinModel()
     scenarios = build_validation_scenarios()
     summary = {"scenarios": []}
@@ -101,45 +106,45 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             observed_sensors=observed_sensors,
         )
 
-        export_field_csv(os.path.join(output_dir, f"{scenario.name}_field.csv"), estimated_result.field)
+        export_field_csv(str(data_dir / f"{scenario.name}_field.csv"), estimated_result.field)
         middle_slice = scenario.resolution.nz // 2
         export_svg_heatmap(
-            os.path.join(output_dir, f"{scenario.name}_temperature.svg"),
+            str(figures_dir / f"{scenario.name}_temperature.svg"),
             estimated_result.field,
             "temperature",
             middle_slice,
             f"{scenario.description} - Temperature",
         )
         export_svg_volume_heatmap(
-            os.path.join(output_dir, f"{scenario.name}_temperature_3d.svg"),
+            str(figures_dir / f"{scenario.name}_temperature_3d.svg"),
             estimated_result.field,
             "temperature",
             f"{scenario.description} - Temperature",
             devices=scenario.devices,
         )
         export_svg_heatmap(
-            os.path.join(output_dir, f"{scenario.name}_humidity.svg"),
+            str(figures_dir / f"{scenario.name}_humidity.svg"),
             estimated_result.field,
             "humidity",
             middle_slice,
             f"{scenario.description} - Humidity",
         )
         export_svg_volume_heatmap(
-            os.path.join(output_dir, f"{scenario.name}_humidity_3d.svg"),
+            str(figures_dir / f"{scenario.name}_humidity_3d.svg"),
             estimated_result.field,
             "humidity",
             f"{scenario.description} - Humidity",
             devices=scenario.devices,
         )
         export_svg_heatmap(
-            os.path.join(output_dir, f"{scenario.name}_illuminance.svg"),
+            str(figures_dir / f"{scenario.name}_illuminance.svg"),
             estimated_result.field,
             "illuminance",
             middle_slice,
             f"{scenario.description} - Illuminance",
         )
         export_svg_volume_heatmap(
-            os.path.join(output_dir, f"{scenario.name}_illuminance_3d.svg"),
+            str(figures_dir / f"{scenario.name}_illuminance_3d.svg"),
             estimated_result.field,
             "illuminance",
             f"{scenario.description} - Illuminance",
@@ -176,7 +181,7 @@ def run_validation_suite(output_dir: str = "outputs") -> Dict:
             }
         )
 
-    export_json(os.path.join(output_dir, "validation_summary.json"), summary)
+    export_json(str(data_dir / "validation_summary.json"), summary)
     return summary
 
 
@@ -291,7 +296,7 @@ def _mean_absolute_error(first: List[float], second: List[float]) -> float:
 
 def main() -> None:
     summary = run_validation_suite()
-    print("Generated outputs in ./outputs")
+    print("Generated outputs in ./outputs/data and ./outputs/figures")
     for scenario in summary["scenarios"]:
         best = scenario["recommendations"][0]
         print(

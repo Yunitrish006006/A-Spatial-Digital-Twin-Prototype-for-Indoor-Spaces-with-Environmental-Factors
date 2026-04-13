@@ -12,7 +12,7 @@ from digital_twin.web.render import ensure_directory, export_json
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run 48 window-only season/weather/time simulations.")
-    parser.add_argument("--output-dir", default="outputs", help="Directory for the JSON summary.")
+    parser.add_argument("--output-dir", default="outputs/data", help="Directory for the JSON summary.")
     args = parser.parse_args()
 
     ensure_directory(args.output_dir)

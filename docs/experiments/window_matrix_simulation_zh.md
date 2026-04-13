@@ -72,7 +72,7 @@ python3 scripts/run_window_matrix.py
 輸出檔案：
 
 ```text
-outputs/window_matrix_summary.json
+outputs/data/window_matrix_summary.json
 ```
 
 也可以透過 MCP tool 執行：
