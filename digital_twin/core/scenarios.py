@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from .entities import (
+from digital_twin.core.entities import (
     Action,
     ActionEffect,
     ComfortTarget,
@@ -15,7 +15,7 @@ from .entities import (
     Zone,
     create_corner_sensors,
 )
-from .recommendations import apply_action
+from digital_twin.physics.recommendations import apply_action
 
 
 @dataclass(frozen=True)

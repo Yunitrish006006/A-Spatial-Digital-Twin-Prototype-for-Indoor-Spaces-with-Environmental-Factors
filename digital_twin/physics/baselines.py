@@ -1,8 +1,8 @@
 from typing import Dict, List
 
-from .entities import GridResolution, Room, Sensor, Vector3, Zone
-from .math_utils import distance, spaced_values
-from .model import FieldGrid, METRICS
+from digital_twin.core.entities import GridResolution, Room, Sensor, Vector3, Zone
+from digital_twin.core.math_utils import distance, spaced_values
+from digital_twin.physics.model import FieldGrid, METRICS
 
 
 def build_idw_field(

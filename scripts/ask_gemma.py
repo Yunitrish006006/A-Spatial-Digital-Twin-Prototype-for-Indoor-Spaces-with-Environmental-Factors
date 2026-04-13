@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from digital_twin.gemma_bridge import main
+from digital_twin.mcp.gemma_bridge import main
 
 
 if __name__ == "__main__":

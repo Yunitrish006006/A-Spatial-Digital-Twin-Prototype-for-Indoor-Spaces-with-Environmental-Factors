@@ -1,11 +1,11 @@
 import unittest
 
-from digital_twin.hybrid_residual import (
+from digital_twin.core.scenarios import build_validation_scenarios
+from digital_twin.neural.hybrid_residual import (
     HybridResidualModel,
     build_residual_dataset,
     run_hybrid_residual_experiment,
 )
-from digital_twin.scenarios import build_validation_scenarios
 
 
 class HybridResidualTests(unittest.TestCase):

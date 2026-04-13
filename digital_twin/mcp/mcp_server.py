@@ -2,7 +2,7 @@ import json
 import sys
 from typing import Any, Dict, Optional
 
-from .service import (
+from digital_twin.core.service import (
     compare_scenario_baseline,
     evaluate_scenario,
     evaluate_window_direct,

@@ -3,9 +3,9 @@ from typing import Dict, List
 
 from typing import Optional
 
-from .entities import Device, Furniture, Room, Sensor
-from .math_utils import solve_linear_system
-from .model import DigitalTwinModel, METRICS
+from digital_twin.core.entities import Device, Furniture, Room, Sensor
+from digital_twin.core.math_utils import solve_linear_system
+from digital_twin.physics.model import DigitalTwinModel, METRICS
 
 
 @dataclass(frozen=True)

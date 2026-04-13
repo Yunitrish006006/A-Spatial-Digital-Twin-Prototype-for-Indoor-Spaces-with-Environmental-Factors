@@ -3,8 +3,7 @@ from dataclasses import replace
 from typing import Dict, List, Optional
 from copy import deepcopy
 
-from .baselines import build_idw_field, compute_zone_averages as compute_idw_zone_averages
-from .demo import (
+from digital_twin.core.demo import (
     compare_fields,
     compare_model_to_idw,
     compare_sensors,
@@ -12,17 +11,9 @@ from .demo import (
     learn_active_device_impacts,
     synthesize_sensor_observations,
 )
-from .entities import Furniture, Vector3
-from .hybrid_residual import (
-    HybridResidualModel,
-    apply_hybrid_model_to_field,
-    build_point_features,
-    run_hybrid_residual_experiment as run_hybrid_residual_experiment_backend,
-)
-from .math_utils import clamp
-from .model import DigitalTwinModel
-from .recommendations import apply_action
-from .scenarios import (
+from digital_twin.core.entities import Furniture, Vector3
+from digital_twin.core.math_utils import clamp
+from digital_twin.core.scenarios import (
     SEASON_PROFILES,
     TIME_OF_DAY_PROFILES,
     WEATHER_PROFILES,
@@ -35,9 +26,18 @@ from .scenarios import (
     build_validation_scenarios,
     build_window_matrix_scenarios,
 )
+from digital_twin.neural.hybrid_residual import (
+    HybridResidualModel,
+    apply_hybrid_model_to_field,
+    build_point_features,
+    run_hybrid_residual_experiment as run_hybrid_residual_experiment_backend,
+)
+from digital_twin.physics.baselines import build_idw_field, compute_zone_averages as compute_idw_zone_averages
+from digital_twin.physics.model import DigitalTwinModel
+from digital_twin.physics.recommendations import apply_action
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS = ROOT / "outputs"
 HYBRID_CHECKPOINT_PATH = OUTPUTS / "hybrid_residual_checkpoint.json"
 _HYBRID_MODEL_CACHE: Dict[str, object] = {"mtime": None, "model": None}

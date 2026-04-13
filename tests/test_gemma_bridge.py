@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from digital_twin.gemma_bridge import (
+from digital_twin.mcp.gemma_bridge import (
     execute_tool,
     find_scenario_name,
     heuristic_tool_selection,

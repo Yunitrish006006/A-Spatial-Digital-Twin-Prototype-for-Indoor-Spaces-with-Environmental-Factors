@@ -2,13 +2,13 @@ import os
 from copy import deepcopy
 from typing import Dict, List
 
-from .baselines import build_idw_field, compute_zone_averages as compute_idw_zone_averages
-from .entities import Sensor
-from .learning import learn_active_device_impacts_from_observations
-from .model import DigitalTwinModel, FieldGrid, METRICS
-from .recommendations import rank_actions
-from .render import ensure_directory, export_field_csv, export_json, export_svg_heatmap, export_svg_volume_heatmap
-from .scenarios import apply_truth_adjustments, build_validation_scenarios
+from digital_twin.core.entities import Sensor
+from digital_twin.core.scenarios import apply_truth_adjustments, build_validation_scenarios
+from digital_twin.physics.baselines import build_idw_field, compute_zone_averages as compute_idw_zone_averages
+from digital_twin.physics.learning import learn_active_device_impacts_from_observations
+from digital_twin.physics.model import DigitalTwinModel, FieldGrid, METRICS
+from digital_twin.physics.recommendations import rank_actions
+from digital_twin.web.render import ensure_directory, export_field_csv, export_json, export_svg_heatmap, export_svg_volume_heatmap
 
 
 def run_validation_suite(output_dir: str = "outputs") -> Dict:

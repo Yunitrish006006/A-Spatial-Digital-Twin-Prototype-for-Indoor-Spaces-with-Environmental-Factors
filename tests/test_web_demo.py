@@ -1,6 +1,6 @@
 import unittest
 
-from digital_twin.web_demo import (
+from digital_twin.web.web_demo import (
     INDEX_HTML,
     _query_bool,
     _query_custom_furniture,

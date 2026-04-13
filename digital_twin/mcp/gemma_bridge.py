@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Optional
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from .service import (
+from digital_twin.core.service import (
     compare_scenario_baseline,
     evaluate_scenario,
     evaluate_window_direct,

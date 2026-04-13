@@ -2,8 +2,8 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List
 
-from .entities import Action, ComfortTarget, Device, Environment, Furniture, GridResolution, Room, Sensor, Zone
-from .model import DigitalTwinModel, METRICS
+from digital_twin.core.entities import Action, ComfortTarget, Device, Environment, Furniture, GridResolution, Room, Sensor, Zone
+from digital_twin.physics.model import DigitalTwinModel, METRICS
 
 
 @dataclass(frozen=True)

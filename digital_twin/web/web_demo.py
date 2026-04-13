@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .service import (
+from digital_twin.core.service import (
     compare_scenario_baseline,
     evaluate_scenario,
     evaluate_window_direct,
@@ -21,7 +21,7 @@ from .service import (
     sample_window_direct_point,
     sample_scenario_point,
 )
-from .scenarios import (
+from digital_twin.core.scenarios import (
     SEASON_PROFILES,
     TIME_OF_DAY_PROFILES,
     WEATHER_PROFILES,
@@ -31,7 +31,7 @@ from .scenarios import (
 )
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS = ROOT / "outputs"
 DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
 FURNITURE_OVERRIDE_NAMES = ("cabinet_window", "sofa_main", "table_center")

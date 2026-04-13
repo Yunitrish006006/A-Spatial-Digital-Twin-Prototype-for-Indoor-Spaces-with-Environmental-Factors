@@ -1,7 +1,7 @@
 import math
 from typing import Iterable, List
 
-from .entities import Vector3
+from digital_twin.core.entities import Vector3
 
 
 def clamp(value: float, lower: float, upper: float) -> float:

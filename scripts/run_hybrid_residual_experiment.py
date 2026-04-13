@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from digital_twin.service import run_hybrid_residual_experiment
+from digital_twin.core.service import run_hybrid_residual_experiment
 
 
 def main() -> None:

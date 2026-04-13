@@ -1,5 +1,5 @@
-from .demo import run_validation_suite
-from .entities import (
+from .core.demo import run_validation_suite
+from .core.entities import (
     Action,
     ActionEffect,
     ComfortTarget,
@@ -12,7 +12,7 @@ from .entities import (
     Zone,
     create_corner_sensors,
 )
-from .model import DigitalTwinModel
+from .physics.model import DigitalTwinModel
 
 __all__ = [
     "Action",

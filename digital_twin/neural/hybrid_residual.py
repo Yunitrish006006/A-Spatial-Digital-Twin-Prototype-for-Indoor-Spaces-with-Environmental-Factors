@@ -5,11 +5,11 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List, Sequence, Tuple
 
-from .demo import compare_fields, compare_zone_averages, synthesize_sensor_observations
-from .entities import Device, Vector3
-from .math_utils import clamp
-from .model import DigitalTwinModel, FieldGrid, METRICS
-from .scenarios import Scenario, apply_truth_adjustments, build_validation_scenarios, build_window_matrix_scenarios
+from digital_twin.core.demo import compare_fields, compare_zone_averages, synthesize_sensor_observations
+from digital_twin.core.entities import Device, Vector3
+from digital_twin.core.math_utils import clamp
+from digital_twin.core.scenarios import Scenario, apply_truth_adjustments, build_validation_scenarios, build_window_matrix_scenarios
+from digital_twin.physics.model import DigitalTwinModel, FieldGrid, METRICS
 
 
 DEVICE_ORDER = ("ac_main", "window_main", "light_main")

@@ -4,8 +4,8 @@ import os
 from html import escape
 from typing import Dict, List, Optional, Tuple
 
-from .entities import Device
-from .model import FieldGrid
+from digital_twin.core.entities import Device
+from digital_twin.physics.model import FieldGrid
 
 
 def ensure_directory(path: str) -> None:

@@ -6,8 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from digital_twin.render import ensure_directory, export_json
-from digital_twin.service import evaluate_window_matrix
+from digital_twin.core.service import evaluate_window_matrix
+from digital_twin.web.render import ensure_directory, export_json
 
 
 def main() -> None:

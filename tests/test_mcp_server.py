@@ -1,8 +1,7 @@
 import json
 import unittest
 
-from digital_twin.mcp_server import LocalMCPServer
-from digital_twin.service import (
+from digital_twin.core.service import (
     compare_scenario_baseline,
     evaluate_scenario,
     evaluate_window_direct,
@@ -18,6 +17,7 @@ from digital_twin.service import (
     sample_window_direct_point,
     sample_scenario_point,
 )
+from digital_twin.mcp.mcp_server import LocalMCPServer
 
 
 class ServiceTests(unittest.TestCase):

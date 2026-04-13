@@ -1,4 +1,4 @@
-from .demo import main
+from .core.demo import main
 
 
 if __name__ == "__main__":

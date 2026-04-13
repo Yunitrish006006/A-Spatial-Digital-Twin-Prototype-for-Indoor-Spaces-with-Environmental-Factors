@@ -3,13 +3,9 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 
-from digital_twin.baselines import build_idw_field
-from digital_twin.demo import compare_sensors, synthesize_sensor_observations
-from digital_twin.learning import learn_device_impact_from_sensor_delta
-from digital_twin.model import DigitalTwinModel
-from digital_twin.recommendations import rank_actions
-from digital_twin.render import export_svg_volume_heatmap
-from digital_twin.scenarios import (
+from digital_twin.core.demo import compare_sensors, synthesize_sensor_observations
+from digital_twin.core.entities import ComfortTarget, Furniture, GridResolution, Vector3, create_corner_sensors
+from digital_twin.core.scenarios import (
     apply_truth_adjustments,
     build_candidate_actions,
     build_comfort_target,
@@ -21,7 +17,11 @@ from digital_twin.scenarios import (
     build_standard_zones,
     build_window_matrix_scenarios,
 )
-from digital_twin.entities import ComfortTarget, Furniture, GridResolution, Vector3, create_corner_sensors
+from digital_twin.physics.baselines import build_idw_field
+from digital_twin.physics.learning import learn_device_impact_from_sensor_delta
+from digital_twin.physics.model import DigitalTwinModel
+from digital_twin.physics.recommendations import rank_actions
+from digital_twin.web.render import export_svg_volume_heatmap
 
 
 class DigitalTwinTests(unittest.TestCase):

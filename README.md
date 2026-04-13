@@ -22,15 +22,23 @@
 
 ## 內容
 
-- `digital_twin/`
-  核心模型、情境定義、決策排序與輸出工具。
+- `digital_twin/core/`
+  共用資料結構、情境定義、主 service 與 demo orchestration。
+- `digital_twin/physics/`
+  數學公式主模型、baseline、裝置影響學習與決策排序。
+- `digital_twin/neural/`
+  類神經網路殘差修正模型。
+- `digital_twin/mcp/`
+  MCP server 與 Gemma/Ollama bridge。
+- `digital_twin/web/`
+  Web UI 與 SVG/CSV/JSON 輸出。
 - `scripts/run_demo.py`
   執行完整模擬、校正、情境評估與 SVG/JSON/CSV 匯出。
 - `scripts/run_window_matrix.py`
   執行窗戶在早上/中午/下午/晚上、陰天/晴天/雨天、春夏秋冬下的 48 組模擬。
 - `tests/`
   基本單元測試與行為驗證。
-- `digital_twin/hybrid_residual.py`
+- `digital_twin/neural/hybrid_residual.py`
   混合式殘差神經網路實驗模組，以現有 `bulk + local field` 模型為主體，再用小型 MLP 學習剩餘誤差。
 - `docs/thesis_guide_zh.md`
   將此原型對應到碩士論文撰寫的章節與方法說明。

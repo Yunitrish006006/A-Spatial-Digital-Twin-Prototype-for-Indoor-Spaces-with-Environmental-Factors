@@ -3,8 +3,8 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-from .entities import Device, Environment, Furniture, GridResolution, Room, Sensor, Vector3, Zone
-from .math_utils import clamp, distance, dot, normalize, solve_linear_system, spaced_values, subtract
+from digital_twin.core.entities import Device, Environment, Furniture, GridResolution, Room, Sensor, Vector3, Zone
+from digital_twin.core.math_utils import clamp, distance, dot, normalize, solve_linear_system, spaced_values, subtract
 
 
 METRICS = ("temperature", "humidity", "illuminance")
