@@ -234,6 +234,26 @@ INDEX_HTML = """<!doctype html>
       gap: 10px;
       margin-top: 12px;
     }
+    .preset-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .preset-card {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(33, 89, 65, 0.2);
+      background: rgba(255, 255, 255, 0.65);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      display: grid;
+      gap: 6px;
+    }
+    .preset-card button {
+      align-self: start;
+    }
+    .preset-card strong {
+      font-size: 0.95rem;
+    }
     .item-card {
       border: 1px solid var(--line);
       border-radius: 16px;
@@ -461,6 +481,11 @@ INDEX_HTML = """<!doctype html>
         <div class="device-controls" id="deviceControls"></div>
       </div>
       <div class="sidebar-section">
+        <label>Preset Bundles</label>
+        <p class="status">Apply a ready-made device configuration, including optional extra appliances, without editing each control.</p>
+        <div class="preset-grid" id="presetControls"></div>
+      </div>
+      <div class="sidebar-section">
         <label>Custom Devices</label>
         <p class="status">Add extra AC units, windows, or lights as modular devices. These are appended to the room model without replacing the default three appliances.</p>
         <div class="control-group">
@@ -678,6 +703,94 @@ INDEX_HTML = """<!doctype html>
     const deviceColors = { ac: "#2b5c7c", window: "#2f855a", light: "#c58b2d" };
     const furnitureColors = { cabinet: "#7a4a2c", sofa: "#87546a", table: "#8d7a2f" };
     const customDeviceKindLabels = { ac: "AC", window: "Window", light: "Light" };
+    const PRESET_BUNDLES = [
+      {
+        name: "Cooling Boost",
+        description: "Main AC at full power plus one extra AC for rapid cooling.",
+        device_overrides: { ac_main: 1.0, window_main: 0.1, light_main: 0.0 },
+        ac_settings: {
+          ac_mode: "cool",
+          target_temperature: 22,
+          horizontal_mode: "fixed",
+          horizontal_angle_deg: -10,
+          vertical_mode: "fixed",
+          vertical_angle_deg: 20
+        },
+        custom_devices: [
+          {
+            name: "extra_ac_1",
+            kind: "ac",
+            activation: 1.0,
+            power: 1.1,
+            influence_radius: 2.8,
+            position: { x: 4.6, y: 2.0, z: 2.6 },
+            metadata: { label: "Extra AC", ac_mode: "cool", target_temperature: 23, surface_width: 1.3, surface_height: 0.35 }
+          }
+        ]
+      },
+      {
+        name: "Ventilation + Daylight",
+        description: "Open the main window and add a cross-ventilation opening.",
+        device_overrides: { ac_main: 0.0, window_main: 1.0, light_main: 0.0 },
+        ac_settings: {
+          ac_mode: "fan",
+          target_temperature: 26,
+          horizontal_mode: "swing",
+          horizontal_angle_deg: 0,
+          vertical_mode: "swing",
+          vertical_angle_deg: 15
+        },
+        custom_devices: [
+          {
+            name: "extra_window_1",
+            kind: "window",
+            activation: 0.8,
+            power: 0.9,
+            influence_radius: 2.5,
+            position: { x: 6.0, y: 2.8, z: 1.3 },
+            metadata: { label: "Cross Vent", surface_width: 1.2, surface_height: 1.1 }
+          }
+        ]
+      },
+      {
+        name: "Task Lighting",
+        description: "Keep comfort stable and add focused lighting.",
+        device_overrides: { ac_main: 0.4, window_main: 0.2, light_main: 1.0 },
+        ac_settings: {
+          ac_mode: "cool",
+          target_temperature: 24,
+          horizontal_mode: "fixed",
+          horizontal_angle_deg: 15,
+          vertical_mode: "fixed",
+          vertical_angle_deg: 15
+        },
+        custom_devices: [
+          {
+            name: "extra_light_1",
+            kind: "light",
+            activation: 1.0,
+            power: 0.9,
+            influence_radius: 2.2,
+            position: { x: 2.6, y: 2.0, z: 2.8 },
+            metadata: { label: "Task Light", illuminance_gain: 1200 }
+          }
+        ]
+      },
+      {
+        name: "Night Quiet",
+        description: "Low-energy night profile with minimal lighting.",
+        device_overrides: { ac_main: 0.35, window_main: 0.0, light_main: 0.2 },
+        ac_settings: {
+          ac_mode: "fan",
+          target_temperature: 26,
+          horizontal_mode: "fixed",
+          horizontal_angle_deg: 0,
+          vertical_mode: "fixed",
+          vertical_angle_deg: 10
+        },
+        custom_devices: []
+      }
+    ];
     const acModeLabels = { cool: "Cool", dry: "Dry", heat: "Heat", fan: "Fan" };
     const acSwingLabels = { fixed: "Fixed", swing: "Swing" };
     const acHorizontalAngles = [-45, -20, 0, 20, 45];
@@ -726,6 +839,7 @@ INDEX_HTML = """<!doctype html>
       setupIndoorBaselineControls();
       setupHybridEstimatorControls();
       setupCustomDeviceControls();
+      setupPresetControls();
       setupCustomFurnitureControls();
       syncDeviceControlsFromScenario(activeScenario);
       syncFurnitureControlsFromScenario(activeScenario);
@@ -799,6 +913,23 @@ INDEX_HTML = """<!doctype html>
       syncCustomDeviceList();
     }
 
+    function setupPresetControls() {
+      const container = document.getElementById("presetControls");
+      container.innerHTML = PRESET_BUNDLES.map((preset, index) => `
+        <div class="preset-card">
+          <strong>${preset.name}</strong>
+          <span class="status">${preset.description}</span>
+          <button class="secondary" data-preset-index="${index}">Apply Preset</button>
+        </div>
+      `).join("");
+      container.querySelectorAll("button[data-preset-index]").forEach(button => {
+        button.addEventListener("click", async event => {
+          const index = Number(event.currentTarget.dataset.presetIndex);
+          await applyPresetBundle(index);
+        });
+      });
+    }
+
     function setupCustomFurnitureControls() {
       syncCustomFurnitureList();
     }
@@ -832,6 +963,39 @@ INDEX_HTML = """<!doctype html>
         return;
       }
       await loadScenario();
+    }
+
+    async function applyPresetBundle(index) {
+      const preset = PRESET_BUNDLES[index];
+      if (!preset) return;
+
+      const overrides = preset.device_overrides || {};
+      defaultDeviceItems.forEach(item => {
+        if (Object.prototype.hasOwnProperty.call(overrides, item.name)) {
+          item.activation = Number(overrides[item.name] || 0);
+          item.removed = false;
+        }
+      });
+      renderDefaultDeviceList();
+
+      if (preset.ac_settings) {
+        setRadioChoice("acMode", preset.ac_settings.ac_mode || "cool");
+        setRadioChoice("acHorizontalMode", preset.ac_settings.horizontal_mode || "fixed");
+        setRadioChoice("acHorizontalAngle", String(preset.ac_settings.horizontal_angle_deg ?? 0));
+        setRadioChoice("acVerticalMode", preset.ac_settings.vertical_mode || "fixed");
+        setRadioChoice("acVerticalAngle", String(preset.ac_settings.vertical_angle_deg ?? 15));
+        const slider = document.getElementById("acTargetTemperature");
+        slider.value = String(Math.round(Number(preset.ac_settings.target_temperature ?? 24)));
+        syncAcTemperatureReadout();
+        syncAcAngleControlState();
+      }
+
+      customDeviceItems = JSON.parse(JSON.stringify(preset.custom_devices || []));
+      customDeviceCounter = Math.max(1, customDeviceItems.length + 1);
+      syncCustomDeviceList();
+
+      stopElapsedPlayback();
+      await refreshActiveContext();
     }
 
     function syncDeviceControlsFromScenario(name) {
@@ -1408,6 +1572,13 @@ INDEX_HTML = """<!doctype html>
           </label>
         `;
       }).join("");
+    }
+
+    function setRadioChoice(name, value) {
+      const input = document.querySelector(`input[name='${name}'][value='${value}']`);
+      if (input) {
+        input.checked = true;
+      }
     }
 
     function syncAcTemperatureReadout() {

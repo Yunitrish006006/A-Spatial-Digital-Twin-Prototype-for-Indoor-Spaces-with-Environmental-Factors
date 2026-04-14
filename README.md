@@ -58,8 +58,14 @@
   將此原型對應到碩士論文撰寫的章節與方法說明。
 - `docs/thesis/problem_statement_zh.md`
   說明本研究要解決的非連網家電環境影響學習問題。
+- `docs/thesis/system_architecture_diagrams_zh.md`
+  整理目前實作的整體分層架構、執行資料流、校正與學習流程，以及檔案結構圖。
 - `docs/admin/graduation_requirements_checklist_zh.md`
   整理資工系碩士畢業條件、學位考試流程與口試文件 checklist。
+- `docs/admin/oral_defense_playbook_zh.md`
+  以實務角度整理口試前置條件、文件準備、口試當天與口試後 follow-up。
+- `docs/admin/oral_defense_timeline_checklist_zh.md`
+  一頁式 `D-60 / D-30 / D-14 / D-1 / D-day / D+7` 倒排待辦表。
 - `docs/experiments/baseline_and_learning_results_zh.md`
   整理 IDW baseline 比較與非連網裝置影響學習結果。
 - `docs/experiments/window_matrix_simulation_zh.md`
@@ -72,6 +78,8 @@
   IEEE conference-style 英文論文初稿，包含 `paper.tex`、`references.bib` 與 `paper.pdf`。
 - `scripts/build_thesis_docx.py` / `scripts/build_thesis_pdf.py`
   產生中文碩士論文初稿的 `docx`、`tex` 與 `pdf` 輸出。
+- `scripts/build_thesis_pptx.py`
+  產生中文論文報告用的 `pptx` 投影片與簡報大綱，包含短版與 30 分鐘版。
 
 ## 快速開始
 
@@ -104,6 +112,25 @@ python3 -m unittest discover -s tests
 ```bash
 python3 scripts/build_thesis_docx.py
 python3 scripts/build_thesis_pdf.py
+```
+
+產生中文論文報告投影片：
+
+```bash
+python3 scripts/build_thesis_pptx.py
+```
+
+輸出檔包含：
+
+- `outputs/papers/thesis_presentation_zh.pptx`
+  短版簡報
+- `outputs/papers/thesis_presentation_zh_30min.pptx`
+  約 25 到 30 分鐘口試版簡報
+
+匯出系統架構圖 SVG：
+
+```bash
+python3 scripts/build_architecture_diagrams.py
 ```
 
 ## MCP Server

@@ -1,6 +1,9 @@
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, Iterable, List
+import shutil
+import struct
+import subprocess
 from xml.sax.saxutils import escape
 import zipfile
 
@@ -9,9 +12,55 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 OUTPUTS = ROOT / "outputs"
 PAPERS = OUTPUTS / "papers"
+ARCHITECTURE = OUTPUTS / "figures" / "architecture"
+PAPER_ASSETS = PAPERS / "assets"
 
 
 Block = Dict[str, object]
+
+
+def ensure_image_asset(block: Block) -> Path:
+    source = ROOT / str(block["path"])
+    if not source.exists():
+        raise FileNotFoundError(f"Missing figure source: {source}")
+    PAPER_ASSETS.mkdir(parents=True, exist_ok=True)
+    asset_name = str(block.get("asset_name", source.stem))
+    if source.suffix.lower() == ".svg":
+        target = PAPER_ASSETS / f"{asset_name}.png"
+        if target.exists() and target.stat().st_mtime >= source.stat().st_mtime:
+            return target
+        qlmanage = shutil.which("qlmanage")
+        if qlmanage is None:
+            raise SystemExit("qlmanage not found. It is required to convert SVG figures into PNG assets.")
+        temp_dir = PAPER_ASSETS / ".ql_tmp"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        completed = subprocess.run(
+            [qlmanage, "-t", "-s", "1800", "-o", str(temp_dir), str(source)],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise SystemExit(completed.stderr or completed.stdout or "Failed to render figure asset via qlmanage.")
+        rendered = temp_dir / f"{source.name}.png"
+        if not rendered.exists():
+            raise SystemExit(f"qlmanage did not produce expected PNG asset for {source}")
+        shutil.move(str(rendered), str(target))
+        return target
+    target = PAPER_ASSETS / f"{asset_name}{source.suffix.lower()}"
+    if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
+        shutil.copy2(source, target)
+    return target
+
+
+def png_dimensions(path: Path) -> List[int]:
+    with open(path, "rb") as handle:
+        header = handle.read(24)
+    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"Unsupported PNG file: {path}")
+    width, height = struct.unpack(">II", header[16:24])
+    return [int(width), int(height)]
 
 
 def build_blocks() -> List[Block]:
@@ -122,19 +171,74 @@ def build_blocks() -> List[Block]:
         paragraph(
             "數位孿生通常被視為實體系統在數位空間中的動態對應模型，其核心價值在於將感測資料、系統狀態與分析模型整合為可更新、可查詢且可推估的數位映射。在智慧建築領域中，數位孿生常與 BIM、IoT 感測、設備監控與能源管理系統結合，用於營運最佳化與狀態預測。近年的建築數位孿生回顧指出，多數研究著重於平台架構、資料整合與建築尺度的決策支援，但對於少量感測器條件下之單房間空間場重建與設備影響推估，討論仍相對有限 [7]。因此，本研究的定位並非建構完整 BIM/BMS 平台，而是針對單房間、低成本感測器與非連網裝置場景提出一個可運作的簡化數位孿生原型。"
         ),
-        heading("2.4 非連網裝置影響學習", 2),
+        heading("2.4 房間尺度室內因子實驗研究", 2),
+        paragraph(
+            "若將文獻範圍收斂到房間尺度的實驗研究，可以發現溫度、濕度與照度並不是彼此孤立的環境因子。Chinazzo 等人以 office-like test room 為實驗場域，控制不同室溫與日光照度條件，研究 visual perception 與 thermal perception 之間的交互作用，指出日照與室溫會共同影響受試者的感知結果 [18][19]。Lan 等人則在教室條件下同時調整熱環境與照明參數，分析其對學習表現與主觀感受的影響，顯示 thermal and visual environments 可在同一受控場域中被聯合操控與評估 [20]。這類研究雖不以數位孿生為主，但提供了重要前提：房間內三因子至少在實驗設計層級上具備共同量測與共同分析的必要性。"
+        ),
+        paragraph(
+            "另一類與本研究更接近的工作，是冷氣、開窗或通風策略對房間環境的實驗或現地量測。Kuwahara 等人在大學實驗室中比較空調運轉與自然通風策略，量測溫度、相對濕度與 CO2 變化，用於評估室內環境與舒適 [21]。Zhou 等人則對綠建築辦公室進行長期 field study，追蹤 thermal environment、relative humidity、CO2 與 visual environment，並結合使用者滿意度調查 [22]。Wang 等人針對寒冷地區住宅建築的冬季室內環境品質進行實測，指出低能耗住宅中的室溫與相對濕度仍可能出現不理想分布 [23]。這些研究共同說明，房間尺度的 IEQ 實驗並不罕見，而且冷氣、通風與外氣條件確實會使房間內部環境產生可量測差異。"
+        ),
+        paragraph(
+            "然而，現有房間尺度實驗研究多半聚焦於舒適評估、單一場域量測，或多因子對認知與滿意度的影響，較少進一步處理有限感測器下的空間場重建、非連網裝置影響學習，以及可被外部 AI 系統查詢的工具化服務。Geng 等人對綠建築辦公室進行大規模與長期 IEQ 比較，Lee 等人則分析研究機構中不同工作型態與 IEQ 的關係 [24][25]；這些研究證明房間內溫度、濕度、照度與舒適度之間具有實際研究基礎，但尚未形成單房間、三因子、8 顆角落感測器、設備影響學習與控制推薦整合於同一原型的做法。基於此，本研究並非宣稱房間室內因子實驗是全新問題，而是主張：本研究將既有 IEQ 實驗研究常見的環境因子量測，進一步推展為可估場、可校正、可學習與可服務化的單房間數位孿生方法。"
+        ),
+        heading("2.5 非連網裝置影響學習", 2),
         paragraph(
             "既有智慧家庭與智慧建築研究，常預設設備可由網路介面直接讀取或控制。然而在一般居住空間中，傳統冷氣、手動窗戶與一般照明往往不具備可直接讀取的連網能力。此時，若系統仍希望掌握設備對環境的作用，就必須從感測到的環境變化反推設備影響。近期研究顯示，有限感測器搭配 data assimilation、hybrid model 或感測配置分析，確實能對室內溫濕度場進行重建，並評估量測點配置對重建品質的影響 [5][8][9]。本研究延續此方向，將裝置啟用前後的感測器差異視為學習訊號，並利用裝置空間影響基底與最小平方法估計其對溫度、濕度與照度的影響係數，以支援後續的場估計與控制推薦。"
         ),
-        heading("2.5 MCP 與 AI Agent Tool Interface", 2),
+        heading("2.6 MCP 與 AI Agent Tool Interface", 2),
         paragraph(
             "Model Context Protocol（MCP）提供一種標準化工具介面，使外部模型或 AI client 能以一致方式呼叫系統能力。本研究將數位孿生原型封裝為本地 MCP server，使情境查詢、場估計、動作排序、點位取樣與窗戶條件模擬等功能，可被 AI agent 直接使用。需要強調的是，MCP 在本研究中的角色屬於系統整合與工具化封裝，用以驗證數位孿生模型可被外部 AI 系統操作，而非針對 MCP 通訊協定本身提出新方法。"
+        ),
+        heading("2.7 與相似研究之差異定位", 2),
+        paragraph(
+            "若從研究方法的相似性來看，本研究最接近的文獻不是一般性的 building digital twin 平台論文，而是有限感測器室內場重建、控制導向簡化熱模型，以及 hybrid thermal surrogate 這三類研究。Qian 等人以資料同化方法重建實際住宅房間中的溫濕度分布，重點在於以有限量測重建連續場並分析量測配置 [8]；Huljak 等人聚焦於空調房間中的 hybrid 溫度模型，強調以 physics-based 與 surrogate model 共同描述空調空間中的溫度分布 [5]；Megri 等人則以 DOMA 動態 zonal model 處理時間變化與熱舒適預測 [6]。這三類工作與本研究皆有明顯關聯，但關注點不同。"
+        ),
+        paragraph(
+            "本研究的具體定位是：在不做 CFD、不追求完整 BIM 平台，也不假設家電可回報狀態的前提下，建立一個可由 8 顆角落感測器校正、可學習非連網裝置影響、並可透過 MCP 與 Web 互動使用的單房間三因子數位孿生原型。換言之，本研究刻意把問題收斂在「單房間、有限角落感測器、溫濕度照度三因子、非連網家電影響學習、控制推薦、可工具化服務」這個組合上。從目前檢視到的相似研究來看，尚未看到與本研究完全同構的公開論文。"
+        ),
+        table(
+            ["研究", "相似處", "主要差異"],
+            [
+                ["Qian et al. (2025) [8]", "有限觀測下重建室內溫濕度分布", "未把照度、非連網家電影響學習與 MCP 工具化整合在同一系統"],
+                ["Huljak et al. (2025) [5]", "使用 hybrid 溫度模型處理空調房間", "主變數偏溫度，且依賴較強的建物邊界條件與物理模擬流程"],
+                ["Megri et al. (2022) [6]", "強調動態 zonal / transient prediction", "目標偏熱舒適分析，不處理照度與非連網裝置學習"],
+                ["Chen & Wen (2007) [9]", "討論感測器配置與 zonal model", "重點在感測器設計，不是建立可互動的單房間數位孿生原型"],
+                ["Cespedes-Cubides & Jradi (2024) [7]", "界定 building digital twin 的整體脈絡", "屬綜述，不提供本研究這種單房間三因子可執行原型"],
+            ],
+        ),
+        heading("2.8 公開資料與訓練資料適用性", 2),
+        paragraph(
+            "若從資料角度來看，公開資料集確實可作為本研究的輔助比對來源，但沒有任何一套資料能直接等價取代本研究的標準情境。原因在於，本研究同時要求單房間空間拓樸、8 顆角落感測器前提、三因子場估計、冷氣/窗戶/照明的裝置狀態，以及可移動家具阻擋。現有公開資料大多只滿足其中一部分。"
+        ),
+        table(
+            ["資料集", "可用欄位", "適合用途", "限制"],
+            [
+                ["CU-BEMS [12]", "溫度、濕度、照度、AC/lighting power、zone-level series", "可用於驗證裝置狀態與環境量測的時間關聯", "多區商辦資料，不是單房間 8 角落感測器拓樸"],
+                ["Appliances Energy Prediction [13]", "多房間溫溼度、室外氣象、燈光用電", "可用於室內外條件與用電關聯分析", "缺空間幾何與單房間場分布標記"],
+                ["SML2010 [14]", "兩處室內溫度/濕度/照度、日照與室外條件", "可用於窗戶日照與室內響應的時序比對", "量測點有限，且非完整單房間空間場"],
+                ["Occupancy Detection [15]", "溫度、濕度、照度、CO2", "可用於感測器前處理與環境變化偵測", "不含裝置資訊與空間拓樸"],
+                ["Denmark IEQ dataset [16]", "房間層級 operative temperature、RH、CO2、occupancy", "可用於真實住宅 IEQ 波動比對", "缺照度與設備狀態"],
+                ["ASHRAE Global Thermal Comfort Database II [17]", "大規模熱舒適與環境量測", "可用於舒適目標與控制評分合理性參考", "不是空間場重建資料，也不對應單房間幾何"],
+            ],
+        ),
+        paragraph(
+            "因此，本研究目前採取的資料策略是：以可控制的模擬情境作為主要訓練與驗證來源，以公開資料集作為外部合理性檢查與未來真實資料接軌的準備。具體而言，若要替本研究的 hybrid residual neural network 增加真實資料，現階段最有價值的是 CU-BEMS、SML2010 與住宅 IEQ 類資料；若要補強舒適度控制目標的依據，則 ASHRAE Global Thermal Comfort Database II 比較適合作為外部參考。"
         ),
         page_break(),
         heading("第三章 系統架構與數學模型", 1),
         heading("3.1 系統架構", 2),
         paragraph(
             "本研究系統由五個主要模組組成：房間與設備設定、三因子影響場模型、角落感測器校正、非連網裝置影響學習、以及控制動作排序與 MCP 工具介面。整體流程為：輸入房間幾何、設備位置與外部環境條件後，模型先建立背景場，再加入設備影響函數，接著使用 8 顆角落感測器觀測值校準 active device power scale 並建立 trilinear 校正場，最後輸出任意座標或目標區域的三因子估計與候選控制動作排序。"
+        ),
+        image(
+            "outputs/figures/architecture/整體分層架構.svg",
+            "圖 3-1 系統整體分層架構。此圖說明 Web、MCP/Gemma 入口如何共用 service layer，並串接主模型與 hybrid residual layer。",
+            asset_name="fig_3_1_overall_architecture",
+        ),
+        image(
+            "outputs/figures/architecture/主要執行資料流.svg",
+            "圖 3-2 主要執行資料流。此圖對應一次 scenario 評估如何從輸入設定、場估計、校正、到 dashboard 與 MCP 輸出。",
+            asset_name="fig_3_2_execution_flow",
         ),
         heading("3.2 房間、區域與感測器設定", 2),
         paragraph(
@@ -150,6 +254,11 @@ def build_blocks() -> List[Block]:
                 ["主要區域", "window_zone, center_zone, door_side_zone"],
                 ["設備類型", "ac_main, window_main, light_main"],
             ],
+        ),
+        image(
+            "outputs/figures/architecture/房間感測器與目標區域配置.svg",
+            "圖 3-3 房間感測器與目標區域配置。8 顆角落感測器、3 個主要區域與 3 個核心裝置共同構成單房間數位孿生的標準拓樸。",
+            asset_name="fig_3_3_room_topology",
         ),
         heading("3.3 三因子場模型", 2),
         paragraph("本研究將室內狀態定義為三個空間與時間函數："),
@@ -182,6 +291,11 @@ def build_blocks() -> List[Block]:
         code("C(x, y, z) = c0 + c1*X + c2*Y + c3*Z + c4*X*Y + c5*X*Z + c6*Y*Z + c7*X*Y*Z"),
         paragraph(
             "其中 X、Y、Z 為正規化後的房間座標。相較於一階 affine surface，trilinear correction 可使用 8 個角點支撐 8 個校正係數，除了整體偏移與一階梯度外，也能表示角落之間的交互變化。不過此方法仍無法重建任意高頻局部變化，因此其定位仍是低成本、可解釋的場校正方法。"
+        ),
+        image(
+            "outputs/figures/architecture/感測器校正與學習流程.svg",
+            "圖 3-4 感測器校正與影響學習流程。此圖說明真值模擬、角落觀測、設備 power calibration、trilinear residual correction，以及 least-squares impact learning 之間的關係。",
+            asset_name="fig_3_4_sensor_calibration_learning",
         ),
         heading("3.6 非連網裝置影響學習", 2),
         paragraph("對非連網裝置，系統不依賴裝置 API，而是由啟用前後的感測器變化估計影響係數。流程如下："),
@@ -238,7 +352,7 @@ def build_blocks() -> List[Block]:
         ),
         heading("4.3 Gemma/Ollama Bridge", 2),
         paragraph(
-            "由於本機 Gemma 模型不一定是原生 MCP client，本研究提供 Python bridge 作為中介。Gemma 負責將自然語言問題轉成工具選擇，Python 執行數位孿生服務，最後再由 Gemma 根據工具輸出產生回答。此設計可展示非 MCP-native LLM 也能透過橋接方式使用同一套模型能力。"
+            "本研究以本機 Ollama 上之 Gemma 模型作為語言介面，並以 Python bridge 串接數位孿生服務。實測顯示，本機 Gemma 可透過 Ollama 進行 tool calling；但 MCP 支援本質上來自主機端或 client/runtime 層，而非模型權重本身。因此本研究採用的設計是：由 Gemma 將自然語言請求轉為工具選擇，Python bridge 執行數位孿生服務或 MCP server 所提供的工具，再把工具輸出回送給 Gemma 生成最終回答。這樣的設計比直接宣稱模型原生支援 MCP 更準確，也更符合目前本地 AI agent 的實作方式。"
         ),
         heading("4.4 Web Demo", 2),
         paragraph(
@@ -249,6 +363,11 @@ def build_blocks() -> List[Block]:
         heading("5.1 標準情境設定", 2),
         paragraph(
             "本研究建立 8 組標準情境，包含無設備作用、僅冷氣、僅開窗、僅照明、冷氣與窗戶、窗戶與照明、冷氣與照明，以及三者同時作用。每組情境均輸出場重建誤差、區域平均值、感測器校正效果、IDW baseline 比較、非連網裝置影響學習與推薦排序。"
+        ),
+        image(
+            "outputs/figures/architecture/驗證與實驗流程圖.svg",
+            "圖 5-1 驗證與實驗流程。此圖說明標準情境如何經由 truth adjustment、合成觀測、校正估測、baseline 比較與輸出摘要，形成第五章的實驗結果。",
+            asset_name="fig_5_1_validation_flow",
         ),
         table(
             ["情境", "中央溫度", "中央濕度", "中央照度", "最佳推薦"],
@@ -344,6 +463,20 @@ def build_blocks() -> List[Block]:
                 "[9] Y. Lisa Chen, Jin Wen, Application of zonal model on indoor air sensor network design, Proceedings of SPIE, vol. 6529, 652911, 2007. DOI: 10.1117/12.716356",
                 "[10] D. Shepard, A Two-Dimensional Interpolation Function for Irregularly-Spaced Data, Proceedings of the 1968 ACM National Conference, pp. 517-524, 1968.",
                 "[11] Model Context Protocol, Model Context Protocol Documentation, https://modelcontextprotocol.io/ , accessed 2026-04-10.",
+                "[12] Gopal Chitalia, Manisa Pipattanasomporn, CU-BEMS, smart building electricity consumption and indoor environmental sensor datasets, Scientific Data, vol. 7, article 290, 2020. DOI: 10.1038/s41597-020-00582-3",
+                "[13] Luis Candanedo, Appliances Energy Prediction [Dataset], UCI Machine Learning Repository, 2017. DOI: 10.24432/C5VC8G",
+                "[14] Pablo Romeu-Guallart, Francisco Zamora-Martinez, SML2010 [Dataset], UCI Machine Learning Repository, 2014. DOI: 10.24432/C5RS3S",
+                "[15] Luis Candanedo, Occupancy Detection [Dataset], UCI Machine Learning Repository, 2016. DOI: 10.24432/C5X01N",
+                "[16] Kamilla Heimar Andersen, Hicham Johra, Anna Marszal-Pomianowska, Per Kvols Heiselberg, Henrik N. Knudsen, Dataset of room-level indoor environmental quality measurements and occupancy ground truth for five residential apartments in Denmark [Dataset], Zenodo, 2024. DOI: 10.5281/zenodo.10761326",
+                "[17] V. Foldvary Licina, T. Cheung, H. Zhang, R. de Dear, T. Parkinson, E. Arens, et al., Development of the ASHRAE Global Thermal Comfort Database II, Building and Environment, vol. 142, pp. 502-512, 2018. DOI: 10.1016/j.buildenv.2018.06.022",
+                "[18] G. Chinazzo, J. Wienold, M. Andersen, Influence of indoor temperature and daylight illuminance on visual perception, Lighting Research and Technology, vol. 52, no. 8, pp. 998-1020, 2020. DOI: 10.1177/1477153519859609",
+                "[19] G. Chinazzo, J. Wienold, M. Andersen, Daylight affects human thermal perception, Scientific Reports, vol. 9, article 13695, 2019. DOI: 10.1038/s41598-019-48963-y",
+                "[20] Lan et al., Experimental study on the impact of indoor lighting and thermal environment on university students' learning performance in summer, Energy and Buildings, vol. 331, 115774, 2025. DOI: 10.1016/j.enbuild.2025.115774",
+                "[21] K. Kuwahara et al., Studying the Indoor Environment and Comfort of a University Laboratory: Air-Conditioning Operation and Natural Ventilation Used as a Countermeasure against COVID-19, Buildings, vol. 12, no. 7, 953, 2022. DOI: 10.3390/buildings12070953",
+                "[22] Yan Zhou, Jianmin Cai, Yiwen Xu, Indoor environmental quality and energy use evaluation of a three-star green office building in China with field study, Journal of Building Physics, vol. 45, no. 2, pp. 163-190, 2021. DOI: 10.1177/1744259120944604",
+                "[23] Z. Wang, Q. Xue, Y. Ji, Z. Yu, Indoor environment quality in a low-energy residential building in winter in Harbin, Building and Environment, vol. 135, pp. 194-201, 2018. DOI: 10.1016/j.buildenv.2018.03.012",
+                "[24] Y. Geng, B. Lin, Y. Zhu, Comparative study on indoor environment quality of green office buildings with different levels of energy use intensity, Building and Environment, vol. 168, 106482, 2020. DOI: 10.1016/j.buildenv.2019.106482",
+                "[25] J. Lee et al., A Comparative Field Study of Indoor Environment Quality and Work Productivity between Job Types in a Research Institute in Korea, International Journal of Environmental Research and Public Health, vol. 19, no. 21, 14332, 2022. DOI: 10.3390/ijerph192114332",
             ]
         ),
         page_break(),
@@ -389,6 +522,16 @@ def table(headers: List[str], rows: List[List[str]]) -> Block:
     return {"type": "table", "headers": headers, "rows": rows}
 
 
+def image(path: str, caption: str, width_inches: float = 5.8, asset_name: str = "") -> Block:
+    return {
+        "type": "image",
+        "path": path,
+        "caption": caption,
+        "width_inches": width_inches,
+        "asset_name": asset_name,
+    }
+
+
 def page_break() -> Block:
     return {"type": "page_break"}
 
@@ -417,6 +560,13 @@ def write_markdown(path: Path, blocks: List[Block]) -> None:
             lines.append("| " + " | ".join("---" for _ in headers) + " |")
             for row in rows:
                 lines.append("| " + " | ".join(row) + " |")
+        elif kind == "image":
+            image_path = ROOT / str(block["path"])
+            relative_path = image_path.relative_to(ROOT)
+            markdown_target = Path("..") / ".." / relative_path
+            caption = str(block["caption"])
+            lines.append(f"![{caption}]({markdown_target.as_posix()})")
+            lines.append(f"*{caption}*")
         elif kind == "page_break":
             lines.append("\n---\n")
         lines.append("")
@@ -424,22 +574,30 @@ def write_markdown(path: Path, blocks: List[Block]) -> None:
 
 
 def write_docx(path: Path, blocks: List[Block]) -> None:
-    document_xml = build_document_xml(blocks)
+    image_registry: Dict[str, Dict[str, object]] = {}
+    document_xml = build_document_xml(blocks, image_registry)
     files = {
-        "[Content_Types].xml": content_types_xml(),
+        "[Content_Types].xml": content_types_xml(bool(image_registry)),
         "_rels/.rels": package_rels_xml(),
         "docProps/core.xml": core_props_xml(),
         "docProps/app.xml": app_props_xml(),
         "word/document.xml": document_xml,
+        "word/_rels/document.xml.rels": document_rels_xml(image_registry),
         "word/styles.xml": styles_xml(),
         "word/settings.xml": settings_xml(),
     }
+    for item in image_registry.values():
+        asset_path = Path(str(item["asset_path"]))
+        files[f"word/media/{item['media_name']}"] = asset_path.read_bytes()
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, content in files.items():
-            archive.writestr(name, content.encode("utf-8"))
+            if isinstance(content, bytes):
+                archive.writestr(name, content)
+            else:
+                archive.writestr(name, content.encode("utf-8"))
 
 
-def build_document_xml(blocks: List[Block]) -> str:
+def build_document_xml(blocks: List[Block], image_registry: Dict[str, Dict[str, object]]) -> str:
     body_parts: List[str] = []
     for block in blocks:
         kind = block["type"]
@@ -458,12 +616,15 @@ def build_document_xml(blocks: List[Block]) -> str:
                 body_parts.append(docx_paragraph(line, style="Code"))
         elif kind == "table":
             body_parts.append(docx_table([block["headers"]] + block["rows"]))
+        elif kind == "image":
+            body_parts.append(docx_image_paragraph(block, image_registry))
+            body_parts.append(docx_paragraph(str(block["caption"]), align="center"))
         elif kind == "page_break":
             body_parts.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
     body_parts.append(section_properties_xml())
     body = "\n".join(body_parts)
     return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:xml="http://www.w3.org/XML/1998/namespace">
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:xml="http://www.w3.org/XML/1998/namespace" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
   <w:body>
     {body}
   </w:body>
@@ -519,6 +680,57 @@ def docx_table(rows: List[List[object]]) -> str:
     return f'<w:tbl><w:tblPr>{borders}</w:tblPr>{"".join(table_rows)}</w:tbl>'
 
 
+def docx_image_paragraph(block: Block, image_registry: Dict[str, Dict[str, object]]) -> str:
+    asset_path = ensure_image_asset(block)
+    registry_key = str(asset_path)
+    if registry_key not in image_registry:
+        image_index = len(image_registry) + 1
+        image_registry[registry_key] = {
+            "rel_id": f"rId{image_index}",
+            "media_name": f"image{image_index}{asset_path.suffix.lower()}",
+            "asset_path": asset_path,
+            "doc_id": image_index,
+        }
+    entry = image_registry[registry_key]
+    width_px, height_px = png_dimensions(asset_path)
+    max_width_inches = float(block.get("width_inches", 5.8))
+    max_width_emu = int(max_width_inches * 914400)
+    original_width_emu = max(width_px, 1) * 9525
+    scale = min(1.0, max_width_emu / float(original_width_emu))
+    extent_x = int(original_width_emu * scale)
+    extent_y = int(max(height_px, 1) * 9525 * scale)
+    name = escape(str(block.get("caption", "figure")))
+    return (
+        '<w:p>'
+        '<w:pPr><w:jc w:val="center"/><w:spacing w:after="120" w:line="360" w:lineRule="auto"/></w:pPr>'
+        '<w:r><w:drawing>'
+        f'<wp:inline distT="0" distB="0" distL="0" distR="0">'
+        f'<wp:extent cx="{extent_x}" cy="{extent_y}"/>'
+        f'<wp:docPr id="{entry["doc_id"]}" name="{name}"/>'
+        '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>'
+        '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        '<pic:pic>'
+        '<pic:nvPicPr>'
+        f'<pic:cNvPr id="{entry["doc_id"]}" name="{name}"/>'
+        '<pic:cNvPicPr/>'
+        '</pic:nvPicPr>'
+        '<pic:blipFill>'
+        f'<a:blip r:embed="{entry["rel_id"]}"/>'
+        '<a:stretch><a:fillRect/></a:stretch>'
+        '</pic:blipFill>'
+        '<pic:spPr>'
+        '<a:xfrm><a:off x="0" y="0"/>'
+        f'<a:ext cx="{extent_x}" cy="{extent_y}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+        '</pic:spPr>'
+        '</pic:pic>'
+        '</a:graphicData></a:graphic>'
+        '</wp:inline>'
+        '</w:drawing></w:r>'
+        '</w:p>'
+    )
+
+
 def section_properties_xml() -> str:
     return (
         "<w:sectPr>"
@@ -528,11 +740,13 @@ def section_properties_xml() -> str:
     )
 
 
-def content_types_xml() -> str:
-    return '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+def content_types_xml(has_png: bool = False) -> str:
+    png_default = '\n  <Default Extension="png" ContentType="image/png"/>' if has_png else ""
+    return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  {png_default}
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
   <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
@@ -550,6 +764,19 @@ def package_rels_xml() -> str:
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
 </Relationships>
 '''
+
+
+def document_rels_xml(image_registry: Dict[str, Dict[str, object]]) -> str:
+    relationships = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>']
+    relationships.append('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">')
+    for item in image_registry.values():
+        relationships.append(
+            f'<Relationship Id="{item["rel_id"]}" '
+            'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+            f'Target="media/{item["media_name"]}"/>'
+        )
+    relationships.append("</Relationships>")
+    return "\n".join(relationships)
 
 
 def core_props_xml() -> str:

@@ -48,6 +48,8 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("addCustomDeviceButton", INDEX_HTML)
         self.assertIn("clearCustomDeviceButton", INDEX_HTML)
         self.assertIn("customDeviceKindControls", INDEX_HTML)
+        self.assertIn("Preset Bundles", INDEX_HTML)
+        self.assertIn("presetControls", INDEX_HTML)
         self.assertIn("Duplicate", INDEX_HTML)
         self.assertIn("Reset", INDEX_HTML)
         self.assertIn("metricControls", INDEX_HTML)

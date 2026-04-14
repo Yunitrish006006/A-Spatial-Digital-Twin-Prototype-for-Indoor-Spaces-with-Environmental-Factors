@@ -11,7 +11,7 @@ OUTPUTS = ROOT / "outputs"
 PAPERS = OUTPUTS / "papers"
 
 sys.path.insert(0, str(SCRIPT_DIR))
-from build_thesis_docx import Block, build_blocks  # noqa: E402
+from build_thesis_docx import Block, build_blocks, ensure_image_asset  # noqa: E402
 
 
 TEX_PATH = PAPERS / "thesis_draft_zh.tex"
@@ -97,6 +97,22 @@ def render_table(headers: List[object], rows: List[List[object]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_image(block: Block) -> str:
+    asset_path = ensure_image_asset(block)
+    asset_rel = asset_path.relative_to(PAPERS).as_posix()
+    width_inches = float(block.get("width_inches", 5.8))
+    text_width_ratio = min(0.9, max(0.45, width_inches / 7.0))
+    caption = latex_escape(str(block["caption"]))
+    return (
+        r"\begin{figure}[htbp]" + "\n"
+        r"\centering" + "\n"
+        rf"\includegraphics[width={text_width_ratio:.2f}\textwidth]{{{asset_rel}}}" + "\n"
+        r"\par\smallskip" + "\n"
+        rf"{{\small {caption}}}" + "\n"
+        r"\end{figure}" + "\n"
+    )
+
+
 def render_block(block: Block) -> str:
     kind = str(block["type"])
     if kind == "title":
@@ -111,6 +127,8 @@ def render_block(block: Block) -> str:
         return render_code(str(block["text"]))
     if kind == "table":
         return render_table(list(block["headers"]), list(block["rows"]))
+    if kind == "image":
+        return render_image(block)
     if kind == "page_break":
         return r"\clearpage" + "\n"
     raise ValueError(f"Unsupported block type: {kind}")
@@ -126,6 +144,7 @@ def render_document(blocks: List[Block]) -> str:
 \usepackage{{longtable}}
 \usepackage{{fancyvrb}}
 \usepackage{{array}}
+\usepackage{{graphicx}}
 \usepackage{{hyperref}}
 
 \setmainfont{{Times New Roman}}

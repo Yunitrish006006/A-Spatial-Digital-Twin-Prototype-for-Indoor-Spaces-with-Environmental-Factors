@@ -2,6 +2,10 @@
 
 本文件依據 `docs/admin/reference_files/` 內的學位考試流程、碩士班修業規章、論文封面與審定書範本整理。實際辦理仍以系辦、教務處、圖書館與當學年度公告為準。
 
+若需要較偏實務執行的版本，可搭配閱讀：
+
+- [口試實戰指南](/Volumes/DataExtended/school/docs/admin/oral_defense_playbook_zh.md)
+
 ## 來源文件
 
 - `docs/admin/reference_files/彰化師範大學資訊工程系碩士班修業規章-1141014修正通過.pdf`
