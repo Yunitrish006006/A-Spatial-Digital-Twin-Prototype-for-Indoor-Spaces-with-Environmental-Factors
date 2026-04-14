@@ -261,7 +261,38 @@ before sensor observations
 → least-squares impact coefficient learning
 ```
 
-## 3.7 Hybrid Residual Neural Network 延伸
+## 3.7 訓練資料組裝流程
+
+為了讓模型不只停留在手動指定參數，本研究將資料流程拆成原始紀錄層、對齊整併層、樣本建構層與模型訓練層。原始資料至少包含四類：角落感測器時序、裝置事件紀錄、室外環境時序，以及情境描述或額外空間量測。角落感測器時序紀錄 8 顆節點在各時間點的 temperature、humidity 與 illuminance；裝置事件紀錄保存冷氣、窗戶與燈的啟用狀態、模式、設定溫度與開窗比例；室外環境時序提供 outdoor temperature、outdoor humidity 與 sunlight；情境描述則記錄房間尺寸、目標區域、家具配置與採樣設定。
+
+| 資料表 | 主要欄位 | 角色 |
+| --- | --- | --- |
+| corner_sensor_timeseries | timestamp, sensor_name, x, y, z, temperature, humidity, illuminance | 提供 8 顆角落感測器觀測值，用於校正、裝置影響學習與真實資料 fine-tune |
+| device_event_log | timestamp, device_name, device_kind, activation, mode, target_temperature, opening_ratio | 還原各時間點裝置狀態，並作為特徵與影響學習依據 |
+| outdoor_environment | timestamp, outdoor_temperature, outdoor_humidity, sunlight_illuminance, daylight_factor | 提供窗戶影響函數與時間條件所需的外部邊界 |
+| scenario_metadata / spatial_probe_ground_truth | 房間尺寸、家具配置、目標區域、額外空間量測 | 定義情境與提供較密集的監督標籤 |
+
+在資料對齊階段，系統會先以時間戳記為主鍵，將感測器時序、裝置事件與外部環境資料同步到同一時間軸。接著根據房間幾何與裝置配置，將每個時間點的狀態送入主模型，得到 F_v(x, y, z, t) 的 physics estimate。若為影響係數學習，則以裝置啟用前後的感測器差值建立 sensor delta；若為 hybrid residual neural network，則進一步在空間採樣點上建立 feature-target 配對。
+
+對於 hybrid residual 訓練，本研究在每個採樣點 p_i=(x_i, y_i, z_i) 與時間點 t_i 上組合特徵向量：
+
+```text
+φ_i = [x_i, y_i, z_i, t_i, indoor baseline, outdoor conditions,
+       F_temperature, F_humidity, F_illuminance,
+       device activations, device powers, influence envelopes]
+```
+
+若採用目前的模擬訓練設定，標籤來自 truth field 與主模型估計值之差：
+
+```text
+y_i^v = F_v^truth(p_i, t_i) - F_v(p_i, t_i)
+```
+
+其中 v 分別代表 temperature、humidity 與 illuminance。換言之，神經網路不是直接學整個場，而是學主模型剩餘誤差。若未來接入真實資料，則可分成兩種層次：第一種只使用 8 顆角落感測器，將其作為參數校正、裝置影響學習與角落 residual fine-tune 的監督訊號；第二種則在有移動式量測或額外空間探針時，再擴充為更完整的空間 residual 訓練。這樣可避免只憑 8 個角落點就對全室高解析度場做過度宣稱。
+
+整體而言，本研究的訓練資料流程可概括為：原始感測與事件資料先經時間對齊與情境整併，再由主模型產生 physics estimate，最後依任務不同分流為 least-squares impact learning、bulk parameter calibration 或 hybrid residual neural training。此設計的優點在於，即使未來資料來源從模擬切換到真實 ESP32 量測，資料進入訓練流程的接口仍可保持一致。
+
+## 3.8 Hybrid Residual Neural Network 延伸
 
 雖然主模型已具有可解釋的 bulk + local field 結構，但在設備交互作用、局部照度分布或窗邊複合邊界條件下，仍可能存在系統性殘差。為此，本研究不以純黑盒神經網路取代主模型，而是加入 hybrid residual neural network 作為第二層修正器：
 
@@ -283,7 +314,7 @@ L(θ_v) = (1 / N) Σ_i ||R_v*(p_i, t_i) - R_v(p_i, t_i; θ_v)||^2 + λ||θ_v||^2
 
 本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。此設計的目的在於保留主模型可解釋性，同時以資料驅動方式修正其剩餘誤差。
 
-## 3.8 控制動作排序
+## 3.9 控制動作排序
 
 本研究不做閉環控制，而是對候選控制動作進行排序。系統針對每個候選動作模擬目標區域的三因子值，並依舒適度目標計算改善分數。若房間偏熱，冷氣動作通常獲得較高排序；若照度不足，照明動作通常獲得較高排序。
 
