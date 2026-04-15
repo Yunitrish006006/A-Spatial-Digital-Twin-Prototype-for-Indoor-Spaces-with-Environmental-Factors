@@ -70,30 +70,30 @@ def build_blocks() -> List[Block]:
         paragraph("An MCP-Enabled Lightweight Spatial Digital Twin Prototype for Learning the Environmental Impact of Non-Networked Appliances in a Single Room", align="center"),
         paragraph("研究生：林昀佑", align="center"),
         paragraph("指導教授：易昶霈", align="center"),
-        paragraph("版本：論文初稿 v0.1", align="center"),
-        paragraph("日期：2026 年 4 月 11 日", align="center"),
+        paragraph("版本：論文初稿 v0.2", align="center"),
+        paragraph("日期：2026 年 4 月 15 日", align="center"),
         page_break(),
         heading("摘要", 1),
         paragraph(
-            "智慧建築與智慧居家系統通常需要掌握室內環境狀態，才能支援舒適度評估、能源管理與設備控制。然而，實際場域中仍有許多會影響環境的家電或環境裝置並沒有連網能力，也沒有 API 可直接回報自身狀態或運轉功率。例如傳統冷氣、手動窗戶與一般照明雖會改變室內環境，卻不一定能被系統直接讀取。若系統僅依賴智慧裝置回報，便難以建立完整且可用於控制決策的室內環境模型。"
+            "智慧建築與智慧居家系統需要掌握室內環境狀態，才能支援舒適度評估、能源管理與設備控制。然而，實際房間中常見的冷氣、窗戶與照明往往沒有連網能力，也無法直接回報狀態；同時，房間內通常只能布建少量感測器，難以直接量測完整空間分布。這使得一般數位孿生若同時缺乏設備遙測與高密度量測，便難以對真實房間提供可用的環境估計與控制建議。"
         ),
         paragraph(
-            "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。模型將室內狀態定義為溫度、濕度與照度三個空間場，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的影響。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差進行主動設備 power scale 校準與 trilinear residual correction，以修正背景場與設備影響函數之偏差。在此基礎上，本研究另加入 hybrid residual neural network 延伸模組，以小型多層感知器學習主模型的剩餘誤差，而不直接取代原本的可解釋物理啟發式結構。"
+            "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。研究過程中，本研究先後比較純插值、僅局部影響場與資料驅動修正等作法，最終採用 bulk + local field 作為主模型，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的作用。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差進行主動設備 power scale 校準與 trilinear residual correction，以修正背景場與設備影響函數之偏差。在此基礎上，本研究再加入 hybrid residual neural network 延伸模組，以小型多層感知器學習主模型的剩餘誤差，而不直接取代原本的可解釋結構。"
         ),
         paragraph(
-            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為提升系統可存取性，本研究將模型能力封裝為本地 Model Context Protocol（MCP）服務，提供情境查詢、模擬、座標估計、baseline 比較、影響學習、窗戶時段/天氣/季節矩陣模擬與窗戶外部條件直接輸入模擬等工具。最後，本研究以 Python 原型、模擬案例、IDW baseline 比較、48 組窗戶矩陣、窗戶 direct input 與可旋轉 3D web demo 驗證模型之可解釋性與實作可行性。"
+            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為提升系統可存取性，本研究將模型能力封裝為本地 Model Context Protocol（MCP）服務。評估方面，本研究以 8 組標準情境、48 組窗戶矩陣、IDW baseline 比較與 hybrid residual held-out 測試驗證方法可行性；其中 base model 在標準情境下之平均 MAE 分別為溫度 0.0482、濕度 0.1763 與照度 2.1616，而 hybrid residual correction 在 held-out 情境下可進一步降低場重建誤差。"
         ),
         paragraph("關鍵字：空間數位孿生、非連網家電、室內環境建模、溫度、濕度、照度、MCP、角落感測器。"),
         page_break(),
         heading("Abstract", 1),
         paragraph(
-            "Smart building and smart home systems require an understanding of indoor environmental conditions to support comfort assessment, energy management, and device control. However, many appliances and environmental elements in real rooms are not network-connected and cannot directly report their states or operating power. Conventional air conditioners, manual windows, and ordinary lights may significantly affect indoor temperature, humidity, and illuminance, yet remain invisible to API-based control systems."
+            "Smart building and smart home systems require indoor environmental awareness to support comfort assessment, energy management, and device control. In ordinary rooms, however, influential appliances such as conventional air conditioners, manual windows, and ordinary lights often expose no telemetry, while only a small number of sensors can be installed. As a result, practical room-scale digital twins must work with both sparse observations and incomplete device-state information."
         ),
         paragraph(
-            "This thesis proposes an MCP-enabled lightweight spatial digital twin prototype for a single room. The proposed model represents the room state as three environmental fields: temperature, humidity, and illuminance. Parameterized influence functions are used to describe the effects of air conditioning, windows, and lighting, while eight corner sensor nodes are used to calibrate active device power scales and estimated fields through a trilinear residual correction model. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, ranks candidate control actions according to target-zone comfort improvement, and extends the base estimator with an optional hybrid residual neural correction layer."
+            "This thesis proposes an MCP-enabled lightweight spatial digital twin prototype for a single room. The final design is a reduced-order bulk-plus-local field model with parameterized appliance influence functions, active-device power calibration, and trilinear residual correction from eight corner sensors. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, ranks candidate control actions according to target-zone comfort improvement, and extends the base estimator with an optional hybrid residual neural correction layer instead of replacing the base model with an end-to-end black-box predictor."
         ),
         paragraph(
-            "The prototype is implemented in Python and exposed through a local Model Context Protocol server, enabling AI clients to query scenarios, estimate point-level environmental states, compare against an IDW baseline, learn appliance impacts, and run a 48-case window simulation matrix across time of day, weather, and season. Simulation results and an interactive rotatable 3D web demo demonstrate the feasibility and interpretability of the proposed approach."
+            "The prototype is implemented in Python and exposed through a local Model Context Protocol server, enabling AI clients to query scenarios, estimate point-level environmental states, compare against an IDW baseline, learn appliance impacts, and run a 48-case window simulation matrix across time of day, weather, and season. Across the canonical scenarios, the base model achieves average MAE of 0.0482 for temperature, 0.1763 for humidity, and 2.1616 for illuminance, while the hybrid residual layer further reduces held-out field MAE. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
         ),
         paragraph("Keywords: spatial digital twin, non-networked appliances, indoor environment modeling, temperature, humidity, illuminance, MCP, corner sensors."),
         page_break(),
@@ -116,6 +116,9 @@ def build_blocks() -> List[Block]:
             "另一方面，許多既有家電並不是智慧裝置。傳統冷氣、一般開關照明或手動窗戶可能無法連網，也無法主動回報開關狀態、出力或作用範圍。這些裝置雖然無法被直接讀取，卻會持續改變室內環境。若數位孿生模型只依賴智慧裝置 API，將無法完整描述一般房間中的環境變化。因此，本研究關注的核心問題是：如何透過有限感測器觀測資料，學習非連網裝置對空間環境造成的影響，並將此學習結果用於更準確的三因子控制推薦。"
         ),
         heading("1.2 研究動機", 2),
+        paragraph(
+            "在原型開發初期，本研究曾嘗試將問題簡化為角落感測器插值或純局部影響場疊加，但很快發現兩個問題。第一，若只靠插值，模型雖能平滑填補空間，卻無法表達冷氣出風方向、窗邊日照或燈具位置等設備語意；第二，若只做局部場疊加，則容易出現設備附近變化明顯、全室平均狀態卻不合理的結果。這些實作經驗直接促成後續的 bulk + local field 架構、感測器校正流程，以及只把神經網路放在 residual correction 層的設計。"
+        ),
         bullets(
             [
                 "只知道角落感測器數值時，仍需要估計房間中央、靠窗區與門側區的三因子狀態。",
@@ -149,12 +152,10 @@ def build_blocks() -> List[Block]:
         heading("1.5 預期貢獻", 2),
         bullets(
             [
-                "提出單房間三因子空間數位孿生原型，描述 temperature、humidity 與 illuminance 場。",
-                "建立可由 8 顆角落感測器校正的環境場估計流程。",
-                "建立非連網冷氣、窗戶與照明之參數化影響函數與影響學習流程。",
-                "提供目標區域導向的候選控制動作排序方法。",
-                "將模型封裝為 MCP tools，讓 AI client 能查詢情境、估計座標點與取得控制推薦。",
-                "提供可重現 Python 原型、48 組窗戶矩陣模擬、窗戶 direct input 模擬與可旋轉 3D web demo。",
+                "提出一個以單房間、8 顆角落感測器為前提的三因子空間數位孿生原型，明確描述 temperature、humidity 與 illuminance 場。",
+                "建立包含 bulk + local field、active device power calibration、trilinear correction 與裝置影響學習的可解釋估測流程。",
+                "建立訓練資料組裝與 hybrid residual correction 路線，使真實感測資料可用於參數校正、影響學習與殘差修正，而非直接取代主模型。",
+                "提出可對接 MCP、Web demo 與公開資料集 task-aligned benchmark 的研究原型與評估框架。",
             ]
         ),
         page_break(),
@@ -223,6 +224,22 @@ def build_blocks() -> List[Block]:
         ),
         paragraph(
             "因此，本研究目前採取的資料策略是：以可控制的模擬情境作為主要訓練與驗證來源，以公開資料集作為外部合理性檢查與未來真實資料接軌的準備。具體而言，若要替本研究的 hybrid residual neural network 增加真實資料，現階段最有價值的是 CU-BEMS、SML2010 與住宅 IEQ 類資料；若要補強舒適度控制目標的依據，則 ASHRAE Global Thermal Comfort Database II 比較適合作為外部參考。"
+        ),
+        paragraph(
+            "若希望讓不同方法在同一資料集上進行對比，較可行的作法不是要求所有方法都重建完整單房間 3D 空間場，而是採用 shared-task benchmark，也就是在相同資料集上只比較共同可觀測、共同可輸出的子任務。換言之，比較的單位應從「整個系統是否完全同構」改為「在同一份資料上，哪些輸入、哪些輸出、哪些評估指標是所有方法都能公平處理的」。在此原則下，本研究模型可以退化為 dataset-compatible mode：當資料集只有 zone-level 序列時，就比較區域平均值預測；當資料集只有兩個室內量測點時，就比較點位響應；當資料集缺少裝置狀態時，則只比較 background dynamics 或 comfort scoring，而不宣稱完成完整場重建。"
+        ),
+        paragraph(
+            "具體而言，本研究可採兩層 benchmark 設計。第一層是 canonical synthetic benchmark，直接使用本研究的 8 組標準情境與 48 組窗戶矩陣，讓主模型、IDW baseline、移除設備先驗的純資料驅動模型，以及 hybrid residual correction 在完全相同的輸入、感測器配置與 ground truth 下比較 field MAE、zone MAE、sensor MAE 與推薦改善分數。第二層是 public task-aligned benchmark，亦即把公開資料集拆成與本研究相容的子任務：CU-BEMS 可用於比較 AC/lighting 事件前後的 zone-level temperature、humidity、illuminance 響應；SML2010 可用於比較窗戶/日照相關的溫濕度照度時序響應；Denmark IEQ 與 ASHRAE Global Thermal Comfort Database II 則適合比較舒適度目標函數、偏差分數或分類準確率。"
+        ),
+        table(
+            ["benchmark 層級", "資料來源", "比較任務", "本研究模型模式", "建議指標"],
+            [
+                ["canonical synthetic", "8 組標準情境", "完整場重建、裝置影響學習、推薦排序", "full spatial mode", "field MAE、zone MAE、sensor MAE、improvement score"],
+                ["canonical synthetic", "48 組窗戶矩陣", "外部邊界條件敏感度分析", "full spatial window mode", "field MAE、zone deviation、趨勢一致性"],
+                ["public task-aligned", "CU-BEMS", "AC 與照明事件後的區域響應", "single-zone dataset-compatible mode", "MAE、RMSE、delta MAE、correlation"],
+                ["public task-aligned", "SML2010", "兩點日照與外氣條件響應", "two-point dataset-compatible mode", "MAE、RMSE、delta MAE"],
+                ["public task-aligned", "Denmark IEQ / ASHRAE", "舒適度評分與控制目標合理性", "comfort-only mode", "score error、accuracy、F1、AUROC"],
+            ],
         ),
         page_break(),
         heading("第三章 系統架構與數學模型", 1),
@@ -443,7 +460,21 @@ def build_blocks() -> List[Block]:
         paragraph(
             "此結果說明，將神經網路定位為殘差修正層，而非直接取代主模型，可在保留設備影響函數、時間響應與感測器校正可解釋性的前提下，進一步降低 held-out 情境的空間重建誤差。不過此結果仍建立於模擬資料與既定情境分割下，未來仍需以真實量測資料重新訓練與驗證。"
         ),
-        heading("5.7 可旋轉 3D 展示", 2),
+        heading("5.7 公開資料集對比策略", 2),
+        paragraph(
+            "若要回應不同方法在同一資料來源上的公平比較，本研究不主張所有實驗都必須直接對到同一個公開資料集，而是將比較拆成相容子任務。對完整 3D 空間場重建而言，目前仍以本研究的 canonical synthetic benchmark 最公平，因為只有這一層同時具備完整房間幾何、設備狀態、8 顆角落感測器配置與 dense ground truth。對公開資料集而言，則應退回資料集真正支援的輸出層級，例如區域平均值、點位時序響應或舒適度分數。"
+        ),
+        paragraph(
+            "因此，CU-BEMS 比較適合用來對比 AC 與照明事件對 zone-level temperature、humidity 與 illuminance 的影響；SML2010 比較適合對比窗戶、日照與外氣條件造成的兩點溫濕度照度響應；ASHRAE 與住宅 IEQ 類資料則更適合對比舒適度目標函數與控制評分的合理性。這樣的 task-aligned benchmark 可以讓本研究與其他方法在相同輸入、相同輸出與相同指標下比較，而不需要誇大公開資料集與本研究場景完全一致。"
+        ),
+        heading("5.8 研究過程與實作挑戰", 2),
+        paragraph(
+            "本研究在實作過程中有三個直接影響最終模型設計的問題。第一，初期若僅使用 local field 疊加設備作用，會出現冷氣附近快速降溫、房間遠端卻幾乎維持原溫的不合理結果，因此後續必須加入 bulk state 描述全室平均狀態的時間收斂。第二，若只以 8 顆角落感測器直接監督整個 3D 場，則黑盒神經網路雖可能把角落點擬合得很好，但對室內中央、窗邊與家具後方的場仍缺乏足夠監督，因此本研究把神經網路限制在 residual correction 層，而不是直接取代主模型。第三，公開資料集與本研究情境在幾何、裝置標記與感測器拓樸上通常不一致，因此必須採用 task-aligned benchmark，不能直接把所有實驗都搬到同一公開資料集上比較。"
+        ),
+        paragraph(
+            "這些困難也說明本研究的設計取捨不是任意拼接，而是由實作過程逐步收斂而來：bulk + local field 負責處理全室與局部差異，trilinear correction 負責利用有限角落感測器修正低階偏差，least-squares impact learning 負責從設備前後差異學習非連網裝置影響，hybrid residual neural network 則只處理主模型尚未吸收的系統性誤差。"
+        ),
+        heading("5.9 可旋轉 3D 展示", 2),
         paragraph(
             "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
         ),
@@ -456,12 +487,16 @@ def build_blocks() -> List[Block]:
         paragraph(
             "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並用於更準確的控制動作推薦。"
         ),
+        paragraph(
+            "另一項結論是，公開資料集並非不能使用，而是必須依資料本身支援的任務層級進行比較。對完整 3D 場重建，本研究目前仍以 canonical synthetic benchmark 作為主要依據；對 zone-level 響應、兩點時序響應與舒適度評分，則可分別利用相容的公開資料建立 task-aligned benchmark。此作法比直接宣稱所有資料集都能完整驗證本研究系統更嚴謹。"
+        ),
         heading("6.2 研究限制", 2),
         bullets(
             [
                 "目前結果主要來自文獻參數與合理物理假設模擬，尚未加入大量真實房間資料。",
                 "模型不處理多房間氣流、牆體熱容或完整流體動力學。",
                 "濕度模型採簡化耦合，驗證強度低於溫度與照度。",
+                "公開資料集多缺乏完整單房間幾何與 dense ground truth，因此無法直接作為 full-field benchmark。",
                 "MCP server 目前為本地 stdio 版本，尚未包含遠端部署、OAuth 或多使用者管理。",
                 "控制功能為推薦排序，尚未進入自動閉環控制。",
             ]

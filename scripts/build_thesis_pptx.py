@@ -209,7 +209,7 @@ def build_presentation() -> Presentation:
         [
             "只有少量感測器，無法直接知道全室分布",
             "裝置可能新增、移動，家具也會阻擋傳遞",
-            "還要能拿來做控制推薦",
+            "早期純插值與 local-only 模型都出現不合理結果",
         ],
     )
     add_card(
@@ -370,7 +370,7 @@ def build_presentation() -> Presentation:
 
     # Slide 8
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_title(slide, "驗證流程")
+    add_title(slide, "驗證流程與比較原則")
     add_picture(slide, ARCHITECTURE / "驗證與實驗流程圖.svg", 0.8, 1.35, 5.8, 5.1)
     add_bullets(
         slide,
@@ -383,6 +383,7 @@ def build_presentation() -> Presentation:
             "由 truth 結果合成 8 顆角落觀測值",
             "比較 nominal、corrected estimate 與 IDW baseline",
             "輸出 MAE、zone averages、learned impacts 與推薦排序",
+            "公開資料集只做 task-aligned benchmark，不直接當 full-field ground truth",
             f"窗戶矩陣總共 {window_summary.get('count', 0)} 組情境",
         ],
         level0_size=17,
@@ -458,7 +459,7 @@ def build_presentation() -> Presentation:
 
     # Slide 11
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_title(slide, "研究貢獻")
+    add_title(slide, "研究貢獻與資料策略")
     add_bullets(
         slide,
         0.9,
@@ -466,11 +467,11 @@ def build_presentation() -> Presentation:
         11.4,
         5.3,
         [
-            "提出單房間三因子空間數位孿生原型，描述溫度、濕度、照度場",
-            "以 8 顆角落感測器搭配 power calibration 與 trilinear correction 進行場校正",
-            "可學習非連網冷氣、窗戶、照明對環境的影響",
-            "支援家具阻擋、自訂裝置、時間軸與可旋轉 3D 展示",
-            "以 MCP、Gemma bridge 與 Web Demo 提供可查詢的工具化系統",
+            "提出以單房間、8 顆角落感測器為前提的三因子空間數位孿生原型",
+            "以 bulk + local field、power calibration 與 trilinear correction 建立可解釋估測流程",
+            "以 least-squares 學習非連網裝置影響，並用 hybrid residual 做第二層修正",
+            "完整 3D 場比較以 canonical synthetic benchmark 為主",
+            "公開資料集則採 task-aligned benchmark：CU-BEMS / SML2010 / ASHRAE 各比相容子任務",
         ],
         level0_size=20,
     )
@@ -487,9 +488,9 @@ def build_presentation() -> Presentation:
         4.8,
         "結論",
         [
-            "有限角落感測器下仍可重建單房間三因子分布",
-            "非連網裝置可透過環境變化進行影響學習",
-            "模型已能輸出區域估計與控制推薦",
+            "有限角落感測器下仍可用分層式模型重建單房間三因子分布",
+            "非連網裝置可透過環境變化進行影響學習與校正",
+            "模型已能輸出區域估計、控制推薦與 AI 可查詢工具",
         ],
     )
     add_card(
@@ -503,6 +504,7 @@ def build_presentation() -> Presentation:
             "接入真實 ESP32 感測資料",
             "擴充 CO2 / PM2.5 等因子",
             "改進 multi-zone / partition 模型",
+            "建立 task-aligned 公開資料集 benchmark",
             "研究遠端 MCP 與閉環控制",
         ],
     )
@@ -636,6 +638,7 @@ def build_presentation_30min() -> Presentation:
             "power calibration + trilinear residual correction",
             "non-networked appliance impact learning",
             "hybrid residual neural correction",
+            "task-aligned public benchmark strategy",
             "MCP / Gemma / Web 可互動原型",
         ],
     )
@@ -643,7 +646,7 @@ def build_presentation_30min() -> Presentation:
 
     # 5 literature gap
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_title(slide, "文獻定位與研究缺口")
+    add_title(slide, "文獻定位、研究缺口與比較原則")
     add_card(
         slide,
         0.7,
@@ -684,6 +687,7 @@ def build_presentation_30min() -> Presentation:
             "limited corner sensors",
             "temperature + humidity + illuminance",
             "control-oriented + MCP-accessible",
+            "public datasets only for aligned subtasks",
         ],
     )
     add_footer(slide, 5)
@@ -796,6 +800,7 @@ def build_presentation_30min() -> Presentation:
         "設計理由",
         [
             "避免只有冷氣附近變冷、全室仍近乎不變的不合理情況",
+            "早期純插值與 local-only 版本都失敗過",
             "比 CFD 輕量",
             "比純插值更可解釋",
             "適合控制導向與即時服務化",
@@ -881,6 +886,7 @@ def build_presentation_30min() -> Presentation:
             "標準情境共 8 組",
             f"窗戶矩陣共 {window_summary.get('count', 0)} 組",
             "比較 corrected estimate 與 IDW baseline",
+            "公開資料集僅作 task-aligned benchmark，不直接當 full-field 基準",
             "輸出 field MAE、sensor MAE、zone MAE、ranking、learned impacts",
         ],
         level0_size=17,
@@ -1034,6 +1040,7 @@ def build_presentation_30min() -> Presentation:
         [
             "單房間三因子數位孿生原型已可運作",
             "可估場、可校正、可學習、可推薦",
+            "資料比較需依任務層級切分",
             "MCP 與 Web 展示已完成",
         ],
     )
@@ -1047,6 +1054,7 @@ def build_presentation_30min() -> Presentation:
         [
             "目前仍以模擬驗證為主",
             "不是 CFD 等級模型",
+            "公開資料集缺乏 full-field ground truth",
             "濕度與家具阻擋仍屬簡化近似",
         ],
     )
@@ -1061,6 +1069,7 @@ def build_presentation_30min() -> Presentation:
             "接入 ESP32 真實資料",
             "加入 CO2 / PM2.5",
             "發展 multi-zone / partition model",
+            "把 CU-BEMS / SML2010 / ASHRAE 納入 task-aligned benchmark",
             "朝閉環控制與遠端 MCP 延伸",
         ],
     )
@@ -1071,17 +1080,17 @@ def build_presentation_30min() -> Presentation:
 def build_outline() -> str:
     slides = [
         ("封面", ["題目、姓名、指導教授、研究定位"]),
-        ("研究問題與動機", ["非連網裝置無法直接回報狀態", "有限感測器下仍需估計全室環境"]),
+        ("研究問題與動機", ["非連網裝置無法直接回報狀態", "有限感測器下仍需估計全室環境", "早期純插值與 local-only 模型都不合理"]),
         ("系統架構", ["Web / MCP / Gemma 共用 service layer", "主模型與 hybrid residual 的分工"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器", "三個主要區域與三個核心裝置"]),
         ("數學模型", ["bulk + local field", "trilinear correction", "裝置與家具模組化"]),
         ("感測器校正與影響學習", ["power calibration", "least-squares impact learning"]),
         ("系統實作與介面", ["MCP tools", "Gemma bridge", "Web demo"]),
-        ("驗證流程", ["truth-adjusted simulation", "IDW baseline 比較", "48 組窗戶矩陣"]),
+        ("驗證流程與比較原則", ["truth-adjusted simulation", "IDW baseline 比較", "task-aligned public benchmark", "48 組窗戶矩陣"]),
         ("主要結果", ["平均 field MAE", "3D 視覺化案例"]),
         ("Hybrid Residual 結果", ["held-out MAE 降幅", "研究定位不是黑盒替代"]),
-        ("研究貢獻", ["三因子、有限感測器、非連網裝置、服務化"]),
-        ("結論與未來工作", ["真實資料、更多因子、multi-zone、閉環控制"]),
+        ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + task-aligned public datasets"]),
+        ("結論與未來工作", ["真實資料、更多因子、multi-zone、task-aligned benchmark、閉環控制"]),
     ]
     lines = ["# 論文報告投影片大綱", ""]
     for index, (title, bullets) in enumerate(slides, start=1):
@@ -1096,21 +1105,21 @@ def build_outline_30min() -> str:
         ("封面", ["題目、姓名、指導教授、30 分鐘口試版"]),
         ("報告流程", ["背景、文獻、方法、實作、驗證、結論"]),
         ("研究背景與問題", ["非連網裝置造成空間影響但無法直接讀取", "有限感測器仍需估全室環境"]),
-        ("研究問題與貢獻", ["RQ1-RQ4 與主要技術貢獻"]),
-        ("文獻定位與研究缺口", ["IEQ 實驗、場重建、hybrid model、digital twin 平台之差異"]),
+        ("研究問題與貢獻", ["RQ1-RQ4、主要技術貢獻、task-aligned benchmark 策略"]),
+        ("文獻定位、研究缺口與比較原則", ["IEQ 實驗、場重建、hybrid model、digital twin 平台之差異", "公開資料集只比較相容子任務"]),
         ("整體系統架構", ["多入口共用 service layer"]),
         ("主要執行資料流", ["scenario 到 dashboard / MCP response 的流程"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器與三個區域"]),
         ("模組化裝置與家具阻擋", ["裝置模組化、家具自適應阻擋"]),
-        ("數學模型", ["bulk + local field + correction"]),
+        ("數學模型", ["bulk + local field + correction", "早期純插值與 local-only 模型失敗後的調整"]),
         ("感測器校正與裝置影響學習", ["power calibration 與 least squares"]),
         ("系統實作與介面", ["MCP、Gemma/Ollama、Web Demo"]),
-        ("驗證設計", ["truth-adjusted simulation、IDW、window matrix"]),
+        ("驗證設計", ["truth-adjusted simulation、IDW、window matrix", "public datasets 僅作 task-aligned benchmark"]),
         ("情境設計與輸入模式", ["8 組 scenario、48 組窗戶矩陣、direct input、timeline"]),
         ("主要量化結果", ["平均 MAE 與推薦示例"]),
         ("3D 視覺化結果", ["溫度與照度熱區案例"]),
         ("Hybrid Residual 結果", ["held-out MAE 降幅與研究定位"]),
-        ("結論、限制與未來工作", ["目前完成度、限制與後續方向"]),
+        ("結論、限制與未來工作", ["目前完成度、限制、task-aligned benchmark 與後續方向"]),
     ]
     lines = ["# 論文報告投影片大綱（30 分鐘版）", ""]
     for index, (title, bullets) in enumerate(slides, start=1):

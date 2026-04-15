@@ -11,10 +11,11 @@
 - 有限感測器仍需估全室環境
 
 ## Slide 4: 研究問題與貢獻
-- RQ1-RQ4 與主要技術貢獻
+- RQ1-RQ4、主要技術貢獻、task-aligned benchmark 策略
 
-## Slide 5: 文獻定位與研究缺口
+## Slide 5: 文獻定位、研究缺口與比較原則
 - IEQ 實驗、場重建、hybrid model、digital twin 平台之差異
+- 公開資料集只比較相容子任務
 
 ## Slide 6: 整體系統架構
 - 多入口共用 service layer
@@ -30,6 +31,7 @@
 
 ## Slide 10: 數學模型
 - bulk + local field + correction
+- 早期純插值與 local-only 模型失敗後的調整
 
 ## Slide 11: 感測器校正與裝置影響學習
 - power calibration 與 least squares
@@ -39,6 +41,7 @@
 
 ## Slide 13: 驗證設計
 - truth-adjusted simulation、IDW、window matrix
+- public datasets 僅作 task-aligned benchmark
 
 ## Slide 14: 情境設計與輸入模式
 - 8 組 scenario、48 組窗戶矩陣、direct input、timeline
@@ -53,4 +56,4 @@
 - held-out MAE 降幅與研究定位
 
 ## Slide 18: 結論、限制與未來工作
-- 目前完成度、限制與後續方向
+- 目前完成度、限制、task-aligned benchmark 與後續方向
