@@ -45,7 +45,11 @@ def ensure_image_asset(block: Block) -> Path:
             raise SystemExit(completed.stderr or completed.stdout or "Failed to render figure asset via qlmanage.")
         rendered = temp_dir / f"{source.name}.png"
         if not rendered.exists():
-            raise SystemExit(f"qlmanage did not produce expected PNG asset for {source}")
+            png_candidates = sorted(temp_dir.glob("*.png"))
+            if len(png_candidates) == 1:
+                rendered = png_candidates[0]
+            else:
+                raise SystemExit(f"qlmanage did not produce expected PNG asset for {source}")
         shutil.move(str(rendered), str(target))
         return target
     target = PAPER_ASSETS / f"{asset_name}{source.suffix.lower()}"
@@ -76,19 +80,19 @@ def build_blocks() -> List[Block]:
         heading("審定書", 1),
         paragraph("國立彰化師範大學資訊工程學系碩士班"),
         paragraph("碩士論文審定書"),
-        paragraph("單房間非連網家電環境影響學習之稀疏感測空間數位孪生原型"),
-        paragraph("研究生：林易佑"),
+        paragraph("單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型"),
+        paragraph("研究生：林昀佑"),
         paragraph("本論文業經審查及口試合格，特此證明。"),
         paragraph("論文考試委員會召集人："),
         paragraph("委員："),
         paragraph("委員："),
-        paragraph("指導教授：易欖霸 博士"),
+        paragraph("指導教授：易昶霈 博士"),
         paragraph("所長："),
         paragraph("中華民國 115 年 月"),
         page_break(),
         heading("誌謝", 1),
-        paragraph("本研究能夠完成，首先感謝指導教授易欖霸博士在研究方向、方法與寫作上的您考與支持，以及歷位口試委員的指正與建議。感謝學業上對我的幫助與歷位師長提供的學習環境。也感謝家人的支持與包容。"),
-        paragraph("林易佑 謹誌於"),
+        paragraph("本研究能夠完成，首先感謝指導教授易昶霈博士在研究方向、方法與寫作上的指導與支持，以及各位口試委員的指正與建議。感謝求學過程中幫助我的各位師長所提供的學習環境，也感謝家人的支持與包容。"),
+        paragraph("林昀佑 謹誌於"),
         paragraph("國立彰化師範大學資訊工程學系（所）"),
         paragraph("中華民國 115 年 4 月"),
         page_break(),
@@ -131,8 +135,8 @@ def build_blocks() -> List[Block]:
         paragraph("  1.5 預期貢獻…… 2"),
         paragraph("第二章 文獻探討…… 3"),
         paragraph("  2.1 室內環境建模…… 3"),
-        paragraph("  2.2 空間插値與場估計…… 3"),
-        paragraph("  2.3 數位孪生與智慧建築…… 3"),
+        paragraph("  2.2 空間插值與場估計…… 3"),
+        paragraph("  2.3 數位孿生與智慧建築…… 3"),
         paragraph("  2.4 房間尺度室內因子實驗研究…… 4"),
         paragraph("  2.5 非連網裝置影響學習…… 4"),
         paragraph("  2.6 MCP 與 AI Agent Tool Interface…… 5"),
@@ -158,7 +162,7 @@ def build_blocks() -> List[Block]:
         paragraph("  5.2 場重建誤差…… 13"),
         paragraph("  5.3 IDW Baseline 比較…… 14"),
         paragraph("  5.4 非連網裝置影響學習…… 14"),
-        paragraph("  5.5 窗戸時段、天氣、季節矩陣與直接輸入…… 14"),
+        paragraph("  5.5 窗戶時段、天氣、季節矩陣與直接輸入…… 14"),
         paragraph("  5.6 Hybrid Residual Neural Network 結果…… 14"),
         paragraph("  5.7 公開資料集 Task-Aligned Benchmark 結果…… 15"),
         paragraph("  5.8 研究過程與實作挑戰…… 18"),
@@ -177,12 +181,11 @@ def build_blocks() -> List[Block]:
         paragraph("表 3-1 房間與感測器設定…… 7"),
         paragraph("表 3-2 訓練資料表格說明…… 9"),
         paragraph("表 4-1 核心模組一覽…… 11"),
-        paragraph("表 5-1 IDW 與本研究 field MAE 比較…… 14"),
-        paragraph("表 5-2 標準情境結果摘要…… 13"),
-        paragraph("表 5-3 窗戸矩陣情境節選…… 15"),
-        paragraph("表 5-4 Benchmark 層級設計…… 16"),
-        paragraph("表 5-5 SML2010 Benchmark 結果…… 16"),
-        paragraph("表 5-6 CU-BEMS Benchmark 結果…… 18"),
+        paragraph("表 5-1 標準情境結果摘要…… 13"),
+        paragraph("表 5-2 IDW 與本研究 field MAE 比較…… 14"),
+        paragraph("表 5-3 窗戶矩陣情境節選…… 15"),
+        paragraph("表 5-4 SML2010 Benchmark 結果…… 16"),
+        paragraph("表 5-5 CU-BEMS Benchmark 結果…… 17"),
         page_break(),
         heading("圖目錄", 1),
         paragraph("圖 3-1 系統整體分層架構…… 7"),
@@ -337,7 +340,7 @@ def build_blocks() -> List[Block]:
         ),
         image(
             "outputs/figures/architecture/整體分層架構.svg",
-            "圖 3-1 系統整體分層架構。此圖說明 Web、MCP/Gemma 入口如何共用 service layer，並串接主模型與 hybrid residual layer。",
+            "圖 3-1 系統整體分層架構。此圖說明人機互動或 AI 工具呼叫如何經由服務編排層進入環境數位孿生核心、校正與影響學習層，以及 optional residual neural layer，最後輸出空間估測與控制建議。",
             asset_name="fig_3_1_overall_architecture",
         ),
         image(
@@ -527,7 +530,7 @@ def build_blocks() -> List[Block]:
             "圖 5-1 驗證與實驗流程。此圖說明標準情境如何經由 truth adjustment、合成觀測、校正估測、baseline 比較與輸出摘要，形成第五章的實驗結果。",
             asset_name="fig_5_1_validation_flow",
         ),
-        paragraph("表 5-2 標準情境結果摘要"),
+        paragraph("表 5-1 標準情境結果摘要"),
         table(
             ["情境", "中央溫度", "中央濕度", "中央照度", "最佳推薦"],
             [
@@ -551,17 +554,17 @@ def build_blocks() -> List[Block]:
         ),
         image(
             "outputs/figures/all_active_temperature_3d.svg",
-            "圖 5-2 三裝置同時作用（all\\_active）之溫度場 3D 點雲視觀圖。每點為一個 16×12×6 網格樣本，顏色由藍綠（低溫）至橙紅（高溫）映射溫度分布。冷氣區域明顯偏藍，靠窗與靠燈區域則居溫度中高端。",
+            "圖 5-2 三裝置同時作用（all\\_active）之溫度場 3D 點雲視圖。每點為一個 16×12×6 網格樣本，顏色由藍綠（低溫）至橙紅（高溫）映射溫度分布。冷氣區域明顯偏藍，靠窗與靠燈區域則居溫度中高端。",
             asset_name="fig_5_2_all_active_temp_3d",
         ),
         image(
             "outputs/figures/ac_only_temperature_3d.svg",
-            "圖 5-3 僅冷氣作用（ac\\_only）之溫度場 3D 點雲視觀圖。冷氣氣流影響區域（後牆靠所側）溫度明顯下降，距冷氣較遠的靠窗區域溫度相對較高，展示 bulk + local field 模型對全室平均與局部梯度的同時建模能力。",
+            "圖 5-3 僅冷氣作用（ac\\_only）之溫度場 3D 點雲視圖。冷氣氣流影響區域（後牆靠左側）溫度明顯下降，距冷氣較遠的靠窗區域溫度相對較高，展示 bulk + local field 模型對全室平均與局部梯度的同時建模能力。",
             asset_name="fig_5_3_ac_only_temp_3d",
         ),
         image(
             "outputs/figures/light_only_illuminance_3d.svg",
-            "圖 5-4 僅燈具作用（light\\_only）之照度場 3D 點雲視觀圖。燈具正下方的測點照度最高（黃橙色），底層四角與遠端則由間接反射賦予少量回填亮度，顏色實現正確的照度衰減樣態。",
+            "圖 5-4 僅燈具作用（light\\_only）之照度場 3D 點雲視圖。燈具正下方的測點照度最高（黃橙色），底層四角與遠端則由間接反射賦予少量回填亮度，顏色實現正確的照度衰減樣態。",
             asset_name="fig_5_4_light_only_illum_3d",
         ),
         heading("5.3 IDW Baseline 比較", 2),
@@ -569,7 +572,7 @@ def build_blocks() -> List[Block]:
             "IDW（Inverse Distance Weighting，反距離加權插值）是最基本的空間插值法：給定 8 顆角落感測器的量測值，對任一查詢點以距離的倒數為權重加權平均。此方法不需要任何關於設備位置或物理模型的知識，僅依賴量測點的空間分布進行推算。本節以 IDW 作為零成本 baseline，驗證本研究模型加入設備影響函數、power scale 校準與 trilinear residual correction 後的實質改善幅度。"
         ),
         paragraph(
-            "表 5-1 列出 8 組情境下，IDW 與本研究模型（base model）的 field MAE 及改善比例。"
+            "表 5-2 列出 8 組情境下，IDW 與本研究模型（base model）的 field MAE 及改善比例。"
         ),
         table(
             ["情境", "因子", "本研究 MAE", "IDW MAE", "改善 (%)"],
@@ -627,7 +630,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "為驗證模型在非合成資料上的外部可比性，本研究以 SML2010 與 CU-BEMS 兩個公開資料集執行 task-aligned benchmark，並以 MAE、RMSE 與 Pearson Correlation 三項指標進行評估。MAE 衡量平均絕對誤差，RMSE 對尖峰偏差更敏感，Correlation 則反映模型是否能正確追蹤時序趨勢，三者共同提供較完整的評估視角。預測目標為下一個 15 分鐘或 60 分鐘時步的感測值，比較對象為 persistence（以上一時步值作預測）與 linear regression 兩個 baseline。"
         ),
-        paragraph("表 5-5 列出 SML2010 benchmark 各任務三項指標的完整對比。"),
+        paragraph("表 5-4 列出 SML2010 benchmark 各任務三項指標的完整對比。"),
         table(
             ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
             [
@@ -660,7 +663,7 @@ def build_blocks() -> List[Block]:
                 ["S3 複合照度", "60min", "dining_illuminance", "Corr", "0.000", "0.715", "0.472"],
             ],
         ),
-        paragraph("表 5-6 列出 CU-BEMS benchmark 各任務三項指標的完整對比。"),
+        paragraph("表 5-5 列出 CU-BEMS benchmark 各任務三項指標的完整對比。"),
         table(
             ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
             [
@@ -689,17 +692,17 @@ def build_blocks() -> List[Block]:
             "第一項優勢是複合任務的趨勢追蹤能力。在 S3 與 C3 等複合任務中，persistence 的 Correlation 值全為 0.000，原因是這些任務包含裝置切換或外部條件突變，使前一時步值完全失去預測能力。相較之下，本研究模型在 S3 15min dining_temperature 的 Correlation 達 0.950，S3 15min dining_humidity 達 0.612，S3 60min dining_temperature 達 0.937，均為三者最高。這說明物理結構與設備影響函數提供的先驗資訊，在環境條件快速變化時比純時序延續有更強的趨勢預測能力。"
         ),
         paragraph(
-            "第二項優勢是長視窗溫度任務的 MAE 與 RMSE。在 60 分鐘預測視窗下，S2 dining_temperature 的 MAE 降至 0.156、RMSE 為 0.202，S3 dining_temperature MAE 為 0.190、RMSE 為 0.243，均為三者最低。persistence 在 60 分鐘後誤差急速累積（S2 persistence MAE 0.470），而本研究因為納入設備狀態與外部條件的結構性估計，使長視窗誤差增長較緩。"
+            "第二項優勢是長視窗溫度任務的 MAE 與 RMSE。以 S3 dining_temperature 為例，在 60 分鐘預測視窗下，本研究的 MAE 為 0.190、RMSE 為 0.243，均為三者最低；相較之下 persistence 為 0.563 與 0.693，linear regression 為 0.212 與 0.256。這說明當預測視窗拉長時，納入設備狀態與外部條件的結構性估計比單純延續前一時步更穩定。"
         ),
         paragraph(
-            "第三項優勢是複合任務的 RMSE 表現。S3 60min dining_illuminance 的 RMSE 為 19.344，低於 persistence 的 21.931 與 linear regression 的 22.763；S3 60min room_illuminance 的 RMSE 為 26.027，也低於另外兩者。RMSE 對離群誤差的放大效應更敏感，這表示本研究模型在極端照度事件的重建上較其他方法更為穩定。"
+            "第三項優勢是複合任務的 RMSE 表現。以 S3 60min dining_illuminance 為例，本研究的 RMSE 為 19.344，低於 persistence 的 21.931 與 linear regression 的 22.763。RMSE 對離群誤差的放大效應更敏感，這表示本研究模型在極端照度事件的重建上較其他方法更為穩定。"
         ),
         heading("5.7.2 劣勢分析", 3),
         paragraph(
             "最明顯的劣勢出現在短視窗純照度任務。SML2010 S1 15min dining_illuminance 的 MAE 為 5.346，高於 persistence 的 3.418 與 linear regression 的 4.023；Correlation 為 0.957，略低於另外兩者的 0.963 與 0.966。CU-BEMS C2 15min illuminance 的差距更大，MAE 7.700 對比 persistence 1.363，RMSE 11.938 對比 persistence 6.344。主要原因是短視窗照度的最佳預測策略接近 persistence（照度在 15 分鐘內變化緩慢），而本研究在對應時段的日照估計引入了額外誤差，反而不如直接沿用上一時步值。"
         ),
         paragraph(
-            "第二個劣勢是 SML2010 濕度的系統性高估。S2 15min dining_humidity MAE 為 0.832，遠高於 persistence 的 0.198 與 linear regression 的 0.209；S2 15min room_humidity 同樣如此（0.703 對 0.154）。這反映本研究的濕度特徵對齊方式與 SML2010 的量測尺度存在系統性偏差，即模型濕度估計值的基準點偏移，而非隨機誤差。此問題在 S3 複合任務中得到部分改善（S3 dining_humidity MAE 0.335，接近 persistence 0.386），推測是複合任務的外氣濕度特徵提供了更多修正訊號。"
+            "第二個劣勢是 SML2010 濕度的系統性高估。S2 15min dining_humidity 的 MAE 為 0.832，遠高於 persistence 的 0.198 與 linear regression 的 0.209。這反映本研究的濕度特徵對齊方式與 SML2010 的量測尺度存在系統性偏差，即模型濕度估計值的基準點偏移，而非隨機誤差。此問題在 S3 複合任務中得到部分改善（S3 dining_humidity MAE 0.335，接近 persistence 0.386），推測是複合任務的外氣濕度特徵提供了更多修正訊號。"
         ),
         paragraph(
             "第三個劣勢是 CU-BEMS C2 純照度任務在 60 分鐘視窗下的表現。MAE 9.566 遠高於 persistence 4.012，RMSE 14.234 也高於 persistence 12.065，且 Correlation 0.792 低於 persistence 0.864。CU-BEMS 的照度量測來自多區商辦建築，其照度動態特性（日光、遮蔽、人工照明切換）與本研究單房間物理假設差距較大，使得照度估計誤差在長視窗下難以收斂。"
@@ -728,12 +731,12 @@ def build_blocks() -> List[Block]:
         ),
         image(
             "outputs/figures/window_only_temperature_3d.svg",
-            "圖 5-6 僅開窗（window\\_only）溫度場 3D 點雲。靠窗區域溫度最高，造成區域溫度梯度。可與 all\\_active 情境對比，觀察冷氣相抑後的溫度減診效果。",
+            "圖 5-6 僅開窗（window\\_only）溫度場 3D 點雲。靠窗區域溫度最高，造成區域溫度梯度。可與 all\\_active 情境對比，觀察冷氣介入後對窗邊高溫的抑制效果。",
             asset_name="fig_5_6_window_only_temp_3d",
         ),
         image(
             "outputs/figures/light_only_illuminance_3d.svg",
-            "圖 5-7 僅燈具作用（light\\_only）照度場 3D 點雲。燈具正下方照度最高，遠端補有單的 single-bounce diffuse 回填；此情境也是 5.6 節 held-out 測試集之一。",
+            "圖 5-7 僅燈具作用（light\\_only）照度場 3D 點雲。燈具正下方照度最高，遠端補有少量的 single-bounce diffuse 回填；此情境也是 5.6 節 held-out 測試集之一。",
             asset_name="fig_5_7_light_only_illum_3d",
         ),
         page_break(),

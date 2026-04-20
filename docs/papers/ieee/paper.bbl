@@ -87,24 +87,13 @@ Y.~L. Chen and J.~Wen, ``Application of zonal model on indoor air sensor
 {Model Context Protocol}, ``Model context protocol documentation,''
   \url{https://modelcontextprotocol.io/}, accessed: 2026-04-10.
 
-\bibitem{chitalia2020cubems}
-G.~Chitalia and M.~Pipattanasomporn, ``{CU-BEMS}, smart building electricity
-  consumption and indoor environmental sensor datasets,'' \emph{Scientific
-  Data}, vol.~7, p. 290, 2020.
-
 \bibitem{romeu2014sml2010}
 P.~Romeu-Guallart and F.~Zamora-Martinez, ``{SML2010} [dataset],'' UCI Machine
   Learning Repository, 2014.
 
-\bibitem{andersen2024denmarkieq}
-K.~H. Andersen, H.~Johra, A.~Marszal-Pomianowska, P.~K. Heiselberg, and H.~N.
-  Knudsen, ``Dataset of room-level indoor environmental quality measurements
-  and occupancy ground truth for five residential apartments in denmark
-  [dataset],'' Zenodo, 2024.
-
-\bibitem{licina2018ashraeglobal}
-V.~F. Licina, T.~Cheung, H.~Zhang, R.~de~Dear, T.~Parkinson, E.~Arens
-  \emph{et~al.}, ``Development of the {ASHRAE} global thermal comfort database
-  {II},'' \emph{Building and Environment}, vol. 142, pp. 502--512, 2018.
+\bibitem{chitalia2020cubems}
+G.~Chitalia and M.~Pipattanasomporn, ``{CU-BEMS}, smart building electricity
+  consumption and indoor environmental sensor datasets,'' \emph{Scientific
+  Data}, vol.~7, p. 290, 2020.
 
 \end{thebibliography}

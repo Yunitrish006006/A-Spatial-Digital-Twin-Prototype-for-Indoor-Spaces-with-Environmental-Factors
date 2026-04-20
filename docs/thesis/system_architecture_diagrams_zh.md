@@ -7,21 +7,21 @@
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28}} }%%
 flowchart TB
-    U1["Direct interfaces<br/>Web UI + CLI scripts"]
-    U2["LLM / external interfaces<br/>MCP client + Gemma/Ollama"]
-    A1["Integration layer<br/>mcp_server.py + gemma_bridge.py"]
-    S1["Service layer<br/>service.py + scenarios.py + entities.py + math_utils.py"]
-    P0["Physics / estimation core<br/>DigitalTwinModel + IDW + impact learning + action ranking"]
-    N1["Neural residual layer<br/>hybrid_residual.py + checkpoint"]
-    O1["Outputs<br/>JSON/CSV + figures + thesis/paper artifacts"]
+    U1["Human interaction layer<br/>Web interface"]
+    U2["AI tool-access layer<br/>MCP-compatible clients + LLM bridge"]
+    S1["Service orchestration layer<br/>scenario assembly + parameter management"]
+    P0["Environmental digital twin core<br/>bulk + local field estimation + appliance influence modeling"]
+    C1["Calibration and impact-learning layer<br/>power calibration + trilinear correction + least-squares learning"]
+    N1["Optional residual neural layer<br/>hybrid residual correction"]
+    O1["System outputs<br/>spatial field estimate + zone estimate + action ranking + 3D visualization"]
 
     U1 --> S1
-    U2 --> A1
-    A1 --> S1
+    U2 --> S1
     S1 --> P0
-    P0 --> N1
+    P0 --> C1
+    C1 --> N1
+    C1 --> O1
     N1 --> O1
-    S1 --> O1
 ```
 
 ## 2. 主要執行資料流
