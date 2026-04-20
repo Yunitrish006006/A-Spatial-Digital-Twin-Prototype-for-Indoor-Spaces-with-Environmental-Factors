@@ -27,27 +27,38 @@ flowchart TB
 ## 2. 主要執行資料流
 
 ```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28}} }%%
+%%{init: {'flowchart': {'nodeSpacing': 22, 'rankSpacing': 32}} }%%
 flowchart TB
-    A["User input<br/>scenario / window / devices / furniture / timeline"] --> B["web_demo.py<br/>or MCP tool call"]
-    B --> C["core/service.py"]
-    C --> D["Build base<br/>scenario"]
-    D --> E["Apply overrides<br/>device_specs / extra_devices / furniture<br/>indoor baseline / elapsed time"]
-    E --> F["DigitalTwinModel.simulate()"]
+    A["User input\nscenario / devices / environment / timeline"]
 
-    subgraph Estimate["Estimation Path"]
-        direction TB
-        F --> G["Predict field<br/>at grid points"]
-        G --> H["Predict corner<br/>sensor values"]
-        H --> I["Calibrate active<br/>device powers"]
-        I --> J["Fit trilinear<br/>residual correction"]
-        J --> K["Rebuild<br/>corrected field"]
-        K --> L["Compute zone averages<br/>point samples / volume"]
+    subgraph Entry["Entry layer"]
+        direction LR
+        B1["web_demo.py"]
+        B2["MCP tool call"]
     end
 
-    L --> M["Optional hybrid<br/>residual correction"]
-    M --> N["Ranking / baseline comparison<br/>learning panels / 3D preview"]
-    N --> O["Web dashboard<br/>or MCP response"]
+    subgraph Build["Scenario build"]
+        direction LR
+        C["core/service.py"] --> D["Build base scenario"]
+        D --> E["Apply overrides\ndevices / furniture / baseline"]
+    end
+
+    subgraph Estimate["Estimation path"]
+        direction LR
+        F["DigitalTwinModel.simulate()"] --> G["Field + sensor prediction"]
+        G --> H["Power calibration\n+ trilinear correction"]
+        H --> I["Zone averages / point samples"]
+    end
+
+    subgraph Output["Output"]
+        direction LR
+        M["Hybrid residual correction"] --> N["Action ranking + dashboard / MCP"]
+    end
+
+    A --> Entry
+    Entry --> Build
+    Build --> Estimate
+    Estimate --> Output
 ```
 
 ## 3. 感測器校正與學習流程
@@ -99,9 +110,9 @@ flowchart TB
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 18, 'rankSpacing': 24}} }%%
-flowchart TB
+flowchart LR
     subgraph Room["Standard room topology (6 m x 4 m x 3 m)"]
-        direction TB
+        direction LR
 
         subgraph Ceiling["Ceiling layer sensors"]
             direction LR
@@ -142,18 +153,32 @@ flowchart TB
 ## 6. 驗證與實驗流程圖
 
 ```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 18, 'rankSpacing': 24}} }%%
+%%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28}} }%%
 flowchart TB
-    A["Validation scenario<br/>room + environment + devices + furniture"] --> B["Apply truth adjustments<br/>to active devices"]
-    B --> C["Truth simulation"]
-    C --> D["Synthetic 8-corner observations"]
-    D --> E["Nominal simulation<br/>with original device settings"]
-    E --> F["Sensor-informed correction<br/>power calibration + trilinear residual"]
-    F --> G["Corrected estimate"]
-    G --> H["Optional hybrid residual correction"]
-    H --> I["Reference builders<br/>IDW baseline + impact learning"]
-    I --> J["Compare outputs<br/>truth vs corrected vs baseline"]
-    J --> K["MAE metrics + action ranking<br/>+ exported summaries and figures"]
+    A["Validation scenario\nroom + environment + devices + furniture"]
+
+    subgraph Sim["Simulation"]
+        direction LR
+        B["Apply truth adjustments\nto active devices"] --> C["Truth simulation"]
+        C --> D["Synthetic 8-corner observations"]
+        D --> E["Nominal simulation\nwith original device settings"]
+    end
+
+    subgraph Corr["Correction"]
+        direction LR
+        F["Sensor-informed correction\npower calibration + trilinear residual"] --> G["Corrected estimate"]
+        G --> H["Optional hybrid residual correction"]
+    end
+
+    subgraph Eval["Evaluation"]
+        direction LR
+        I["Reference builders\nIDW baseline + impact learning"] --> J["Compare outputs\ntruth vs corrected vs baseline"]
+        J --> K["MAE metrics + action ranking\n+ exported summaries and figures"]
+    end
+
+    A --> Sim
+    Sim --> Corr
+    Corr --> Eval
 ```
 
 ## 7. 程式碼結構圖

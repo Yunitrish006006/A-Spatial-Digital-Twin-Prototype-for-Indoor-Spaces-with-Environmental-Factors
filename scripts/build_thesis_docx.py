@@ -177,11 +177,12 @@ def build_blocks() -> List[Block]:
         paragraph("表 3-1 房間與感測器設定…… 7"),
         paragraph("表 3-2 訓練資料表格說明…… 9"),
         paragraph("表 4-1 核心模組一覽…… 11"),
-        paragraph("表 5-1 標準情境結果摘要…… 13"),
-        paragraph("表 5-2 窗戸矩陣情境節選…… 14"),
-        paragraph("表 5-3 Benchmark 層級設計…… 15"),
-        paragraph("表 5-4 SML2010 Benchmark 結果…… 15"),
-        paragraph("表 5-5 CU-BEMS Benchmark 結果…… 17"),
+        paragraph("表 5-1 IDW 與本研究 field MAE 比較…… 14"),
+        paragraph("表 5-2 標準情境結果摘要…… 13"),
+        paragraph("表 5-3 窗戸矩陣情境節選…… 15"),
+        paragraph("表 5-4 Benchmark 層級設計…… 16"),
+        paragraph("表 5-5 SML2010 Benchmark 結果…… 16"),
+        paragraph("表 5-6 CU-BEMS Benchmark 結果…… 18"),
         page_break(),
         heading("圖目錄", 1),
         paragraph("圖 3-1 系統整體分層架構…… 7"),
@@ -189,6 +190,12 @@ def build_blocks() -> List[Block]:
         paragraph("圖 3-3 房間感測器與目標區域配置…… 8"),
         paragraph("圖 3-4 感測器校正與影響學習流程…… 9"),
         paragraph("圖 5-1 驗證與實驗流程…… 13"),
+        paragraph("圖 5-2 三裝置同時作用溫度場 3D 點雲（all_active）…… 13"),
+        paragraph("圖 5-3 僅冷氣作用溫度場 3D 點雲（ac_only）…… 14"),
+        paragraph("圖 5-4 僅燈具作用照度場 3D 點雲（light_only）…… 14"),
+        paragraph("圖 5-5 三裝置全開溫度場 3D 點雲（5.9 節）…… 18"),
+        paragraph("圖 5-6 僅開窗溫度場 3D 點雲（window_only）…… 18"),
+        paragraph("圖 5-7 僅燈具照度場 3D 點雲（light_only，5.9 節）…… 18"),
         page_break(),
         raw_latex(r"\clearpage\pagenumbering{arabic}"),
         heading("第一章 緒論", 1),
@@ -336,6 +343,7 @@ def build_blocks() -> List[Block]:
         image(
             "outputs/figures/architecture/主要執行資料流.svg",
             "圖 3-2 主要執行資料流。此圖對應一次 scenario 評估如何從輸入設定、場估計、校正、到 dashboard 與 MCP 輸出。",
+            width_inches=6.5,
             asset_name="fig_3_2_execution_flow",
         ),
         heading("3.2 房間、區域與感測器設定", 2),
@@ -356,6 +364,7 @@ def build_blocks() -> List[Block]:
         image(
             "outputs/figures/architecture/房間感測器與目標區域配置.svg",
             "圖 3-3 房間感測器與目標區域配置。8 顆角落感測器、3 個主要區域與 3 個核心裝置共同構成單房間數位孿生的標準拓樸。",
+            width_inches=6.5,
             asset_name="fig_3_3_room_topology",
         ),
         heading("3.3 三因子場模型", 2),
@@ -518,6 +527,7 @@ def build_blocks() -> List[Block]:
             "圖 5-1 驗證與實驗流程。此圖說明標準情境如何經由 truth adjustment、合成觀測、校正估測、baseline 比較與輸出摘要，形成第五章的實驗結果。",
             asset_name="fig_5_1_validation_flow",
         ),
+        paragraph("表 5-2 標準情境結果摘要"),
         table(
             ["情境", "中央溫度", "中央濕度", "中央照度", "最佳推薦"],
             [
@@ -539,9 +549,53 @@ def build_blocks() -> List[Block]:
         paragraph(
             "這表示新增的反射公式確實補足了牆面、地板、天花板與家具造成的間接回填亮度，使非直射區域不再被系統性低估。另一方面，溫度與濕度指標幾乎沒有變化，也說明這組公式主要作用在預期的 illuminance 路徑，而沒有不必要地擾動其他兩個環境因素。"
         ),
+        image(
+            "outputs/figures/all_active_temperature_3d.svg",
+            "圖 5-2 三裝置同時作用（all\\_active）之溫度場 3D 點雲視觀圖。每點為一個 16×12×6 網格樣本，顏色由藍綠（低溫）至橙紅（高溫）映射溫度分布。冷氣區域明顯偏藍，靠窗與靠燈區域則居溫度中高端。",
+            asset_name="fig_5_2_all_active_temp_3d",
+        ),
+        image(
+            "outputs/figures/ac_only_temperature_3d.svg",
+            "圖 5-3 僅冷氣作用（ac\\_only）之溫度場 3D 點雲視觀圖。冷氣氣流影響區域（後牆靠所側）溫度明顯下降，距冷氣較遠的靠窗區域溫度相對較高，展示 bulk + local field 模型對全室平均與局部梯度的同時建模能力。",
+            asset_name="fig_5_3_ac_only_temp_3d",
+        ),
+        image(
+            "outputs/figures/light_only_illuminance_3d.svg",
+            "圖 5-4 僅燈具作用（light\\_only）之照度場 3D 點雲視觀圖。燈具正下方的測點照度最高（黃橙色），底層四角與遠端則由間接反射賦予少量回填亮度，顏色實現正確的照度衰減樣態。",
+            asset_name="fig_5_4_light_only_illum_3d",
+        ),
         heading("5.3 IDW Baseline 比較", 2),
         paragraph(
-            "以 light_only 情境為例，本研究模型在照度 MAE 上相較 IDW baseline 降低約 97.95%。這表示只依靠角落感測器插值難以重建中央燈具造成的局部照度提升，而加入設備位置、直接照度項、single-bounce diffuse reflection、power scale 校準與 trilinear residual correction 後，可更有效描述設備作用與間接亮度回填。"
+            "IDW（Inverse Distance Weighting，反距離加權插值）是最基本的空間插值法：給定 8 顆角落感測器的量測值，對任一查詢點以距離的倒數為權重加權平均。此方法不需要任何關於設備位置或物理模型的知識，僅依賴量測點的空間分布進行推算。本節以 IDW 作為零成本 baseline，驗證本研究模型加入設備影響函數、power scale 校準與 trilinear residual correction 後的實質改善幅度。"
+        ),
+        paragraph(
+            "表 5-1 列出 8 組情境下，IDW 與本研究模型（base model）的 field MAE 及改善比例。"
+        ),
+        table(
+            ["情境", "因子", "本研究 MAE", "IDW MAE", "改善 (%)"],
+            [
+                ["idle",        "溫度",  "0.0470", "0.1242", "62.2%"],
+                ["idle",        "濕度",  "0.1762", "0.4656", "62.2%"],
+                ["idle",        "照度",  "1.7625", "1.3210", "−33.4% ▲"],
+                ["ac\\_only",   "溫度",  "0.0481", "0.2536", "81.0%"],
+                ["ac\\_only",   "照度",  "1.7625", "1.3210", "−33.4% ▲"],
+                ["window\\_only","照度", "2.3024", "58.7291","96.1%"],
+                ["light\\_only", "溫度", "0.0470", "0.1306", "64.0%"],
+                ["light\\_only", "照度", "2.6633", "129.9798","97.9%"],
+                ["window\\_light","照度","1.9913","167.9708","98.8%"],
+                ["ac\\_light",  "照度",  "2.5770", "121.8574","97.9%"],
+                ["all\\_active","溫度",  "0.0477", "0.1883", "74.7%"],
+                ["all\\_active","照度",  "1.9957", "147.2720","98.6%"],
+            ],
+        ),
+        paragraph(
+            "結果說明如下。在溫度與濕度方面，所有情境的改善率均達 61–81%，原因是本研究模型加入冷氣對全室與局部溫濕度的設備影響函數，使有設備的情境（ac\\_only、ac\\_window、ac\\_light、all\\_active）能正確描述冷氣區域的降溫效果，而純 IDW 因僅依靠角落感測值做全場推算，對冷氣作用區域估計不準。"
+        ),
+        paragraph(
+            "在照度方面，有光源（窗戶或燈具）的情境改善幅度極大（96–99%），原因是照度具有強烈的點源衰減特性：燈具正下方的照度極高，角落卻很低，IDW 用角落感測值插值中央會嚴重低估；而本研究模型使用直接照度公式加 single-bounce diffuse reflection，能正確重建燈具中心的高照度峰值。對照地，idle 與 ac\\_only（無窗無燈）的照度改善為負，這是預期現象：在無主動光源情境下，照度全場平坦，IDW 插值本身即有合理表現，本研究模型的設備驅動照度項此時不起作用，反而略高於 IDW 的平坦估計。此結果反映本研究照度建模設計的目標：在有光源時大幅提升精度，而非在無光源情境下多此一舉。"
+        ),
+        paragraph(
+            "值得注意的是，本研究目前的照度估計完全依賴物理模型推算（設備位置、功率、反射係數），並未使用任何實測照度感測器回饋。若系統部署時，角落感測器本身即具備照度量測能力（例如採用光照感測元件的多合一環境感測器），則可將實測角落照度值引入 trilinear residual correction，使模型的照度殘差直接對齊真實量測，從根本上消除物理假設帶來的系統性偏差。換言之，本研究現有的照度誤差並非方法的根本限制，而是感測器配置選擇的結果，一旦取得真實光照量測資料，即可透過既有的 residual correction 管線加以修正，實現更高精度的照度場重建。"
         ),
         heading("5.4 非連網裝置影響學習", 2),
         paragraph(
@@ -573,7 +627,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "為驗證模型在非合成資料上的外部可比性，本研究以 SML2010 與 CU-BEMS 兩個公開資料集執行 task-aligned benchmark，並以 MAE、RMSE 與 Pearson Correlation 三項指標進行評估。MAE 衡量平均絕對誤差，RMSE 對尖峰偏差更敏感，Correlation 則反映模型是否能正確追蹤時序趨勢，三者共同提供較完整的評估視角。預測目標為下一個 15 分鐘或 60 分鐘時步的感測值，比較對象為 persistence（以上一時步值作預測）與 linear regression 兩個 baseline。"
         ),
-        paragraph("表 5-4 列出 SML2010 benchmark 各任務三項指標的完整對比。"),
+        paragraph("表 5-5 列出 SML2010 benchmark 各任務三項指標的完整對比。"),
         table(
             ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
             [
@@ -606,7 +660,7 @@ def build_blocks() -> List[Block]:
                 ["S3 複合照度", "60min", "dining_illuminance", "Corr", "0.000", "0.715", "0.472"],
             ],
         ),
-        paragraph("表 5-5 列出 CU-BEMS benchmark 各任務三項指標的完整對比。"),
+        paragraph("表 5-6 列出 CU-BEMS benchmark 各任務三項指標的完整對比。"),
         table(
             ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
             [
@@ -665,7 +719,22 @@ def build_blocks() -> List[Block]:
         ),
         heading("5.9 可旋轉 3D 展示", 2),
         paragraph(
-            "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
+            "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。圖 5-5 至 5-7 為靜態輸出之三因子場 3D 點雲，展示三種代表情境：三裝置全開、單獨窗戶、單獨燈具。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
+        ),
+        image(
+            "outputs/figures/all_active_temperature_3d.svg",
+            "圖 5-5 三裝置同時作用（all\\_active）溫度場 3D 點雲。顏色由藍綠至橙紅對映 26.02–27.16 °C 範圍；設備位置用帶邊框的標記表示。",
+            asset_name="fig_5_5_all_active_temp_3d",
+        ),
+        image(
+            "outputs/figures/window_only_temperature_3d.svg",
+            "圖 5-6 僅開窗（window\\_only）溫度場 3D 點雲。靠窗區域溫度最高，造成區域溫度梯度。可與 all\\_active 情境對比，觀察冷氣相抑後的溫度減診效果。",
+            asset_name="fig_5_6_window_only_temp_3d",
+        ),
+        image(
+            "outputs/figures/light_only_illuminance_3d.svg",
+            "圖 5-7 僅燈具作用（light\\_only）照度場 3D 點雲。燈具正下方照度最高，遠端補有單的 single-bounce diffuse 回填；此情境也是 5.6 節 held-out 測試集之一。",
+            asset_name="fig_5_7_light_only_illum_3d",
         ),
         page_break(),
         heading("第六章 結論與未來工作", 1),
@@ -699,6 +768,7 @@ def build_blocks() -> List[Block]:
             [
                 "加入實體 ESP32 感測器資料，以校正與驗證模型參數。",
                 "擴充自訂房間 JSON 輸入，使系統可支援不同房間尺寸與設備位置。",
+                "為角落感測器加入照度量測通道（如光照感測元件），使角落光照資料可直接引入 trilinear residual correction，從而消除目前物理照度模型的系統性偏差，實現照度場的自我校正。",
                 "加入更多環境變數，例如 CO2、PM2.5 或人體熱源。",
                 "將 MCP server 擴充為遠端 HTTP MCP，並加入權限控管。",
                 "進一步研究閉環控制，將推薦排序延伸為實際控制策略。",
