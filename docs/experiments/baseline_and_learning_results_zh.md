@@ -12,7 +12,7 @@ IDW（Inverse Distance Weighting）是本研究加入的 baseline。它只使用
 本研究模型則使用：
 
 ```text
-background field + appliance influence function + active-device power calibration + trilinear sensor correction
+background field + appliance influence function + one-bounce diffuse reflection + active-device power calibration + trilinear sensor correction
 ```
 
 因此比較 IDW baseline 可以說明：只做空間插值與加入設備影響模型之間的差異。
@@ -23,18 +23,18 @@ background field + appliance influence function + active-device power calibratio
 
 | 指標 | 本研究模型 MAE | IDW MAE | MAE 降低比例 |
 | --- | ---: | ---: | ---: |
-| Temperature | 0.0470 | 0.1523 | 69.14% |
+| Temperature | 0.0470 | 0.1306 | 64.01% |
 | Humidity | 0.1762 | 0.4656 | 62.16% |
-| Illuminance | 2.7090 | 119.5279 | 97.73% |
+| Illuminance | 2.6633 | 129.9798 | 97.95% |
 
-此結果表示，對照明情境而言，只靠角落感測器做 IDW 插值難以重建中央照明影響；加入設備位置與影響函數後，照度場重建誤差明顯下降。
+此結果表示，對照明情境而言，只靠角落感測器做 IDW 插值難以重建中央照明影響；加入設備位置、影響函數與 single-bounce diffuse reflection 後，照度場重建誤差明顯下降。
 
 以 `ac_only` 情境為例：
 
 | 指標 | 本研究模型 MAE | IDW MAE | MAE 降低比例 |
 | --- | ---: | ---: | ---: |
-| Temperature | 0.0502 | 0.8306 | 93.96% |
-| Humidity | 0.1772 | 0.7076 | 74.96% |
+| Temperature | 0.0481 | 0.2536 | 81.03% |
+| Humidity | 0.1770 | 0.4787 | 63.02% |
 | Illuminance | 1.7625 | 1.3210 | -33.42% |
 
 其中照度在 `ac_only` 情境沒有實際設備影響，因此 IDW 可能略優；這可在論文中作為誠實限制說明：當某個變數沒有明顯設備影響時，簡單插值可能已足夠。
@@ -93,4 +93,4 @@ delta_v(sensor_i) ≈ coefficient_v · envelope(device, sensor_i)
 
 ## 論文可用結論
 
-加入 IDW baseline 後，本研究可以說明設備影響模型並非只是一般空間插值。加入非連網裝置影響學習後，本研究可以回應核心問題：即使裝置本身沒有連網能力，系統仍可透過有限環境感測資料估計其對溫度、濕度與照度的影響，並將該影響模型用於控制動作排序。
+加入 IDW baseline 後，本研究可以說明設備影響模型並非只是一般空間插值。加入照度反射近似後，本研究也可以更合理地描述牆、地板與家具造成的 indirect fill light，而不必引入完整 optical simulation。再配合非連網裝置影響學習後，本研究可以回應核心問題：即使裝置本身沒有連網能力，系統仍可透過有限環境感測資料估計其對溫度、濕度與照度的影響，並將該影響模型用於控制動作排序。

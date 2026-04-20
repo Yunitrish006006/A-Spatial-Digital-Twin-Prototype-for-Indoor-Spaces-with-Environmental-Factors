@@ -289,12 +289,12 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 
 [2] [3] [4]
 LaTeX Font Info:    Trying to load font information for TU+pcr on input line 24
-2.
-LaTeX Font Info:    No file TUpcr.fd. on input line 242.
+6.
+LaTeX Font Info:    No file TUpcr.fd. on input line 246.
 
 
 LaTeX Font Warning: Font shape `TU/pcr/m/n' undefined
-(Font)              using `TU/lmr/m/n' instead on input line 242.
+(Font)              using `TU/lmr/m/n' instead on input line 246.
 
 [5] (paper.bbl
 Underfull \hbox (badness 4024) in paragraph at lines 96--98
@@ -318,4 +318,4 @@ Before submitting the final camera ready copy, remember to:
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (6 pages, 291548 bytes).
+Output written on paper.xdv (6 pages, 306580 bytes).

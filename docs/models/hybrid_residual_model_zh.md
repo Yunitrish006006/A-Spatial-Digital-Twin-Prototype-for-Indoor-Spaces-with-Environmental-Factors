@@ -21,7 +21,7 @@ F_final(p, t) = F_physics(p, t) + f_theta(features(p, t))
 
 核心檔案：
 
-- `digital_twin/hybrid_residual.py`
+- `digital_twin/neural/hybrid_residual.py`
 - `scripts/run_hybrid_residual_experiment.py`
 
 主要流程：

@@ -294,6 +294,23 @@ class DigitalTwinTests(unittest.TestCase):
             off_result.zone_averages["center_zone"]["illuminance"],
         )
 
+    def test_light_reflection_adds_indirect_illuminance(self) -> None:
+        devices = build_standard_devices()
+        light = next(device for device in devices if device.name == "light_main")
+        light.activation = 0.85
+        point = Vector3(5.5, 3.5, 0.25)
+
+        reflected = self.model._reflected_illuminance(
+            point=point,
+            room=self.room,
+            environment=self.environment,
+            devices=devices,
+            furniture=self.furniture,
+            elapsed_minutes=30.0,
+        )
+
+        self.assertGreater(reflected, 0.0)
+
     def test_window_cabinet_blocks_window_heat_and_daylight(self) -> None:
         point = Vector3(1.5, 2.0, 1.4)
         devices = build_standard_devices()

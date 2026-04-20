@@ -76,6 +76,17 @@ class SimulationResult:
     calibrated_devices: List[Device] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class ReflectiveSurface:
+    name: str
+    center: Vector3
+    normal: Vector3
+    area: float
+    reflectance: float
+    attenuation_length: float
+    furniture_name: Optional[str] = None
+
+
 class DigitalTwinModel:
     def simulate(
         self,
@@ -332,6 +343,14 @@ class DigitalTwinModel:
             )
             for metric in METRICS:
                 values[metric] += delta[metric]
+        values["illuminance"] += self._reflected_illuminance(
+            point=point,
+            room=room,
+            environment=environment,
+            devices=devices,
+            furniture=furniture,
+            elapsed_minutes=elapsed_minutes,
+        )
 
         values["temperature"] += corrections["temperature"].evaluate(point)
         values["humidity"] += corrections["humidity"].evaluate(point)
@@ -428,8 +447,16 @@ class DigitalTwinModel:
         device: Device,
         furniture: Optional[List[Furniture]],
         elapsed_minutes: float,
+        excluded_furniture_name: Optional[str] = None,
     ) -> Dict[str, float]:
-        envelope = self._influence_envelope(device, point, elapsed_minutes, room=room, furniture=furniture)
+        envelope = self._influence_envelope(
+            device,
+            point,
+            elapsed_minutes,
+            room=room,
+            furniture=furniture,
+            excluded_furniture_name=excluded_furniture_name,
+        )
         if envelope <= 0.0:
             return {metric: 0.0 for metric in METRICS}
 
@@ -531,8 +558,16 @@ class DigitalTwinModel:
         elapsed_minutes: float,
         room: Optional[Room] = None,
         furniture: Optional[List[Furniture]] = None,
+        excluded_furniture_name: Optional[str] = None,
     ) -> float:
-        return self.influence_envelope(device, point, elapsed_minutes, room=room, furniture=furniture)
+        return self.influence_envelope(
+            device,
+            point,
+            elapsed_minutes,
+            room=room,
+            furniture=furniture,
+            excluded_furniture_name=excluded_furniture_name,
+        )
 
     def influence_envelope(
         self,
@@ -541,6 +576,7 @@ class DigitalTwinModel:
         elapsed_minutes: float,
         room: Optional[Room] = None,
         furniture: Optional[List[Furniture]] = None,
+        excluded_furniture_name: Optional[str] = None,
     ) -> float:
         dynamic_level = self._dynamic_activation(device, elapsed_minutes)
         if dynamic_level <= 0.0:
@@ -558,7 +594,13 @@ class DigitalTwinModel:
             toward_point = normalize(subtract(point, device.position))
             directional = direction_floor + (1.0 - direction_floor) * max(0.0, dot(orientation, toward_point))
 
-        obstruction = self._obstruction_factor(device, point, room, furniture)
+        obstruction = self._obstruction_factor(
+            device,
+            point,
+            room,
+            furniture,
+            excluded_furniture_name=excluded_furniture_name,
+        )
         return dynamic_level * radial * directional * obstruction
 
     def _dynamic_activation(self, device: Device, elapsed_minutes: float) -> float:
@@ -594,34 +636,270 @@ class DigitalTwinModel:
         point: Vector3,
         room: Optional[Room],
         furniture: Optional[List[Furniture]],
+        excluded_furniture_name: Optional[str] = None,
     ) -> float:
         if room is None or not furniture:
+            return 1.0
+        return self._segment_obstruction_factor(
+            start=device.position,
+            end=point,
+            room=room,
+            furniture=furniture,
+            block_metadata_key=f"{device.kind}_block",
+            excluded_furniture_name=excluded_furniture_name,
+        )
+
+    def _segment_obstruction_factor(
+        self,
+        start: Vector3,
+        end: Vector3,
+        room: Room,
+        furniture: Optional[List[Furniture]],
+        block_metadata_key: str,
+        excluded_furniture_name: Optional[str] = None,
+    ) -> float:
+        if not furniture:
             return 1.0
 
         factor = 1.0
         for item in furniture:
+            if excluded_furniture_name and item.name == excluded_furniture_name:
+                continue
             activation = clamp(item.activation, 0.0, 1.0)
             if activation <= 0.0:
                 continue
-            overlap_ratio = self._segment_box_overlap_ratio(device.position, point, item.min_corner, item.max_corner)
+            overlap_ratio = self._segment_box_overlap_ratio(start, end, item.min_corner, item.max_corner)
             if overlap_ratio <= 0.0:
                 continue
-            block_strength = float(
-                item.metadata.get(
-                    f"{device.kind}_block",
-                    item.metadata.get("block_strength", 0.32),
-                )
-            )
+            block_strength = float(item.metadata.get(block_metadata_key, item.metadata.get("block_strength", 0.32)))
             adaptive_block = self._adaptive_obstruction_strength(
                 room=room,
-                start=device.position,
-                end=point,
+                start=start,
+                end=end,
                 item=item,
                 base_strength=block_strength,
                 overlap_ratio=overlap_ratio,
             )
             factor *= clamp(1.0 - activation * adaptive_block, 0.04, 1.0)
         return factor
+
+    def _reflected_illuminance(
+        self,
+        point: Vector3,
+        room: Room,
+        environment: Environment,
+        devices: List[Device],
+        furniture: Optional[List[Furniture]],
+        elapsed_minutes: float,
+    ) -> float:
+        active_illuminance_sources = [
+            device
+            for device in devices
+            if device.kind in {"window", "light"}
+            and device.activation > 0.0
+            and device.power > 0.0
+            and self._dynamic_activation(device, elapsed_minutes) > 0.0
+        ]
+        if not active_illuminance_sources:
+            return 0.0
+
+        reference_area = max(room.width * room.length, 1e-9)
+        reflected = 0.0
+        for surface in self._reflective_surfaces(room, furniture):
+            incident = self._surface_incident_illuminance(
+                surface=surface,
+                room=room,
+                environment=environment,
+                devices=active_illuminance_sources,
+                furniture=furniture,
+                elapsed_minutes=elapsed_minutes,
+            )
+            if incident <= 1e-6:
+                continue
+            direction = subtract(point, surface.center)
+            separation = max(distance(point, surface.center), 0.12)
+            toward_point = normalize(direction)
+            emission_alignment = max(0.0, dot(surface.normal, toward_point))
+            if emission_alignment <= 1e-6:
+                continue
+            visibility = self._segment_obstruction_factor(
+                start=surface.center,
+                end=point,
+                room=room,
+                furniture=furniture,
+                block_metadata_key="light_block",
+                excluded_furniture_name=surface.furniture_name,
+            )
+            distance_decay = math.exp(-separation / max(surface.attenuation_length, 1e-9))
+            area_factor = clamp(math.sqrt(surface.area / reference_area), 0.16, 1.35)
+            reflected += 0.085 * surface.reflectance * incident * area_factor * emission_alignment * distance_decay * visibility
+        return reflected
+
+    def _surface_incident_illuminance(
+        self,
+        surface: ReflectiveSurface,
+        room: Room,
+        environment: Environment,
+        devices: List[Device],
+        furniture: Optional[List[Furniture]],
+        elapsed_minutes: float,
+    ) -> float:
+        incident = 0.0
+        for device in devices:
+            delta = self._device_local_delta(
+                point=surface.center,
+                room=room,
+                environment=environment,
+                device=device,
+                furniture=furniture,
+                elapsed_minutes=elapsed_minutes,
+                excluded_furniture_name=surface.furniture_name,
+            )
+            incident += max(0.0, delta["illuminance"])
+        return incident
+
+    def _reflective_surfaces(self, room: Room, furniture: Optional[List[Furniture]]) -> List[ReflectiveSurface]:
+        surfaces = self._room_reflective_surfaces(room)
+        surfaces.extend(self._furniture_reflective_surfaces(room, furniture))
+        return surfaces
+
+    def _room_reflective_surfaces(self, room: Room) -> List[ReflectiveSurface]:
+        horizontal_area = max(room.width * room.length, 1e-9)
+        x_wall_area = max(room.length * room.height, 1e-9)
+        y_wall_area = max(room.width * room.height, 1e-9)
+        room_scale = math.sqrt(room.width ** 2 + room.length ** 2 + room.height ** 2)
+        attenuation = clamp(0.45 * room_scale, 1.4, 4.5)
+        return [
+            ReflectiveSurface(
+                name="floor",
+                center=Vector3(room.width / 2.0, room.length / 2.0, 0.0),
+                normal=Vector3(0.0, 0.0, 1.0),
+                area=horizontal_area,
+                reflectance=0.26,
+                attenuation_length=attenuation,
+            ),
+            ReflectiveSurface(
+                name="ceiling",
+                center=Vector3(room.width / 2.0, room.length / 2.0, room.height),
+                normal=Vector3(0.0, 0.0, -1.0),
+                area=horizontal_area,
+                reflectance=0.74,
+                attenuation_length=attenuation,
+            ),
+            ReflectiveSurface(
+                name="wall_west",
+                center=Vector3(0.0, room.length / 2.0, room.height / 2.0),
+                normal=Vector3(1.0, 0.0, 0.0),
+                area=x_wall_area,
+                reflectance=0.68,
+                attenuation_length=attenuation,
+            ),
+            ReflectiveSurface(
+                name="wall_east",
+                center=Vector3(room.width, room.length / 2.0, room.height / 2.0),
+                normal=Vector3(-1.0, 0.0, 0.0),
+                area=x_wall_area,
+                reflectance=0.68,
+                attenuation_length=attenuation,
+            ),
+            ReflectiveSurface(
+                name="wall_south",
+                center=Vector3(room.width / 2.0, 0.0, room.height / 2.0),
+                normal=Vector3(0.0, 1.0, 0.0),
+                area=y_wall_area,
+                reflectance=0.68,
+                attenuation_length=attenuation,
+            ),
+            ReflectiveSurface(
+                name="wall_north",
+                center=Vector3(room.width / 2.0, room.length, room.height / 2.0),
+                normal=Vector3(0.0, -1.0, 0.0),
+                area=y_wall_area,
+                reflectance=0.68,
+                attenuation_length=attenuation,
+            ),
+        ]
+
+    def _furniture_reflective_surfaces(self, room: Room, furniture: Optional[List[Furniture]]) -> List[ReflectiveSurface]:
+        if not furniture:
+            return []
+
+        surfaces: List[ReflectiveSurface] = []
+        room_scale = math.sqrt(room.width ** 2 + room.length ** 2 + room.height ** 2)
+        for item in furniture:
+            activation = clamp(item.activation, 0.0, 1.0)
+            if activation <= 0.0:
+                continue
+            reflectance = self._furniture_reflectance(item)
+            attenuation = clamp(0.22 * room_scale + 0.35 * max(item.size.x, item.size.y, item.size.z), 0.9, 3.4)
+            if item.size.x * item.size.y > 1e-6:
+                surfaces.append(
+                    ReflectiveSurface(
+                        name=f"{item.name}_top",
+                        center=Vector3(item.center.x, item.center.y, item.max_corner.z),
+                        normal=Vector3(0.0, 0.0, 1.0),
+                        area=item.size.x * item.size.y,
+                        reflectance=reflectance,
+                        attenuation_length=attenuation,
+                        furniture_name=item.name,
+                    )
+                )
+            if item.size.y * item.size.z > 1e-6:
+                surfaces.append(
+                    ReflectiveSurface(
+                        name=f"{item.name}_west",
+                        center=Vector3(item.min_corner.x, item.center.y, item.center.z),
+                        normal=Vector3(-1.0, 0.0, 0.0),
+                        area=item.size.y * item.size.z,
+                        reflectance=reflectance,
+                        attenuation_length=attenuation,
+                        furniture_name=item.name,
+                    )
+                )
+                surfaces.append(
+                    ReflectiveSurface(
+                        name=f"{item.name}_east",
+                        center=Vector3(item.max_corner.x, item.center.y, item.center.z),
+                        normal=Vector3(1.0, 0.0, 0.0),
+                        area=item.size.y * item.size.z,
+                        reflectance=reflectance,
+                        attenuation_length=attenuation,
+                        furniture_name=item.name,
+                    )
+                )
+            if item.size.x * item.size.z > 1e-6:
+                surfaces.append(
+                    ReflectiveSurface(
+                        name=f"{item.name}_south",
+                        center=Vector3(item.center.x, item.min_corner.y, item.center.z),
+                        normal=Vector3(0.0, -1.0, 0.0),
+                        area=item.size.x * item.size.z,
+                        reflectance=reflectance,
+                        attenuation_length=attenuation,
+                        furniture_name=item.name,
+                    )
+                )
+                surfaces.append(
+                    ReflectiveSurface(
+                        name=f"{item.name}_north",
+                        center=Vector3(item.center.x, item.max_corner.y, item.center.z),
+                        normal=Vector3(0.0, 1.0, 0.0),
+                        area=item.size.x * item.size.z,
+                        reflectance=reflectance,
+                        attenuation_length=attenuation,
+                        furniture_name=item.name,
+                    )
+                )
+        return surfaces
+
+    def _furniture_reflectance(self, item: Furniture) -> float:
+        defaults = {
+            "cabinet": 0.24,
+            "sofa": 0.12,
+            "table": 0.34,
+            "partition": 0.52,
+        }
+        return clamp(float(item.metadata.get("reflectance", defaults.get(item.kind, 0.22))), 0.05, 0.85)
 
     def _furniture_mixing_penalty(self, room: Room, furniture: Optional[List[Furniture]]) -> float:
         if not furniture:
