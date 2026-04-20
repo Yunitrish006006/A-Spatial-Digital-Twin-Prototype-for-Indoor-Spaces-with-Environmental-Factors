@@ -73,6 +73,25 @@ def build_blocks() -> List[Block]:
         paragraph("版本：論文初稿 v0.2", align="center"),
         paragraph("日期：2026 年 4 月 15 日", align="center"),
         page_break(),
+        heading("審定書", 1),
+        paragraph("國立彰化師範大學資訊工程學系碩士班"),
+        paragraph("碩士論文審定書"),
+        paragraph("單房間非連網家電環境影響學習之稀疏感測空間數位孪生原型"),
+        paragraph("研究生：林易佑"),
+        paragraph("本論文業經審查及口試合格，特此證明。"),
+        paragraph("論文考試委員會召集人："),
+        paragraph("委員："),
+        paragraph("委員："),
+        paragraph("指導教授：易欖霸 博士"),
+        paragraph("所長："),
+        paragraph("中華民國 115 年 月"),
+        page_break(),
+        heading("誌謝", 1),
+        paragraph("本研究能夠完成，首先感謝指導教授易欖霸博士在研究方向、方法與寫作上的您考與支持，以及歷位口試委員的指正與建議。感謝學業上對我的幫助與歷位師長提供的學習環境。也感謝家人的支持與包容。"),
+        paragraph("林易佑 謹誌於"),
+        paragraph("國立彰化師範大學資訊工程學系（所）"),
+        paragraph("中華民國 115 年 4 月"),
+        page_break(),
         heading("摘要", 1),
         paragraph(
             "智慧建築與智慧居家系統需要掌握室內環境狀態，才能支援舒適度評估、能源管理與設備控制。然而，實際房間中常見的冷氣、窗戶與照明往往沒有連網能力，也無法直接回報狀態；同時，房間內通常只能布建少量感測器，難以直接量測完整空間分布。這使得一般數位孿生若同時缺乏設備遙測與高密度量測，便難以對真實房間提供可用的環境估計與控制建議。"
@@ -98,15 +117,80 @@ def build_blocks() -> List[Block]:
         paragraph("Keywords: spatial digital twin, sparse sensing, non-networked appliances, indoor environment modeling, temperature, humidity, illuminance, corner sensors."),
         page_break(),
         heading("目錄", 1),
-        paragraph("第一章 緒論"),
-        paragraph("第二章 文獻探討"),
-        paragraph("第三章 系統架構與數學模型"),
-        paragraph("第四章 系統實作與服務介面"),
-        paragraph("第五章 模擬案例與結果分析"),
-        paragraph("第六章 結論與未來工作"),
-        paragraph("參考文獻"),
-        paragraph("附錄"),
+        paragraph("摘要……I"),
+        paragraph("Abstract……II"),
+        paragraph("誌謝……III"),
+        paragraph("目錄……IV"),
+        paragraph("表目錄……V"),
+        paragraph("圖目錄……VI"),
+        paragraph("第一章 緒論…… 1"),
+        paragraph("  1.1 研究背景…… 1"),
+        paragraph("  1.2 研究動機…… 1"),
+        paragraph("  1.3 研究問題…… 2"),
+        paragraph("  1.4 研究範圍與限制…… 2"),
+        paragraph("  1.5 預期貢獻…… 2"),
+        paragraph("第二章 文獻探討…… 3"),
+        paragraph("  2.1 室內環境建模…… 3"),
+        paragraph("  2.2 空間插値與場估計…… 3"),
+        paragraph("  2.3 數位孪生與智慧建築…… 3"),
+        paragraph("  2.4 房間尺度室內因子實驗研究…… 4"),
+        paragraph("  2.5 非連網裝置影響學習…… 4"),
+        paragraph("  2.6 MCP 與 AI Agent Tool Interface…… 5"),
+        paragraph("  2.7 與相似研究之差異定位…… 5"),
+        paragraph("  2.8 公開資料與訓練資料適用性…… 6"),
+        paragraph("第三章 系統架構與數學模型…… 7"),
+        paragraph("  3.1 系統架構…… 7"),
+        paragraph("  3.2 房間、區域與感測器設定…… 7"),
+        paragraph("  3.3 三因子場模型…… 8"),
+        paragraph("  3.4 設備影響函數…… 8"),
+        paragraph("  3.5 感測器校正模型…… 9"),
+        paragraph("  3.6 非連網裝置影響學習…… 9"),
+        paragraph("  3.7 訓練資料組裝流程…… 9"),
+        paragraph("  3.8 Hybrid Residual Neural Network 延伸…… 10"),
+        paragraph("  3.9 控制動作排序…… 10"),
+        paragraph("第四章 系統實作與服務介面…… 11"),
+        paragraph("  4.1 Python 原型…… 11"),
+        paragraph("  4.2 MCP Tools…… 11"),
+        paragraph("  4.3 Gemma/Ollama Bridge…… 12"),
+        paragraph("  4.4 Web Demo…… 12"),
+        paragraph("第五章 模擬案例與結果分析…… 13"),
+        paragraph("  5.1 標準情境設定…… 13"),
+        paragraph("  5.2 場重建誤差…… 13"),
+        paragraph("  5.3 IDW Baseline 比較…… 14"),
+        paragraph("  5.4 非連網裝置影響學習…… 14"),
+        paragraph("  5.5 窗戸時段、天氣、季節矩陣與直接輸入…… 14"),
+        paragraph("  5.6 Hybrid Residual Neural Network 結果…… 14"),
+        paragraph("  5.7 公開資料集 Task-Aligned Benchmark 結果…… 15"),
+        paragraph("  5.8 研究過程與實作挑戰…… 18"),
+        paragraph("  5.9 可旋轉 3D 展示…… 18"),
+        paragraph("第六章 結論與未來工作…… 19"),
+        paragraph("  6.1 結論…… 19"),
+        paragraph("  6.2 研究限制…… 19"),
+        paragraph("  6.3 未來工作…… 19"),
+        paragraph("參考文獻…… 20"),
+        paragraph("附錄…… 22"),
         page_break(),
+        heading("表目錄", 1),
+        paragraph("表 2-1 相似研究差異比較…… 5"),
+        paragraph("表 2-2 公開資料集概覽與適用性…… 6"),
+        paragraph("表 2-3 Task-aligned benchmark 設計…… 6"),
+        paragraph("表 3-1 房間與感測器設定…… 7"),
+        paragraph("表 3-2 訓練資料表格說明…… 9"),
+        paragraph("表 4-1 核心模組一覽…… 11"),
+        paragraph("表 5-1 標準情境結果摘要…… 13"),
+        paragraph("表 5-2 窗戸矩陣情境節選…… 14"),
+        paragraph("表 5-3 Benchmark 層級設計…… 15"),
+        paragraph("表 5-4 SML2010 Benchmark 結果…… 15"),
+        paragraph("表 5-5 CU-BEMS Benchmark 結果…… 17"),
+        page_break(),
+        heading("圖目錄", 1),
+        paragraph("圖 3-1 系統整體分層架構…… 7"),
+        paragraph("圖 3-2 主要執行資料流…… 7"),
+        paragraph("圖 3-3 房間感測器與目標區域配置…… 8"),
+        paragraph("圖 3-4 感測器校正與影響學習流程…… 9"),
+        paragraph("圖 5-1 驗證與實驗流程…… 13"),
+        page_break(),
+        raw_latex(r"\clearpage\pagenumbering{arabic}"),
         heading("第一章 緒論", 1),
         heading("1.1 研究背景", 2),
         paragraph(
@@ -133,7 +217,7 @@ def build_blocks() -> List[Block]:
             [
                 "RQ1：在只有 8 顆角落感測器的條件下，是否能建立單房間溫度、濕度與照度的空間估計模型？",
                 "RQ2：在家電或環境裝置沒有連網狀態回報的情況下，是否能從環境感測資料學習其對空間不同區域的影響？",
-                "RQ3：學習後的裝置影響模型是否能提升對三個環境變數的控制決策，例如選擇開冷氣、開窗或開燈？",
+                "RQ3：學習後的裝置影響模型，是否能依三因子偏差輸出候選控制動作排序，例如選擇開冷氣、開窗或開燈？",
                 "RQ4：將數位孿生模型封裝為標準化工具介面後，是否能讓 AI client 查詢、模擬與使用控制推薦能力？",
             ]
         ),
@@ -224,9 +308,6 @@ def build_blocks() -> List[Block]:
         ),
         paragraph(
             "因此，本研究目前採取的資料策略是：以可控制的模擬情境作為主要訓練與驗證來源，以公開資料集作為外部合理性檢查與未來真實資料接軌的準備。具體而言，若要替本研究的 hybrid residual neural network 增加真實資料，現階段最有價值的是 CU-BEMS、SML2010 與住宅 IEQ 類資料；若要補強舒適度控制目標的依據，則 ASHRAE Global Thermal Comfort Database II 比較適合作為外部參考。"
-        ),
-        paragraph(
-            "若希望讓不同方法在同一資料集上進行對比，較可行的作法不是要求所有方法都重建完整單房間 3D 空間場，而是採用 shared-task benchmark，也就是在相同資料集上只比較共同可觀測、共同可輸出的子任務。換言之，比較的單位應從「整個系統是否完全同構」改為「在同一份資料上，哪些輸入、哪些輸出、哪些評估指標是所有方法都能公平處理的」。在此原則下，本研究模型可以退化為 dataset-compatible mode：當資料集只有 zone-level 序列時，就比較區域平均值預測；當資料集只有兩個室內量測點時，就比較點位響應；當資料集缺少裝置狀態時，則只比較 background dynamics 或 comfort scoring，而不宣稱完成完整場重建。"
         ),
         paragraph(
             "具體而言，本研究可採兩層 benchmark 設計。第一層是 canonical synthetic benchmark，直接使用本研究的 8 組標準情境與 48 組窗戶矩陣，讓主模型、IDW baseline、移除設備先驗的純資料驅動模型，以及 hybrid residual correction 在完全相同的輸入、感測器配置與 ground truth 下比較 field MAE、zone MAE、sensor MAE 與推薦改善分數。第二層是 public task-aligned benchmark，亦即把公開資料集拆成與本研究相容的子任務：CU-BEMS 可用於比較 AC/lighting 事件前後的 zone-level temperature、humidity、illuminance 響應；SML2010 可用於比較窗戶/日照相關的溫濕度照度時序響應；Denmark IEQ 與 ASHRAE Global Thermal Comfort Database II 則適合比較舒適度目標函數、偏差分數或分類準確率。"
@@ -378,7 +459,7 @@ def build_blocks() -> List[Block]:
         paragraph("其損失函數可表示為："),
         math(r"\mathcal{L}(\boldsymbol{\theta}_v) = \frac{1}{N}\sum_{i=1}^{N}\bigl\|R_v^*(\mathbf{p}_i,t_i) - R_v(\mathbf{p}_i,t_i;\boldsymbol{\theta}_v)\bigr\|^2 + \lambda\|\boldsymbol{\theta}_v\|^2"),
         paragraph(
-            "本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。若啟用頻域去噪，temperature 與 humidity 會先將 R_v* 沿短時間軌跡做 Fourier low-pass denoising，再送入 MLP 訓練；illuminance 則保留原始 residual target。此設計的目的在於保留主模型可解釋性，同時以資料驅動方式修正其剩餘誤差。"
+            "本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。若啟用頻域去噪，temperature 與 humidity 會先將 $R_v^*$ 沿短時間軌跡做 Fourier low-pass denoising，再送入 MLP 訓練；illuminance 則保留原始 residual target。此設計的目的在於保留主模型可解釋性，同時以資料驅動方式修正其剩餘誤差。"
         ),
         heading("3.9 控制動作排序", 2),
         paragraph(
@@ -483,10 +564,10 @@ def build_blocks() -> List[Block]:
         ),
         heading("5.6 Hybrid Residual Neural Network 結果", 2),
         paragraph(
-            "在目前預設的 held-out 測試設定下，hybrid residual neural network 以 6 個情境作為訓練資料，並以 `light_only` 與 `all_active` 作為測試情境。若對 temperature 與 humidity residual trace 啟用 Fourier low-pass denoising，並保留 illuminance 原始 residual，則 hybrid residual correction 套用於主模型輸出後，field MAE 可由 temperature `0.0474`、humidity `0.1764`、illuminance `2.3295`，分別降至 `0.0026`、`0.0040` 與 `0.1752`。對應改善比例約為溫度 `94.51%`、濕度 `97.73%` 與照度 `92.48%`。"
+            "在目前預設的 held-out 測試設定下，hybrid residual neural network 以 6 個情境作為訓練資料，並以 light\_only 與 all\_active 作為測試情境（與 5.2 節的 8 組全集平均為不同子集）。若對 temperature 與 humidity residual trace 啟用 Fourier low-pass denoising，並保留 illuminance 原始 residual，則 hybrid residual correction 套用於主模型輸出後，field MAE 可由 temperature 0.0474、humidity 0.1764、illuminance 2.3295，分別降至 0.0026、0.0040 與 0.1752。對應改善比例約為溫度 94.51%、濕度 97.73% 與照度 92.48%。"
         ),
         paragraph(
-            "若與加入反射近似前的 direct-only 照度路徑相比，held-out illuminance 的主模型 MAE 由 `2.3727` 降至 `2.3295`，而 hybrid 後的 illuminance MAE 由 `0.2357` 進一步降至 `0.1752`。這表示較乾淨的 base optical approximation 可先降低結構性照度偏差，再讓 residual network 更集中地學習剩餘誤差；而頻域低通則較適合作為慢變 thermal / humidity residual 的前處理，而非對所有環境因子一體適用。不過此結果仍建立於模擬資料與既定情境分割下，未來仍需以真實量測資料重新訓練與驗證。"
+            "若與加入反射近似前的 direct-only 照度路徑相比，held-out illuminance 的主模型 MAE 由 2.3727 降至 2.3295，而 hybrid 後的 illuminance MAE 由 0.2357 進一步降至 0.1752。這表示較乾淨的 base optical approximation 可先降低結構性照度偏差，再讓 residual network 更集中地學習剩餘誤差；而頻域低通則較適合作為慢變 thermal / humidity residual 的前處理，而非對所有環境因子一體適用。不過此結果仍建立於模擬資料與既定情境分割下，未來仍需以真實量測資料重新訓練與驗證。"
         ),
         heading("5.7 公開資料集 Task-Aligned Benchmark 結果", 2),
         paragraph(
@@ -718,6 +799,10 @@ def page_break() -> Block:
     return {"type": "page_break"}
 
 
+def raw_latex(content: str) -> Block:
+    return {"type": "raw_latex", "content": content}
+
+
 def write_markdown(path: Path, blocks: List[Block]) -> None:
     lines: List[str] = []
     for block in blocks:
@@ -755,6 +840,8 @@ def write_markdown(path: Path, blocks: List[Block]) -> None:
                 lines.append("$$" + latex + "$$")
             else:
                 lines.append("$" + latex + "$")
+        elif kind == "raw_latex":
+            pass  # PDF-only; skip in Markdown
         elif kind == "page_break":
             lines.append("\n---\n")
         lines.append("")
@@ -811,6 +898,8 @@ def build_document_xml(blocks: List[Block], image_registry: Dict[str, Dict[str, 
             # Render as plain text in docx (no MathML support without external libs)
             latex = str(block["latex"])
             body_parts.append(docx_paragraph(latex, align="center"))
+        elif kind == "raw_latex":
+            pass  # PDF-only; skip in DOCX
         elif kind == "page_break":
             body_parts.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
     body_parts.append(section_properties_xml())

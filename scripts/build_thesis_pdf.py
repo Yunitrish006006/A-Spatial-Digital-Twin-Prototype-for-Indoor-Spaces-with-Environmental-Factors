@@ -142,6 +142,8 @@ def render_block(block: Block) -> str:
         return render_image(block)
     if kind == "math":
         return render_math(str(block["latex"]), bool(block.get("display", True)))
+    if kind == "raw_latex":
+        return str(block["content"]) + "\n"
     if kind == "page_break":
         return r"\clearpage" + "\n"
     raise ValueError(f"Unsupported block type: {kind}")
@@ -177,6 +179,7 @@ def render_document(blocks: List[Block]) -> str:
 \renewcommand{{\contentsname}}{{目錄}}
 
 \begin{{document}}
+\pagenumbering{{roman}}
 {body}
 \end{{document}}
 """
