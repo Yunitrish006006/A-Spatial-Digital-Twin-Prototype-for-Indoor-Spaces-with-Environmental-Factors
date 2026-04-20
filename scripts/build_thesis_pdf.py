@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -8,7 +9,7 @@ from typing import Dict, Iterable, List
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent
 OUTPUTS = ROOT / "outputs"
-PAPERS = OUTPUTS / "papers"
+PAPERS = ROOT / "docs" / "papers" / "thesis"
 
 sys.path.insert(0, str(SCRIPT_DIR))
 from build_thesis_docx import Block, build_blocks, ensure_image_asset  # noqa: E402
@@ -54,8 +55,14 @@ def render_heading(text: str, level: int) -> str:
     return rf"\subsubsection*{{{escaped}}}" + "\n"
 
 
+def latex_escape_with_math(text: object) -> str:
+    """Like latex_escape but preserves $...$ inline math segments unchanged."""
+    parts = re.split(r'(\$[^$]+\$)', str(text))
+    return "".join(part if i % 2 == 1 else latex_escape(part) for i, part in enumerate(parts))
+
+
 def render_paragraph(text: str, align: str) -> str:
-    escaped = latex_escape(text).replace("\n", r"\\")
+    escaped = latex_escape_with_math(text).replace("\n", r"\\")
     if align == "center":
         return r"\begin{center}" + escaped + r"\end{center}" + "\n"
     return escaped + "\n\n"
@@ -63,14 +70,14 @@ def render_paragraph(text: str, align: str) -> str:
 
 def render_bullets(items: Iterable[object]) -> str:
     lines = [r"\begin{itemize}"]
-    lines.extend(rf"\item {latex_escape(item)}" for item in items)
+    lines.extend(rf"\item {latex_escape_with_math(item)}" for item in items)
     lines.append(r"\end{itemize}")
     return "\n".join(lines) + "\n"
 
 
 def render_code(text: str) -> str:
-    safe_text = str(text).replace("→", "->").replace("Σ", "sum")
-    return "\n".join([r"\begin{Verbatim}[fontsize=\small]", safe_text, r"\end{Verbatim}"]) + "\n"
+    safe_text = str(text).replace("→", "->").replace("Σ", "sum").replace("φ", "phi").replace("θ", "theta").replace("≤", "<=").replace("≥", ">=")
+    return "\n".join([r"\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,breaklines=true,columns=flexible]", safe_text, r"\end{lstlisting}"]) + "\n"
 
 
 def column_spec(column_count: int) -> str:
@@ -84,17 +91,21 @@ def column_spec(column_count: int) -> str:
 
 def render_table(headers: List[object], rows: List[List[object]]) -> str:
     spec = column_spec(len(headers))
-    lines = [r"\begin{center}", r"\small", rf"\begin{{longtable}}{{{spec}}}", r"\hline"]
+    lines = [r"\begin{table}[htbp]", r"\centering", r"\footnotesize", rf"\begin{{tabular}}{{{spec}}}", r"\hline"]
     lines.append(" & ".join(rf"\textbf{{{latex_escape(header)}}}" for header in headers) + r" \\")
-    lines.extend([r"\hline", r"\endfirsthead", r"\hline"])
-    lines.append(" & ".join(rf"\textbf{{{latex_escape(header)}}}" for header in headers) + r" \\")
-    lines.extend([r"\hline", r"\endhead"])
+    lines.append(r"\hline")
     for row in rows:
         padded = list(row) + [""] * (len(headers) - len(row))
         lines.append(" & ".join(latex_escape(cell) for cell in padded[: len(headers)]) + r" \\")
         lines.append(r"\hline")
-    lines.extend([r"\end{longtable}", r"\end{center}"])
+    lines.extend([r"\end{tabular}", r"\end{table}"])
     return "\n".join(lines) + "\n"
+
+
+def render_math(latex: str, display: bool = True) -> str:
+    if display:
+        return "\\[\n" + latex + "\n\\]\n"
+    return "$" + latex + "$"
 
 
 def render_image(block: Block) -> str:
@@ -129,37 +140,40 @@ def render_block(block: Block) -> str:
         return render_table(list(block["headers"]), list(block["rows"]))
     if kind == "image":
         return render_image(block)
+    if kind == "math":
+        return render_math(str(block["latex"]), bool(block.get("display", True)))
     if kind == "page_break":
         return r"\clearpage" + "\n"
     raise ValueError(f"Unsupported block type: {kind}")
 
 
 def render_document(blocks: List[Block]) -> str:
-    body = "\n".join(render_block(block) for block in blocks)
+    body = "\n".join(render_block(b) for b in blocks)
     return rf"""\documentclass[12pt,a4paper]{{article}}
-\usepackage[margin=2.5cm]{{geometry}}
+\usepackage[top=2.54cm,bottom=2.54cm,left=2.54cm,right=2.54cm]{{geometry}}
 \usepackage{{fontspec}}
 \usepackage{{xeCJK}}
-\usepackage{{setspace}}
-\usepackage{{longtable}}
-\usepackage{{fancyvrb}}
 \usepackage{{array}}
 \usepackage{{graphicx}}
 \usepackage{{hyperref}}
+\usepackage{{amsmath}}
+\usepackage{{listings}}
+\usepackage{{setspace}}
+\usepackage{{indentfirst}}
 
 \setmainfont{{Times New Roman}}
 \setsansfont{{Arial}}
 \setmonofont{{Menlo}}
-\setCJKmainfont{{PingFang TC}}
+\setCJKmainfont[BoldFont=BiauKaiTC]{{BiauKaiTC}}
 \setCJKsansfont{{Heiti TC}}
 \setCJKmonofont{{PingFang TC}}
 \XeTeXlinebreaklocale "zh"
 \XeTeXlinebreakskip = 0pt plus 1pt
 \hypersetup{{hidelinks}}
-\onehalfspacing
 \sloppy
 \setlength{{\parindent}}{{2em}}
-\setlength{{\parskip}}{{0.35em}}
+\setlength{{\parskip}}{{0pt}}
+\onehalfspacing
 \renewcommand{{\contentsname}}{{目錄}}
 
 \begin{{document}}

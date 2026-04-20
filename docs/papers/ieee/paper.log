@@ -296,8 +296,42 @@ LaTeX Font Info:    No file TUpcr.fd. on input line 246.
 LaTeX Font Warning: Font shape `TU/pcr/m/n' undefined
 (Font)              using `TU/lmr/m/n' instead on input line 246.
 
-[5] (paper.bbl
-Underfull \hbox (badness 4024) in paragraph at lines 96--98
+
+Underfull \hbox (badness 4647) in paragraph at lines 272--273
+[]\TU/pcr/m/n/10 Table V[] summarizes representative results. The
+ []
+
+[5]
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 283.
+
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 284.
+
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 285.
+
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 286.
+
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 287.
+
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 288.
+
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 289.
+
+[6] (paper.bbl
+Underfull \hbox (badness 4024) in paragraph at lines 91--93
 []\TU/ptm/m/sc/8 P. Romeu-Guallart and F. Zamora-Martinez, “SML2010
  []
 
@@ -313,9 +347,9 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[6] (paper.aux)
+[7] (paper.aux)
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (6 pages, 306580 bytes).
+Output written on paper.xdv (7 pages, 340172 bytes).
