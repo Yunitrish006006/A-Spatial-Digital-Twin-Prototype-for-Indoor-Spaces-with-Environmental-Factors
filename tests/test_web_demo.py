@@ -93,7 +93,7 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("Left / Right Swing", INDEX_HTML)
         self.assertIn("Up / Down Swing", INDEX_HTML)
         self.assertNotIn("<select", INDEX_HTML)
-        self.assertIn("MCP-Enabled Digital Twin Demo", INDEX_HTML)
+        self.assertIn("Sparse-Sensing Single-Room Spatial Digital Twin", INDEX_HTML)
 
     def test_query_name_defaults_to_idle(self) -> None:
         self.assertEqual(_query_name(""), "idle")

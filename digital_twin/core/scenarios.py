@@ -61,7 +61,7 @@ DEVICE_KIND_DEFAULTS: Dict[str, Dict[str, object]] = {
         "metadata": {
             "illuminance_gain": 1050.0,
             "heat_gain": 0.8,
-            "direction_floor": 0.4,
+            "direction_floor": 0.08,
         },
     },
 }

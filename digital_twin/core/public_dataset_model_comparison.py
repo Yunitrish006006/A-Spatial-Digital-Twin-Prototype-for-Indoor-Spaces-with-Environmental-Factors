@@ -219,6 +219,7 @@ class MappedHybridPublicPredictor:
                 "sunlight_scaled",
                 "rain_ratio",
                 "wind_scaled",
+                "sun_irradiance_scaled",
             ]
         if task_id == "S2":
             return [
@@ -302,6 +303,7 @@ class MappedHybridPublicPredictor:
                 control["sunlight_scaled"],
                 control["rain_ratio"],
                 control["wind_scaled"],
+                control["sun_irradiance_scaled"],
             ]
         if task_id == "S2":
             predictions, control = self._predict_sml2010_absolute(context["origin"], include_hvac=True, horizon_minutes=horizon_minutes)
@@ -516,6 +518,15 @@ class MappedHybridPublicPredictor:
             daylight_factor=clamp(float(origin.get("daylight_factor") or 0.0), 0.0, 1.2),
         )
         boundary_activation, motor_level = self._sml_boundary_controls(origin, room)
+        # Use the dominant facade reading to modulate window power.
+        # Normalise by sunlight so power ≈ 1.0 under full sun, and keep a
+        # single west-wall window to match the pseudo-room geometry.
+        facade_south = max(float(origin.get("facade_south_lux") or 0.0), 0.0)
+        facade_west = max(float(origin.get("facade_west_lux") or 0.0), 0.0)
+        facade_east = max(float(origin.get("facade_east_lux") or 0.0), 0.0)
+        dominant_facade = max(facade_south, facade_west, facade_east)
+        ref_lux = max(sunlight, 1.0)
+        window_power = clamp(dominant_facade / ref_lux, 0.05, 1.5) if dominant_facade > 10.0 else 1.0
         devices = []
         if boundary_activation > 0.0:
             devices.append(
@@ -524,7 +535,7 @@ class MappedHybridPublicPredictor:
                     kind="window",
                     position=Vector3(0.0, 2.0, 1.4),
                     activation=boundary_activation,
-                    power=1.0,
+                    power=window_power,
                 )
             )
         if include_hvac and motor_level > 0.0:
@@ -570,6 +581,7 @@ class MappedHybridPublicPredictor:
             "wind_scaled": self._bounded_activation(float(origin.get("wind_speed") or 0.0), reference=4.0),
             "outdoor_temperature_gap": (float(origin.get("outdoor_temperature") or room.base_temperature) - room.base_temperature) / 12.0,
             "outdoor_humidity_gap": (float(origin.get("outdoor_humidity") or room.base_humidity) - room.base_humidity) / 25.0,
+            "sun_irradiance_scaled": self._bounded_activation(float(origin.get("sun_irradiance") or 0.0), reference=800.0),
         }
         return {"physics": physics_outputs, "hybrid": hybrid_outputs}, controls
 

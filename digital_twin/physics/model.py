@@ -394,10 +394,25 @@ class DigitalTwinModel:
         if room.height > 0.0:
             normalized_height = point.z / room.height
         mixing_factor = self._room_mixing_factor(room, devices, furniture, elapsed_minutes)
+
+        # Window-proximity ambient gradient: points near an active window get slightly
+        # more background illuminance from scattered daylight.
+        illuminance_ambient_bonus = 0.0
+        for device in devices:
+            if device.kind != "window" or device.activation <= 0.0 or device.power <= 0.0:
+                continue
+            dynamic_level = self._dynamic_activation(device, elapsed_minutes)
+            if dynamic_level <= 0.0:
+                continue
+            dist = distance(device.position, point)
+            radius = max(device.influence_radius, 0.1)
+            proximity = math.exp(-dist / (radius * 1.8))
+            illuminance_ambient_bonus += 0.12 * room.base_illuminance * device.power * dynamic_level * proximity
+
         return {
             "temperature": bulk_state["temperature"] + 0.8 * mixing_factor * (normalized_height - 0.5),
             "humidity": bulk_state["humidity"] - 3.0 * mixing_factor * (normalized_height - 0.5),
-            "illuminance": room.base_illuminance,
+            "illuminance": room.base_illuminance + illuminance_ambient_bonus,
         }
 
     def _bulk_state(
@@ -587,7 +602,11 @@ class DigitalTwinModel:
         radial = math.exp(-separation / radius)
 
         orientation = normalize(self._effective_device_orientation(device, elapsed_minutes))
-        direction_floor = device.metadata.get("direction_floor", 0.35)
+        _kind_floor_defaults = {"light": 0.08, "window": 0.20}
+        direction_floor = device.metadata.get(
+            "direction_floor",
+            _kind_floor_defaults.get(device.kind, 0.35),
+        )
         if orientation == Vector3(0.0, 0.0, 0.0):
             directional = 1.0
         else:
