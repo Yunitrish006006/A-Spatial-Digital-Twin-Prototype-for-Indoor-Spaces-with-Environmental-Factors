@@ -56,7 +56,7 @@ INDEX_HTML = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MCP-Enabled Single-Room Spatial Digital Twin</title>
+  <title>Sparse-Sensing Single-Room Spatial Digital Twin</title>
   <style>
     :root {
       --ink: #17211b;
@@ -470,9 +470,9 @@ INDEX_HTML = """<!doctype html>
 </head>
 <body>
   <header>
-    <div class="eyebrow">MCP-Enabled Digital Twin Demo</div>
+    <div class="eyebrow">Sparse-Sensing Digital Twin Demo</div>
     <h1>Learning non-networked appliance impact from room sensors.</h1>
-    <p class="lead">This demo estimates temperature, humidity, and illuminance fields in a single room using corner sensor calibration, compares the model against IDW, learns appliance impacts, and exposes the same capabilities through MCP tools.</p>
+    <p class="lead">This demo estimates temperature, humidity, and illuminance fields in a single room using corner sensor calibration, compares the model against IDW, learns appliance impacts, and exposes the same estimator through shared service interfaces including the local MCP endpoint.</p>
   </header>
   <main>
     <aside class="panel">

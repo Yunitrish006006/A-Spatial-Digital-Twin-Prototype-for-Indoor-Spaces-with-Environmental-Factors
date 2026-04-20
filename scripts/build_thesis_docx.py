@@ -66,8 +66,8 @@ def png_dimensions(path: Path) -> List[int]:
 def build_blocks() -> List[Block]:
     return [
         title("國立彰化師範大學\n資訊工程學系碩士班\n碩士論文初稿", 0),
-        title("基於 MCP 之單房間非連網家電環境影響學習與三因子控制數位孿生原型", 1),
-        paragraph("An MCP-Enabled Lightweight Spatial Digital Twin Prototype for Learning the Environmental Impact of Non-Networked Appliances in a Single Room", align="center"),
+        title("單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型", 1),
+        paragraph("A Sparse-Sensing Spatial Digital Twin for Learning Environmental Impacts of Non-Networked Appliances in a Single Room", align="center"),
         paragraph("研究生：林昀佑", align="center"),
         paragraph("指導教授：易昶霈", align="center"),
         paragraph("版本：論文初稿 v0.2", align="center"),
@@ -81,27 +81,27 @@ def build_blocks() -> List[Block]:
             "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。研究過程中，本研究先後比較純插值、僅局部影響場與資料驅動修正等作法，最終採用 bulk + local field 作為主模型，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的作用。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差進行主動設備 power scale 校準與 trilinear residual correction，以修正背景場與設備影響函數之偏差。在此基礎上，本研究再加入 hybrid residual neural network 延伸模組，以小型多層感知器學習主模型的剩餘誤差，而不直接取代原本的可解釋結構。"
         ),
         paragraph(
-            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為提升系統可存取性，本研究將模型能力封裝為本地 Model Context Protocol（MCP）服務。評估方面，本研究以 8 組標準情境、48 組窗戶矩陣、IDW baseline 比較與 hybrid residual held-out 測試驗證方法可行性；其中 base model 在標準情境下之平均 MAE 分別為溫度 0.0482、濕度 0.1763 與照度 2.1616，而 hybrid residual correction 在 held-out 情境下可進一步降低場重建誤差。"
+            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為提升系統可存取性，本研究另提供本地服務介面，其中包含 MCP server 與 web demo，作為同一套模型能力的工具化存取層。評估方面，本研究以 8 組標準情境、48 組窗戶矩陣、IDW baseline 比較與 hybrid residual held-out 測試驗證方法可行性；其中 base model 在標準情境下之平均 MAE 分別為溫度 0.0482、濕度 0.1763 與照度 2.1616，而加入 Fourier low-pass denoising 的 hybrid residual correction 在 held-out 情境下可進一步降低場重建誤差。"
         ),
-        paragraph("關鍵字：空間數位孿生、非連網家電、室內環境建模、溫度、濕度、照度、MCP、角落感測器。"),
+        paragraph("關鍵字：空間數位孿生、稀疏感測、非連網家電、室內環境建模、溫度、濕度、照度、角落感測器。"),
         page_break(),
         heading("Abstract", 1),
         paragraph(
             "Smart building and smart home systems require indoor environmental awareness to support comfort assessment, energy management, and device control. In ordinary rooms, however, influential appliances such as conventional air conditioners, manual windows, and ordinary lights often expose no telemetry, while only a small number of sensors can be installed. As a result, practical room-scale digital twins must work with both sparse observations and incomplete device-state information."
         ),
         paragraph(
-            "This thesis proposes an MCP-enabled lightweight spatial digital twin prototype for a single room. The final design is a reduced-order bulk-plus-local field model with parameterized appliance influence functions, active-device power calibration, and trilinear residual correction from eight corner sensors. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, ranks candidate control actions according to target-zone comfort improvement, and extends the base estimator with an optional hybrid residual neural correction layer instead of replacing the base model with an end-to-end black-box predictor."
+            "This thesis proposes a sparse-sensing spatial digital twin for a single room. The final design is a reduced-order bulk-plus-local field model with parameterized appliance influence functions, active-device power calibration, and trilinear residual correction from eight corner sensors. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, ranks candidate control actions according to target-zone comfort improvement, and extends the base estimator with an optional hybrid residual neural correction layer instead of replacing the base model with an end-to-end black-box predictor."
         ),
         paragraph(
-            "The prototype is implemented in Python and exposed through a local Model Context Protocol server, enabling AI clients to query scenarios, estimate point-level environmental states, compare against an IDW baseline, learn appliance impacts, and run a 48-case window simulation matrix across time of day, weather, and season. Across the canonical scenarios, the base model achieves average MAE of 0.0482 for temperature, 0.1763 for humidity, and 2.1616 for illuminance, while the hybrid residual layer further reduces held-out field MAE. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
+            "The prototype is implemented in Python and exposed through a local service layer, including an MCP interface and a rotatable web demo, enabling interactive scenario queries, point-level estimation, baseline comparison, appliance-impact learning, and a 48-case window simulation matrix across time of day, weather, and season. Across the canonical scenarios, the base model achieves average MAE of 0.0482 for temperature, 0.1763 for humidity, and 2.1616 for illuminance, while the hybrid residual layer with Fourier low-pass denoising on temperature and humidity residual traces further reduces held-out field MAE. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
         ),
-        paragraph("Keywords: spatial digital twin, non-networked appliances, indoor environment modeling, temperature, humidity, illuminance, MCP, corner sensors."),
+        paragraph("Keywords: spatial digital twin, sparse sensing, non-networked appliances, indoor environment modeling, temperature, humidity, illuminance, corner sensors."),
         page_break(),
         heading("目錄", 1),
         paragraph("第一章 緒論"),
         paragraph("第二章 文獻探討"),
         paragraph("第三章 系統架構與數學模型"),
-        paragraph("第四章 系統實作與 MCP 服務"),
+        paragraph("第四章 系統實作與服務介面"),
         paragraph("第五章 模擬案例與結果分析"),
         paragraph("第六章 結論與未來工作"),
         paragraph("參考文獻"),
@@ -125,7 +125,7 @@ def build_blocks() -> List[Block]:
                 "裝置沒有連網時，仍希望從環境變化中推估它是否對空間造成影響。",
                 "新增或啟用冷氣、窗戶、照明後，系統應能估計其對不同區域造成的變化。",
                 "學習裝置影響後，模型應能支援開冷氣、開窗或開燈等候選控制動作排序。",
-                "將模型封裝為 MCP tools 後，AI client 或 agent 可用標準化工具介面查詢與使用數位孿生能力。",
+                "將模型封裝為標準化工具介面後，AI client 或 agent 可查詢與使用數位孿生能力。",
             ]
         ),
         heading("1.3 研究問題", 2),
@@ -134,7 +134,7 @@ def build_blocks() -> List[Block]:
                 "RQ1：在只有 8 顆角落感測器的條件下，是否能建立單房間溫度、濕度與照度的空間估計模型？",
                 "RQ2：在家電或環境裝置沒有連網狀態回報的情況下，是否能從環境感測資料學習其對空間不同區域的影響？",
                 "RQ3：學習後的裝置影響模型是否能提升對三個環境變數的控制決策，例如選擇開冷氣、開窗或開燈？",
-                "RQ4：將數位孿生模型封裝為 MCP tools 後，是否能讓 AI client 以標準化方式查詢、模擬與使用控制推薦能力？",
+                "RQ4：將數位孿生模型封裝為標準化工具介面後，是否能讓 AI client 查詢、模擬與使用控制推薦能力？",
             ]
         ),
         heading("1.4 研究範圍與限制", 2),
@@ -345,6 +345,12 @@ def build_blocks() -> List[Block]:
             "其中 v 分別代表 temperature、humidity 與 illuminance。換言之，神經網路不是直接學整個場，而是學主模型剩餘誤差。若未來接入真實資料，則可分成兩種層次：第一種只使用 8 顆角落感測器，將其作為參數校正、裝置影響學習與角落 residual fine-tune 的監督訊號；第二種則在有移動式量測或額外空間探針時，再擴充為更完整的空間 residual 訓練。這樣可避免只憑 8 個角落點就對全室高解析度場做過度宣稱。"
         ),
         paragraph(
+            "在目前的實作中，hybrid residual 訓練可選擇再加入 Fourier low-pass denoising。具體作法是：先針對同一採樣點沿 elapsed time 建立一段短 residual trace，再將該 trace 做 discrete Fourier transform、套用低通遮罩，最後以 inverse transform 還原較平滑的 residual target。根據目前實驗，此做法對 temperature 幾乎不改變結果，對 humidity 有小幅改善，但若直接套用到 illuminance 則會抹去有用的快速變化，因此目前只對 temperature 與 humidity 啟用。"
+        ),
+        paragraph(
+            "相較於以固定時間窗做積分或區間平均的平滑方式，Fourier low-pass denoising 更適合目前題目。兩者都能降低短時振盪，但時間窗積分本質上屬於時間域中的固定 box filter，若視窗太小則去噪不足，若視窗太大則容易同時模糊瞬態響應與局部轉折，甚至造成較明顯的 lag。相對地，Fourier 低通是直接在頻域中抑制高頻成分，再還原回時間域，因此可以在保留低頻主趨勢的同時，仍然取得對應目前時間點的 denoised residual endpoint。換言之，它不是把時間資訊丟掉，而是在保留時間位置的前提下降低高頻擾動。"
+        ),
+        paragraph(
             "整體而言，本研究的訓練資料流程可概括為：原始感測與事件資料先經時間對齊與情境整併，再由主模型產生 physics estimate，最後依任務不同分流為 least-squares impact learning、bulk parameter calibration 或 hybrid residual neural training。此設計的優點在於，即使未來資料來源從模擬切換到真實 ESP32 量測，資料進入訓練流程的接口仍可保持一致。"
         ),
         heading("3.8 Hybrid Residual Neural Network 延伸", 2),
@@ -357,14 +363,14 @@ def build_blocks() -> List[Block]:
         paragraph("其損失函數可表示為："),
         code("L(θ_v) = (1 / N) Σ_i ||R_v*(p_i, t_i) - R_v(p_i, t_i; θ_v)||^2 + λ||θ_v||^2"),
         paragraph(
-            "本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。此設計的目的在於保留主模型可解釋性，同時以資料驅動方式修正其剩餘誤差。"
+            "本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。若啟用頻域去噪，temperature 與 humidity 會先將 R_v* 沿短時間軌跡做 Fourier low-pass denoising，再送入 MLP 訓練；illuminance 則保留原始 residual target。此設計的目的在於保留主模型可解釋性，同時以資料驅動方式修正其剩餘誤差。"
         ),
         heading("3.9 控制動作排序", 2),
         paragraph(
             "本研究不做閉環控制，而是對候選控制動作進行排序。系統針對每個候選動作模擬目標區域的三因子值，並依舒適度目標計算改善分數。若房間偏熱，冷氣動作通常獲得較高排序；若照度不足，照明動作通常獲得較高排序。"
         ),
         page_break(),
-        heading("第四章 系統實作與 MCP 服務", 1),
+        heading("第四章 系統實作與服務介面", 1),
         heading("4.1 Python 原型", 2),
         paragraph(
             "本研究原型以 Python 實作，核心模組包含 entities、model、scenarios、learning、hybrid_residual、baselines、recommendations、service、mcp_server 與 web_demo。系統採零外部依賴設計，方便在本地環境快速執行與展示。"
@@ -455,10 +461,10 @@ def build_blocks() -> List[Block]:
         ),
         heading("5.6 Hybrid Residual Neural Network 結果", 2),
         paragraph(
-            "在目前預設的 held-out 測試設定下，hybrid residual neural network 以 6 個情境作為訓練資料，並以 `light_only` 與 `all_active` 作為測試情境。結果顯示，若將 hybrid residual correction 套用於主模型輸出，field MAE 可由 temperature `0.0473`、humidity `0.1764`、illuminance `2.3727`，分別降至 `0.0026`、`0.0043` 與 `0.2357`。對應改善比例約為溫度 `94.50%`、濕度 `97.56%` 與照度 `90.07%`。"
+            "在目前預設的 held-out 測試設定下，hybrid residual neural network 以 6 個情境作為訓練資料，並以 `light_only` 與 `all_active` 作為測試情境。若對 temperature 與 humidity residual trace 啟用 Fourier low-pass denoising，並保留 illuminance 原始 residual，則 hybrid residual correction 套用於主模型輸出後，field MAE 可由 temperature `0.0473`、humidity `0.1764`、illuminance `2.3727`，分別降至 `0.0026`、`0.0040` 與 `0.2357`。對應改善比例約為溫度 `94.50%`、濕度 `97.73%` 與照度 `90.07%`。"
         ),
         paragraph(
-            "此結果說明，將神經網路定位為殘差修正層，而非直接取代主模型，可在保留設備影響函數、時間響應與感測器校正可解釋性的前提下，進一步降低 held-out 情境的空間重建誤差。不過此結果仍建立於模擬資料與既定情境分割下，未來仍需以真實量測資料重新訓練與驗證。"
+            "此結果說明，將神經網路定位為殘差修正層，而非直接取代主模型，可在保留設備影響函數、時間響應與感測器校正可解釋性的前提下，進一步降低 held-out 情境的空間重建誤差；而頻域低通則較適合作為慢變 thermal / humidity residual 的前處理，而非對所有環境因子一體適用。不過此結果仍建立於模擬資料與既定情境分割下，未來仍需以真實量測資料重新訓練與驗證。"
         ),
         heading("5.7 公開資料集對比策略", 2),
         paragraph(
@@ -482,7 +488,7 @@ def build_blocks() -> List[Block]:
         heading("第六章 結論與未來工作", 1),
         heading("6.1 結論", 2),
         paragraph(
-            "本研究建立一個 MCP-enabled 單房間三因子空間數位孿生原型，針對非連網家電或環境裝置對 temperature、humidity 與 illuminance 造成的影響進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計；進一步加入 hybrid residual neural correction 後，held-out 情境的場重建誤差可再顯著下降。"
+            "本研究建立一個面向非連網家電環境影響學習的單房間三因子空間數位孿生原型，針對 temperature、humidity 與 illuminance 的空間變化進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計；進一步加入只作用於 temperature / humidity residual trace 的 Fourier low-pass denoising 與 hybrid residual neural correction 後，held-out 情境的場重建誤差可再顯著下降。"
         ),
         paragraph(
             "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並用於更準確的控制動作推薦。"
@@ -848,7 +854,7 @@ def core_props_xml() -> str:
     now = datetime.now(timezone(timedelta(hours=8))).isoformat()
     return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>基於 MCP 之單房間非連網家電環境影響學習與三因子控制數位孿生原型</dc:title>
+  <dc:title>單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型</dc:title>
   <dc:creator>Codex generated draft</dc:creator>
   <cp:lastModifiedBy>Codex</cp:lastModifiedBy>
   <dcterms:created xsi:type="dcterms:W3CDTF">{now}</dcterms:created>

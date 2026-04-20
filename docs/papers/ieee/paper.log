@@ -287,19 +287,16 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 77.
 
-[2] [3]
-Underfull \hbox (badness 2221) in paragraph at lines 162--164
-\TU/ptm/m/sc/10 The residual network takes normalized coordinates,
- []
-
+[2] [3] [4]
 LaTeX Font Info:    Trying to load font information for TU+pcr on input line 24
 2.
 LaTeX Font Info:    No file TUpcr.fd. on input line 242.
 
+
 LaTeX Font Warning: Font shape `TU/pcr/m/n' undefined
 (Font)              using `TU/lmr/m/n' instead on input line 242.
 
-[4] [5] (paper.bbl
+[5] (paper.bbl
 Underfull \hbox (badness 4024) in paragraph at lines 96--98
 []\TU/ptm/m/sc/8 P. Romeu-Guallart and F. Zamora-Martinez, “SML2010
  []
@@ -316,11 +313,9 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[6
-
-] (paper.aux)
+[6] (paper.aux)
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (6 pages, 271540 bytes).
+Output written on paper.xdv (6 pages, 291548 bytes).

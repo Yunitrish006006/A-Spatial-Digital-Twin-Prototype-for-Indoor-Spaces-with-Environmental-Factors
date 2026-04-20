@@ -1,10 +1,10 @@
-# An MCP-Enabled Lightweight Spatial Digital Twin Prototype for Learning the Environmental Impact of Non-Networked Appliances in a Single Room
+# A Sparse-Sensing Spatial Digital Twin for Learning Environmental Impacts of Non-Networked Appliances in a Single Room
 
-中文暫定題目：基於 MCP 之單房間非連網家電環境影響學習與三因子控制數位孿生原型
+中文暫定題目：單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型
 
 建議 GitHub repository 名稱：
 
-`mcp-single-room-spatial-digital-twin`
+`single-room-sparse-sensing-digital-twin`
 
 這個專案實作了一個可直接執行的 Python 研究原型，用來學習非連網家電或環境裝置對單一房間三個環境參數造成的影響：
 
@@ -18,7 +18,7 @@
 - Humidity
 - Illuminance
 
-模型採用「連續影響場 + 高解析度離散採樣網格」的混合方式，並固定使用 8 顆角落感測器進行觀測與校正。研究重點是：即使冷氣、窗戶、照明等裝置本身沒有連網、沒有 API、也無法直接回報狀態，系統仍可透過環境感測資料學習其影響，並用於更準確地控制溫度、濕度與照度。系統同時提供 MCP server，讓支援 MCP 的 AI client 可以呼叫模型工具。
+模型採用「連續影響場 + 高解析度離散採樣網格」的混合方式，並固定使用 8 顆角落感測器進行觀測與校正。研究重點是：即使冷氣、窗戶、照明等裝置本身沒有連網、沒有 API、也無法直接回報狀態，系統仍可透過環境感測資料學習其影響，並用於更準確地控制溫度、濕度與照度。MCP server 與 web demo 則作為同一套模型能力的互動式存取介面。
 
 ## 內容
 
@@ -199,6 +199,8 @@ F_final(p, t) = F_physics(p, t) + f_theta(features(p, t))
 - `f_theta` 是小型 MLP，用來學習主模型在特定座標、設備組合與環境條件下的殘差
 
 這個設計比純黑盒神經網路更適合目前題目，因為它保留了裝置影響函數、時間響應與感測器校正的可解釋性，同時允許你在論文中把 neural network 定位成「第二層殘差修正器」而非主體模型。詳細說明請見 `docs/models/hybrid_residual_model_zh.md`。
+
+目前也支援可選的 Fourier low-pass denoising。實作上會先為 residual target 建立短時間軌跡，再只對 `temperature` 與 `humidity` 做頻域低通濾波，以降低短時擾動對 MLP 訓練的影響；`illuminance` 預設不做此處理，避免把有用的快速變化一起抹平。
 
 ## Gemma4 / Ollama Bridge
 

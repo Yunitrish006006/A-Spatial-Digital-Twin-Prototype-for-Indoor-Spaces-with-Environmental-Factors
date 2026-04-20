@@ -1,6 +1,6 @@
 from pathlib import Path
 from dataclasses import replace
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 from copy import deepcopy
 
 from digital_twin.core.demo import (
@@ -451,6 +451,11 @@ def run_hybrid_residual_experiment(
     learning_rate: float = 0.018,
     l2: float = 1e-5,
     seed: int = 42,
+    use_fourier_denoising: bool = False,
+    spectral_timeline_steps: int = 9,
+    spectral_keep_frequency_ratio: float = 0.35,
+    spectral_min_keep_bins: int = 1,
+    spectral_metrics: Optional[Sequence[str]] = None,
 ) -> Dict:
     return run_hybrid_residual_experiment_backend(
         include_window_matrix=include_window_matrix,
@@ -461,6 +466,11 @@ def run_hybrid_residual_experiment(
         learning_rate=learning_rate,
         l2=l2,
         seed=seed,
+        use_fourier_denoising=use_fourier_denoising,
+        spectral_timeline_steps=spectral_timeline_steps,
+        spectral_keep_frequency_ratio=spectral_keep_frequency_ratio,
+        spectral_min_keep_bins=spectral_min_keep_bins,
+        spectral_metrics=spectral_metrics,
     )
 
 

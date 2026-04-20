@@ -163,8 +163,8 @@ def build_presentation() -> Presentation:
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_title(
         slide,
-        "基於 MCP 之單房間非連網家電環境影響學習與三因子控制數位孿生原型",
-        "An MCP-Enabled Lightweight Spatial Digital Twin Prototype for Learning the Environmental Impact of Non-Networked Appliances in a Single Room",
+        "單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型",
+        "A Sparse-Sensing Spatial Digital Twin for Learning Environmental Impacts of Non-Networked Appliances in a Single Room",
     )
     add_bullets(
         slide,
@@ -222,7 +222,7 @@ def build_presentation() -> Presentation:
         [
             "重建三因子空間場",
             "學習非連網裝置對環境的影響",
-            "以 MCP / Web 提供查詢與決策能力",
+            "以 Web 與工具介面提供查詢與決策能力",
         ],
     )
     add_footer(slide, 2)
@@ -524,7 +524,7 @@ def build_presentation_30min() -> Presentation:
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_title(
         slide,
-        "基於 MCP 之單房間非連網家電環境影響學習與三因子控制數位孿生原型",
+        "單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型",
         "30 分鐘口試版簡報",
     )
     add_bullets(
@@ -537,7 +537,7 @@ def build_presentation_30min() -> Presentation:
             "研究生：林昀佑",
             "指導教授：易昶霈",
             "國立彰化師範大學資訊工程學系碩士班",
-            "主題：單房間三因子數位孿生、非連網裝置影響學習、MCP 工具化",
+            "主題：單房間三因子數位孿生、非連網裝置影響學習、工具化服務介面",
         ],
         level0_size=20,
     )
@@ -637,7 +637,7 @@ def build_presentation_30min() -> Presentation:
             "single-room three-factor spatial digital twin",
             "power calibration + trilinear residual correction",
             "non-networked appliance impact learning",
-            "hybrid residual neural correction",
+            "hybrid residual + Fourier denoising",
             "task-aligned public benchmark strategy",
             "MCP / Gemma / Web 可互動原型",
         ],
@@ -1020,6 +1020,7 @@ def build_presentation_30min() -> Presentation:
         "解讀",
         [
             "hybrid residual 是可選修正層",
+            "temperature / humidity 可再加 Fourier low-pass denoising",
             "保留主模型的物理啟發與可解釋性",
             "在 held-out 情境上可進一步降低誤差",
             "但仍需真實量測資料做外部驗證",

@@ -1,9 +1,10 @@
 import json
+import cmath
 import math
 import random
 from copy import deepcopy
-from dataclasses import dataclass
-from typing import Dict, List, Sequence, Tuple
+from dataclasses import dataclass, replace
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from digital_twin.core.demo import compare_fields, compare_zone_averages, synthesize_sensor_observations
 from digital_twin.core.entities import Device, Vector3
@@ -22,6 +23,24 @@ class ResidualDataset:
     features: List[List[float]]
     targets: Dict[str, List[float]]
     scenario_names: List[str]
+
+
+@dataclass(frozen=True)
+class SpectralDenoisingConfig:
+    enabled: bool = False
+    timeline_steps: int = 9
+    keep_frequency_ratio: float = 0.35
+    min_keep_bins: int = 1
+    metrics: Tuple[str, ...] = ("temperature", "humidity")
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "enabled": self.enabled,
+            "timeline_steps": self.timeline_steps,
+            "keep_frequency_ratio": self.keep_frequency_ratio,
+            "min_keep_bins": self.min_keep_bins,
+            "metrics": list(self.metrics),
+        }
 
 
 @dataclass(frozen=True)
@@ -133,6 +152,11 @@ def run_hybrid_residual_experiment(
     learning_rate: float = 0.018,
     l2: float = 1e-5,
     seed: int = 42,
+    use_fourier_denoising: bool = False,
+    spectral_timeline_steps: int = 9,
+    spectral_keep_frequency_ratio: float = 0.35,
+    spectral_min_keep_bins: int = 1,
+    spectral_metrics: Optional[Sequence[str]] = None,
 ) -> Dict[str, object]:
     scenarios = build_validation_scenarios()
     if include_window_matrix:
@@ -142,7 +166,26 @@ def run_hybrid_residual_experiment(
     if not train_scenarios or not test_scenarios:
         raise ValueError("Hybrid residual experiment requires at least one train scenario and one test scenario.")
 
-    train_dataset = build_residual_dataset(train_scenarios, max_points_per_scenario=max_points_per_scenario)
+    spectral_denoising = SpectralDenoisingConfig(
+        enabled=bool(use_fourier_denoising),
+        timeline_steps=max(3, int(spectral_timeline_steps)),
+        keep_frequency_ratio=min(max(float(spectral_keep_frequency_ratio), 0.0), 1.0),
+        min_keep_bins=max(1, int(spectral_min_keep_bins)),
+        metrics=tuple(
+            metric for metric in (
+                [str(value).strip().lower() for value in spectral_metrics]
+                if spectral_metrics is not None
+                else ["temperature", "humidity"]
+            )
+            if metric in METRICS
+        ) or ("temperature", "humidity"),
+    )
+
+    train_dataset = build_residual_dataset(
+        train_scenarios,
+        max_points_per_scenario=max_points_per_scenario,
+        spectral_denoising=spectral_denoising if spectral_denoising.enabled else None,
+    )
     test_dataset = build_residual_dataset(test_scenarios, max_points_per_scenario=max_points_per_scenario)
     hybrid_model, metric_training = train_hybrid_residual_model(
         train_dataset=train_dataset,
@@ -197,6 +240,7 @@ def run_hybrid_residual_experiment(
             "learning_rate": learning_rate,
             "l2": l2,
             "seed": seed,
+            "spectral_denoising": spectral_denoising.to_dict(),
         },
         "feature_names": list(hybrid_model.feature_names),
         "dataset": {
@@ -235,6 +279,7 @@ def split_scenarios_for_experiment(
 def build_residual_dataset(
     scenarios: List[Scenario],
     max_points_per_scenario: int = 96,
+    spectral_denoising: Optional[SpectralDenoisingConfig] = None,
 ) -> ResidualDataset:
     model = DigitalTwinModel()
     feature_names = build_feature_names()
@@ -245,7 +290,15 @@ def build_residual_dataset(
     for scenario in scenarios:
         truth_result, estimated_result = _truth_and_estimated_results(model, scenario)
         selected_indices = _selected_field_indices(estimated_result.field, max_points_per_scenario)
-        for index in selected_indices:
+        filtered_targets: Optional[Dict[str, List[float]]] = None
+        if spectral_denoising and spectral_denoising.enabled:
+            filtered_targets = _build_spectral_targets_for_scenario(
+                model=model,
+                scenario=scenario,
+                selected_indices=selected_indices,
+                spectral_denoising=spectral_denoising,
+            )
+        for target_offset, index in enumerate(selected_indices):
             point = _field_point_from_index(estimated_result.field, index)
             estimated_values = {
                 metric: estimated_result.field.values[metric][index]
@@ -265,7 +318,10 @@ def build_residual_dataset(
                 )
             )
             for metric in METRICS:
-                targets[metric].append(truth_values[metric] - estimated_values[metric])
+                if filtered_targets is not None:
+                    targets[metric].append(filtered_targets[metric][target_offset])
+                else:
+                    targets[metric].append(truth_values[metric] - estimated_values[metric])
             scenario_names.append(scenario.name)
 
     return ResidualDataset(
@@ -475,6 +531,35 @@ def apply_hybrid_model_to_field(
     return corrected
 
 
+def apply_fourier_low_pass_filter(
+    signal: Sequence[float],
+    keep_frequency_ratio: float = 0.35,
+    min_keep_bins: int = 1,
+) -> List[float]:
+    values = [float(value) for value in signal]
+    sample_count = len(values)
+    if sample_count <= 2:
+        return values
+
+    ratio = min(max(float(keep_frequency_ratio), 0.0), 1.0)
+    if ratio >= 0.999:
+        return values
+
+    half_band = max(1, sample_count // 2)
+    keep_bins = max(int(math.ceil(half_band * ratio)), int(min_keep_bins))
+    keep_bins = min(half_band, keep_bins)
+
+    spectrum = _discrete_fourier_transform(values)
+    filtered_spectrum: List[complex] = []
+    for index, coefficient in enumerate(spectrum):
+        mirrored_index = min(index, sample_count - index)
+        if mirrored_index <= keep_bins:
+            filtered_spectrum.append(coefficient)
+        else:
+            filtered_spectrum.append(0j)
+    return _inverse_discrete_fourier_transform(filtered_spectrum)
+
+
 def _truth_and_estimated_results(model: DigitalTwinModel, scenario: Scenario):
     truth_devices = apply_truth_adjustments(scenario.devices, scenario.truth_adjustments)
     truth_result = model.simulate(
@@ -502,6 +587,59 @@ def _truth_and_estimated_results(model: DigitalTwinModel, scenario: Scenario):
     return truth_result, estimated_result
 
 
+def _build_spectral_targets_for_scenario(
+    model: DigitalTwinModel,
+    scenario: Scenario,
+    selected_indices: List[int],
+    spectral_denoising: SpectralDenoisingConfig,
+) -> Dict[str, List[float]]:
+    traces = {
+        metric: [[] for _ in selected_indices]
+        for metric in METRICS
+    }
+    timeline = _spectral_timeline_samples(
+        elapsed_minutes=scenario.elapsed_minutes,
+        steps=spectral_denoising.timeline_steps,
+    )
+
+    for elapsed_minutes in timeline:
+        sampled_scenario = replace(scenario, elapsed_minutes=elapsed_minutes)
+        truth_result, estimated_result = _truth_and_estimated_results(model, sampled_scenario)
+        for point_offset, index in enumerate(selected_indices):
+            for metric in METRICS:
+                traces[metric][point_offset].append(
+                    truth_result.field.values[metric][index] - estimated_result.field.values[metric][index]
+                )
+
+    filtered_targets = {
+        metric: []
+        for metric in METRICS
+    }
+    for metric in METRICS:
+        for residual_trace in traces[metric]:
+            if metric in spectral_denoising.metrics:
+                filtered_trace = apply_fourier_low_pass_filter(
+                    residual_trace,
+                    keep_frequency_ratio=spectral_denoising.keep_frequency_ratio,
+                    min_keep_bins=spectral_denoising.min_keep_bins,
+                )
+                filtered_targets[metric].append(filtered_trace[-1])
+            else:
+                filtered_targets[metric].append(residual_trace[-1])
+    return filtered_targets
+
+
+def _spectral_timeline_samples(elapsed_minutes: float, steps: int) -> List[float]:
+    total_minutes = max(float(elapsed_minutes), 1.0)
+    count = max(3, int(steps))
+    if count == 1:
+        return [total_minutes]
+    return [
+        total_minutes * index / float(count - 1)
+        for index in range(count)
+    ]
+
+
 def _selected_field_indices(field: FieldGrid, max_points_per_scenario: int) -> List[int]:
     total_points = len(field.values["temperature"])
     limit = max(1, min(total_points, int(max_points_per_scenario)))
@@ -521,6 +659,30 @@ def _field_point_from_index(field: FieldGrid, index: int) -> Vector3:
     iy = remainder // field.resolution.nx
     ix = remainder % field.resolution.nx
     return field.point(ix, iy, iz)
+
+
+def _discrete_fourier_transform(signal: Sequence[float]) -> List[complex]:
+    count = len(signal)
+    output: List[complex] = []
+    for frequency in range(count):
+        coefficient = 0j
+        for time_index, value in enumerate(signal):
+            angle = -2.0 * math.pi * frequency * time_index / float(count)
+            coefficient += float(value) * cmath.exp(1j * angle)
+        output.append(coefficient)
+    return output
+
+
+def _inverse_discrete_fourier_transform(spectrum: Sequence[complex]) -> List[float]:
+    count = len(spectrum)
+    signal: List[float] = []
+    for time_index in range(count):
+        value = 0j
+        for frequency, coefficient in enumerate(spectrum):
+            angle = 2.0 * math.pi * frequency * time_index / float(count)
+            value += coefficient * cmath.exp(1j * angle)
+        signal.append(float((value / float(count)).real))
+    return signal
 
 
 def _train_scalar_network(

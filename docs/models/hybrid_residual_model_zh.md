@@ -37,6 +37,51 @@ F_final(p, t) = F_physics(p, t) + f_theta(features(p, t))
 corrected_value = estimated_value + predicted_residual
 ```
 
+## Fourier 頻域去噪延伸
+
+目前版本另外支援一個可選的 Fourier low-pass denoising 前處理。它不是把頻譜當成新的主模型，而是在 hybrid residual 訓練前，先對 residual target 的短時間軌跡做頻域低通濾波：
+
+```text
+residual trace over elapsed time
+    ↓
+DFT / spectrum
+    ↓
+low-pass mask
+    ↓
+inverse DFT
+    ↓
+denoised residual target
+```
+
+這個設計的目的，是讓 residual MLP 更專注於低頻、較平滑的 thermal / humidity 結構性誤差，而不是追逐短時擾動。根據目前實驗，這個頻域去噪對 `temperature` 幾乎不改變結果，對 `humidity` 有小幅改善，但若直接套用到 `illuminance` 反而會抹掉有用訊號，因此目前預設只對：
+
+- `temperature`
+- `humidity`
+
+啟用 Fourier 低通，不對 `illuminance` 啟用。
+
+### 為什麼不是固定時間窗積分或區間平均
+
+一個更接近直覺的替代方式，是對 residual trace 做固定時間窗積分或區間平均，讓局部坡度不要上下晃動太多。這種方法確實能平滑訊號，但它在目前題目下仍有幾個限制：
+
+- 它本質上是時間域中的固定 box filter，視窗大小需要先指定。
+- 視窗太小時，短時振盪還是會保留下來；視窗太大時，瞬態響應和局部轉折又容易被一起抹平。
+- 這種平滑常會帶來較明顯的 lag，尤其在 residual trace 有快速轉折時更明顯。
+
+Fourier low-pass denoising 比較適合，因為它不是把時間軸整段壓扁，而是：
+
+1. 先轉到頻域。
+2. 去掉高頻成分。
+3. 再轉回時間域。
+
+這樣做的結果是：
+
+- 保留低頻主趨勢。
+- 抑制高頻震盪。
+- 最後仍能取得對應目前時間點的 denoised endpoint，保留 time-aligned supervision。
+
+所以在你的題目裡，FFT 低通的價值不是「比平均更炫」，而是它比固定時間窗積分／區間平均更直接地針對高頻振盪下手，並在保留慢變主趨勢與當前時間位置語意的前提下完成去噪。
+
 ## 目前 feature 組成
 
 每個採樣點的 feature 包含：
@@ -93,6 +138,14 @@ L(theta_m) = (1 / N) Σ_i || r_m^*(p_i, t_i) - r_m(p_i, t_i; theta_m) ||^2 + lam
 python3 scripts/run_hybrid_residual_experiment.py
 ```
 
+若要啟用 Fourier 頻域去噪，可使用：
+
+```bash
+python3 scripts/run_hybrid_residual_experiment.py \
+  --fourier-denoise \
+  --spectral-metrics temperature,humidity
+```
+
 輸出：
 
 - `outputs/data/hybrid_residual_summary.json`
@@ -104,6 +157,7 @@ python3 scripts/run_hybrid_residual_experiment.py
 - baseline field MAE
 - hybrid field MAE
 - target-zone MAE
+- Fourier 去噪設定
 - 每個 metric 的 residual learning 成效
 
 ## 我對這個方向的建議

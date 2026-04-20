@@ -2,6 +2,8 @@
 
 This folder contains an IEEE conference-style English paper draft for the single-room spatial digital twin thesis prototype.
 
+The current framing is aligned for venues such as `IEEE Digital Twin 2026` and `IEEE UIC 2026`: the main contribution is sparse-sensing indoor field estimation and non-networked appliance impact learning, while the MCP interface is treated as a secondary service layer rather than the paper's headline novelty.
+
 ## Files
 
 - `paper.tex`

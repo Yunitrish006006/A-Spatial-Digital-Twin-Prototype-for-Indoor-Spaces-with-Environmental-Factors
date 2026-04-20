@@ -1,14 +1,14 @@
-# MCP 納入論文主題的定位建議
+# MCP 在論文中的輔助定位建議
 
 ## 建議題目
 
 英文：
 
-**An MCP-Enabled Lightweight Spatial Digital Twin Prototype for Learning the Environmental Impact of Non-Networked Appliances in a Single Room**
+**A Sparse-Sensing Spatial Digital Twin for Learning Environmental Impacts of Non-Networked Appliances in a Single Room**
 
 中文：
 
-**基於 MCP 之單房間非連網家電環境影響學習與三因子控制數位孿生原型**
+**單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型**
 
 ## 為什麼可以加入 MCP
 
@@ -29,7 +29,7 @@
 ```text
 Core contribution: learning appliance impact from environmental changes
 Model contribution: single-room environmental field estimation
-System contribution: MCP-enabled AI-agent interface
+System contribution: interactive service interface, including MCP access
 ```
 
 也就是：
@@ -128,7 +128,7 @@ MCP tools 對應：
 
 可以寫：
 
-- 本研究實作 MCP-enabled prototype。
+- 本研究實作帶有 MCP 介面的 prototype。
 - 本研究展示數位孿生模型如何被 AI agent 以工具方式存取。
 - 本研究提供後續遠端 MCP deployment 與實體感測整合基礎。
 
@@ -137,11 +137,11 @@ MCP tools 對應：
 英文：
 
 ```text
-The proposed prototype learns the environmental impact of non-networked appliances from limited corner sensor observations and estimates single-room temperature, humidity, and illuminance fields. In addition, it exposes its simulation and recommendation capabilities through a local Model Context Protocol (MCP) server, allowing MCP-compatible AI clients to query scenarios, estimate point-level environmental states, and rank candidate control actions.
+The proposed prototype learns the environmental impact of non-networked appliances from limited corner sensor observations and estimates single-room temperature, humidity, and illuminance fields. A local service layer, including an MCP interface, exposes scenario execution, point-level estimation, and candidate action ranking without changing the core reduced-order estimator.
 ```
 
 中文：
 
 ```text
-本研究透過有限角落感測器觀測資料，學習非連網家電對單房間溫度、濕度與照度造成的環境影響，並估計其空間分布。除環境場估計模型外，本研究亦將模擬與推薦能力封裝為本地 Model Context Protocol（MCP）服務，使支援 MCP 的 AI client 能查詢情境、估計指定座標之環境狀態，並取得候選控制動作排序。
+本研究透過有限角落感測器觀測資料，學習非連網家電對單房間溫度、濕度與照度造成的環境影響，並估計其空間分布。除環境場估計模型外，本研究亦提供本地服務介面，其中包含 MCP 存取方式，使外部 AI client 能查詢情境、估計指定座標之環境狀態，並取得候選控制動作排序。
 ```
