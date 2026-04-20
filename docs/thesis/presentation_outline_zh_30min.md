@@ -18,7 +18,7 @@
 - 公開資料集只比較相容子任務
 
 ## Slide 6: 整體系統架構
-- 多入口共用 service layer
+- 人機互動層與 AI 工具呼叫層共用服務編排入口
 
 ## Slide 7: 主要執行資料流
 - scenario 到 dashboard / MCP response 的流程

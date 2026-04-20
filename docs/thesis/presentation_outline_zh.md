@@ -9,8 +9,8 @@
 - 早期純插值與 local-only 模型都不合理
 
 ## Slide 3: 系統架構
-- Web / MCP / Gemma 共用 service layer
-- 主模型與 hybrid residual 的分工
+- 入口分成使用者互動層與 AI 工具呼叫層
+- 服務編排、主模型與 residual 修正的分工
 
 ## Slide 4: 房間拓樸、感測器與目標區域
 - 8 顆角落感測器

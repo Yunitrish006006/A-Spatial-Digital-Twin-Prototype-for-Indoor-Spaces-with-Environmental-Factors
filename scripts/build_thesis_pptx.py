@@ -238,10 +238,10 @@ def build_presentation() -> Presentation:
         5.2,
         5.0,
         [
-            "入口分成 Web UI、CLI、MCP client 與 Gemma/Ollama bridge",
-            "所有執行都會進入共用 service layer",
-            "後端由 physics core 負責場估計與控制排序",
-            "hybrid residual 模組只做殘差修正，不取代主模型",
+            "入口分成使用者互動層與 AI 工具呼叫層",
+            "所有請求都先進入服務編排層",
+            "後端主體為環境數位孿生核心與校正學習層",
+            "hybrid residual 只作為 optional 第二層修正器",
         ],
         level0_size=17,
     )
@@ -703,10 +703,10 @@ def build_presentation_30min() -> Presentation:
         5.0,
         5.2,
         [
-            "Web、CLI、MCP client 與 Gemma 都共用同一層 service",
-            "核心推估在 physics model",
-            "hybrid residual 只在後段做誤差修正",
-            "輸出包含 JSON、圖表、論文與投影片素材",
+            "入口區分為人機互動層與 AI 工具呼叫層",
+            "所有請求經服務編排後進入環境數位孿生核心",
+            "校正與影響學習層負責修正稀疏感測誤差",
+            "輸出為空間場估測、區域估測、動作排序與 3D 視覺化",
         ],
         level0_size=17,
     )
@@ -1082,7 +1082,7 @@ def build_outline() -> str:
     slides = [
         ("封面", ["題目、姓名、指導教授、研究定位"]),
         ("研究問題與動機", ["非連網裝置無法直接回報狀態", "有限感測器下仍需估計全室環境", "早期純插值與 local-only 模型都不合理"]),
-        ("系統架構", ["Web / MCP / Gemma 共用 service layer", "主模型與 hybrid residual 的分工"]),
+        ("系統架構", ["入口分成使用者互動層與 AI 工具呼叫層", "服務編排、主模型與 residual 修正的分工"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器", "三個主要區域與三個核心裝置"]),
         ("數學模型", ["bulk + local field", "trilinear correction", "裝置與家具模組化"]),
         ("感測器校正與影響學習", ["power calibration", "least-squares impact learning"]),
@@ -1108,7 +1108,7 @@ def build_outline_30min() -> str:
         ("研究背景與問題", ["非連網裝置造成空間影響但無法直接讀取", "有限感測器仍需估全室環境"]),
         ("研究問題與貢獻", ["RQ1-RQ4、主要技術貢獻、task-aligned benchmark 策略"]),
         ("文獻定位、研究缺口與比較原則", ["IEQ 實驗、場重建、hybrid model、digital twin 平台之差異", "公開資料集只比較相容子任務"]),
-        ("整體系統架構", ["多入口共用 service layer"]),
+        ("整體系統架構", ["人機互動層與 AI 工具呼叫層共用服務編排入口"]),
         ("主要執行資料流", ["scenario 到 dashboard / MCP response 的流程"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器與三個區域"]),
         ("模組化裝置與家具阻擋", ["裝置模組化、家具自適應阻擋"]),
