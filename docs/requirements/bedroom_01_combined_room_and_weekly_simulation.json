@@ -1,0 +1,718 @@
+{
+  "room": {
+    "name": "bedroom_01",
+    "description": "single bedroom with southeast-facing window, wall-mounted AC, desk, bed, and storage cabinets",
+    "width_m": 4.0,
+    "length_m": 4.6,
+    "height_m": 3.2,
+    "base_temperature_c": 26,
+    "base_humidity_pct": 62,
+    "base_illuminance_lux": 380
+  },
+  "grid_resolution": {
+    "nx": 30,
+    "ny": 30,
+    "nz": 15
+  },
+  "environment": {
+    "outdoor_temperature_c": 31,
+    "outdoor_humidity_pct": 78,
+    "sunlight_illuminance_lux": 35000,
+    "daylight_factor": 0.05,
+    "window_facing_azimuth_deg": 115,
+    "window_facing_label": "southeast"
+  },
+  "devices": {
+    "ac_schedule": {
+      "daytime": {
+        "enabled": false,
+        "activation": 0.0
+      },
+      "nighttime": {
+        "enabled": true,
+        "activation": 0.75,
+        "influence_radius_m": 2.7
+      }
+    },
+    "window_schedule": {
+      "daytime": {
+        "enabled": true,
+        "activation": 0.5,
+        "influence_radius_m": 2.0
+      },
+      "nighttime": {
+        "enabled": false,
+        "activation": 0.0
+      }
+    },
+    "lighting_schedule": {
+      "daytime": {
+        "main_light_enabled": false,
+        "desk_light_enabled": false
+      },
+      "nighttime": {
+        "main_light_enabled": true,
+        "main_light_activation": 1.0,
+        "desk_light_enabled": true,
+        "desk_light_activation": 0.7
+      }
+    }
+  },
+  "weekly_simulation": [
+    {
+      "date": "2026-04-14",
+      "day": "tuesday",
+      "weather_reference": {
+        "outdoor_min_c": 17.6,
+        "outdoor_max_c": 27.0,
+        "notes": "milder day"
+      },
+      "occupancy_pattern": {
+        "wake_time": "07:25",
+        "sleep_time": "23:40",
+        "window_open_period": { "start": "08:10", "end": "17:20" },
+        "main_light_on_period": { "start": "19:05", "end": "23:20" },
+        "desk_light_on_period": { "start": "20:10", "end": "22:40", "activation": 0.65 },
+        "ac_on_period": { "start": "23:50", "end": "06:45", "activation": 0.72 }
+      },
+      "daily_snapshots": {
+        "morning_09_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.8, "humidity_pct": 59.5, "illuminance_lux": 138 }
+        },
+        "afternoon_15_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 26.1, "humidity_pct": 58.0, "illuminance_lux": 152 }
+        },
+        "night_22_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 1.0,
+          "desk_light_activation": 0.65,
+          "pillow_position": { "temperature_c": 25.6, "humidity_pct": 58.8, "illuminance_lux": 119 }
+        },
+        "sleep_02_00": {
+          "ac_activation": 0.72,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.9, "humidity_pct": 56.6, "illuminance_lux": 4 }
+        }
+      }
+    },
+    {
+      "date": "2026-04-15",
+      "day": "wednesday",
+      "weather_reference": {
+        "outdoor_min_c": 16.5,
+        "outdoor_max_c": 22.9,
+        "notes": "cooler day"
+      },
+      "occupancy_pattern": {
+        "wake_time": "06:50",
+        "sleep_time": "23:15",
+        "window_open_period": { "start": "07:40", "end": "16:50" },
+        "main_light_on_period": { "start": "18:55", "end": "23:00" },
+        "desk_light_on_period": { "start": "19:40", "end": "21:50", "activation": 0.55 },
+        "ac_on_period": { "start": "00:05", "end": "05:50", "activation": 0.60 }
+      },
+      "daily_snapshots": {
+        "morning_09_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 23.9, "humidity_pct": 60.4, "illuminance_lux": 132 }
+        },
+        "afternoon_15_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.8, "humidity_pct": 59.3, "illuminance_lux": 141 }
+        },
+        "night_22_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 1.0,
+          "desk_light_activation": 0.55,
+          "pillow_position": { "temperature_c": 24.5, "humidity_pct": 58.7, "illuminance_lux": 116 }
+        },
+        "sleep_02_00": {
+          "ac_activation": 0.60,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.3, "humidity_pct": 56.9, "illuminance_lux": 4 }
+        }
+      }
+    },
+    {
+      "date": "2026-04-16",
+      "day": "thursday",
+      "weather_reference": {
+        "outdoor_min_c": 16.7,
+        "outdoor_max_c": 21.6,
+        "notes": "coolest stretch"
+      },
+      "occupancy_pattern": {
+        "wake_time": "07:10",
+        "sleep_time": "00:10",
+        "window_open_period": { "start": "08:00", "end": "16:20" },
+        "main_light_on_period": { "start": "18:50", "end": "23:55" },
+        "desk_light_on_period": { "start": "20:20", "end": "23:15", "activation": 0.60 },
+        "ac_on_period": { "start": "01:00", "end": "04:30", "activation": 0.45 }
+      },
+      "daily_snapshots": {
+        "morning_09_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 23.7, "humidity_pct": 61.2, "illuminance_lux": 129 }
+        },
+        "afternoon_15_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.4, "humidity_pct": 60.1, "illuminance_lux": 136 }
+        },
+        "night_22_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 1.0,
+          "desk_light_activation": 0.60,
+          "pillow_position": { "temperature_c": 24.3, "humidity_pct": 59.0, "illuminance_lux": 118 }
+        },
+        "sleep_02_00": {
+          "ac_activation": 0.45,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.4, "humidity_pct": 57.8, "illuminance_lux": 4 }
+        }
+      }
+    },
+    {
+      "date": "2026-04-17",
+      "day": "friday",
+      "weather_reference": {
+        "outdoor_min_c": 17.7,
+        "outdoor_max_c": 23.0,
+        "notes": "slightly warmer"
+      },
+      "occupancy_pattern": {
+        "wake_time": "06:40",
+        "sleep_time": "23:55",
+        "window_open_period": { "start": "07:30", "end": "17:10" },
+        "main_light_on_period": { "start": "19:00", "end": "23:35" },
+        "desk_light_on_period": { "start": "19:50", "end": "22:20", "activation": 0.70 },
+        "ac_on_period": { "start": "00:20", "end": "06:10", "activation": 0.58 }
+      },
+      "daily_snapshots": {
+        "morning_09_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.2, "humidity_pct": 60.8, "illuminance_lux": 134 }
+        },
+        "afternoon_15_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 25.0, "humidity_pct": 59.6, "illuminance_lux": 142 }
+        },
+        "night_22_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 1.0,
+          "desk_light_activation": 0.70,
+          "pillow_position": { "temperature_c": 24.7, "humidity_pct": 58.6, "illuminance_lux": 120 }
+        },
+        "sleep_02_00": {
+          "ac_activation": 0.58,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.4, "humidity_pct": 57.2, "illuminance_lux": 4 }
+        }
+      }
+    },
+    {
+      "date": "2026-04-18",
+      "day": "saturday",
+      "weather_reference": {
+        "outdoor_min_c": 16.8,
+        "outdoor_max_c": 20.5,
+        "notes": "weekend and coolest day"
+      },
+      "occupancy_pattern": {
+        "wake_time": "09:35",
+        "sleep_time": "01:20",
+        "window_open_period": { "start": "10:20", "end": "17:40" },
+        "main_light_on_period": { "start": "19:10", "end": "00:40" },
+        "desk_light_on_period": { "start": "21:00", "end": "23:50", "activation": 0.45 },
+        "ac_on_period": { "start": "02:10", "end": "04:00", "activation": 0.25 }
+      },
+      "daily_snapshots": {
+        "morning_09_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 23.4, "humidity_pct": 61.6, "illuminance_lux": 92 }
+        },
+        "afternoon_15_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.0, "humidity_pct": 60.8, "illuminance_lux": 131 }
+        },
+        "night_22_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 1.0,
+          "desk_light_activation": 0.45,
+          "pillow_position": { "temperature_c": 24.1, "humidity_pct": 59.3, "illuminance_lux": 117 }
+        },
+        "sleep_02_00": {
+          "ac_activation": 0.25,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.6, "humidity_pct": 58.5, "illuminance_lux": 4 }
+        }
+      }
+    },
+    {
+      "date": "2026-04-19",
+      "day": "sunday",
+      "weather_reference": {
+        "outdoor_min_c": 16.7,
+        "outdoor_max_c": 23.8,
+        "notes": "lazy Sunday, warmer afternoon"
+      },
+      "occupancy_pattern": {
+        "wake_time": "10:10",
+        "sleep_time": "01:45",
+        "window_open_period": { "start": "10:50", "end": "18:10" },
+        "main_light_on_period": { "start": "19:15", "end": "01:05" },
+        "desk_light_on_period": { "start": "21:30", "end": "00:20", "activation": 0.40 },
+        "ac_on_period": { "start": "02:30", "end": "05:20", "activation": 0.35 }
+      },
+      "daily_snapshots": {
+        "morning_09_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 23.8, "humidity_pct": 61.0, "illuminance_lux": 95 }
+        },
+        "afternoon_15_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 25.2, "humidity_pct": 60.2, "illuminance_lux": 144 }
+        },
+        "night_22_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 1.0,
+          "desk_light_activation": 0.40,
+          "pillow_position": { "temperature_c": 24.8, "humidity_pct": 58.9, "illuminance_lux": 118 }
+        },
+        "sleep_02_00": {
+          "ac_activation": 0.35,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.6, "humidity_pct": 58.0, "illuminance_lux": 4 }
+        }
+      }
+    },
+    {
+      "date": "2026-04-20",
+      "day": "monday",
+      "weather_reference": {
+        "outdoor_min_c": 17.6,
+        "outdoor_max_c": 27.0,
+        "notes": "returned warmer"
+      },
+      "occupancy_pattern": {
+        "wake_time": "07:05",
+        "sleep_time": "23:25",
+        "window_open_period": { "start": "08:00", "end": "17:30" },
+        "main_light_on_period": { "start": "19:00", "end": "23:10" },
+        "desk_light_on_period": { "start": "20:00", "end": "22:30", "activation": 0.68 },
+        "ac_on_period": { "start": "23:40", "end": "06:35", "activation": 0.70 }
+      },
+      "daily_snapshots": {
+        "morning_09_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.9, "humidity_pct": 60.1, "illuminance_lux": 137 }
+        },
+        "afternoon_15_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.5,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 26.2, "humidity_pct": 58.7, "illuminance_lux": 151 }
+        },
+        "night_22_00": {
+          "ac_activation": 0.0,
+          "window_activation": 0.0,
+          "main_light_activation": 1.0,
+          "desk_light_activation": 0.68,
+          "pillow_position": { "temperature_c": 25.4, "humidity_pct": 58.3, "illuminance_lux": 119 }
+        },
+        "sleep_02_00": {
+          "ac_activation": 0.70,
+          "window_activation": 0.0,
+          "main_light_activation": 0.0,
+          "desk_light_activation": 0.0,
+          "pillow_position": { "temperature_c": 24.9, "humidity_pct": 56.8, "illuminance_lux": 4 }
+        }
+      }
+    }
+  ]
+,
+  "weekly_sensor_snapshots": [
+    {
+      "date": "2026-04-14",
+      "day": "tuesday",
+      "snapshots": {
+        "morning_09_00": [
+          { "name": "floor_sw", "temperature_c": 25.8, "humidity_pct": 61.2, "illuminance_lux": 230 },
+          { "name": "floor_se", "temperature_c": 26.3, "humidity_pct": 62.1, "illuminance_lux": 272 },
+          { "name": "floor_nw", "temperature_c": 24.7, "humidity_pct": 58.8, "illuminance_lux": 136 },
+          { "name": "floor_ne", "temperature_c": 25.0, "humidity_pct": 59.6, "illuminance_lux": 131 },
+          { "name": "ceiling_sw", "temperature_c": 26.0, "humidity_pct": 61.8, "illuminance_lux": 255 },
+          { "name": "ceiling_se", "temperature_c": 26.5, "humidity_pct": 62.5, "illuminance_lux": 298 },
+          { "name": "ceiling_nw", "temperature_c": 24.5, "humidity_pct": 57.9, "illuminance_lux": 162 },
+          { "name": "ceiling_ne", "temperature_c": 24.9, "humidity_pct": 58.7, "illuminance_lux": 156 }
+        ],
+        "afternoon_15_00": [
+          { "name": "floor_sw", "temperature_c": 26.6, "humidity_pct": 59.8, "illuminance_lux": 252 },
+          { "name": "floor_se", "temperature_c": 27.2, "humidity_pct": 60.4, "illuminance_lux": 302 },
+          { "name": "floor_nw", "temperature_c": 25.5, "humidity_pct": 57.1, "illuminance_lux": 150 },
+          { "name": "floor_ne", "temperature_c": 25.9, "humidity_pct": 57.8, "illuminance_lux": 145 },
+          { "name": "ceiling_sw", "temperature_c": 26.9, "humidity_pct": 60.2, "illuminance_lux": 281 },
+          { "name": "ceiling_se", "temperature_c": 27.5, "humidity_pct": 60.8, "illuminance_lux": 333 },
+          { "name": "ceiling_nw", "temperature_c": 25.4, "humidity_pct": 56.0, "illuminance_lux": 174 },
+          { "name": "ceiling_ne", "temperature_c": 25.8, "humidity_pct": 56.8, "illuminance_lux": 168 }
+        ],
+        "night_22_00": [
+          { "name": "floor_sw", "temperature_c": 25.7, "humidity_pct": 60.0, "illuminance_lux": 188 },
+          { "name": "floor_se", "temperature_c": 25.9, "humidity_pct": 60.6, "illuminance_lux": 179 },
+          { "name": "floor_nw", "temperature_c": 24.9, "humidity_pct": 58.0, "illuminance_lux": 124 },
+          { "name": "floor_ne", "temperature_c": 25.4, "humidity_pct": 58.7, "illuminance_lux": 116 },
+          { "name": "ceiling_sw", "temperature_c": 26.1, "humidity_pct": 60.5, "illuminance_lux": 312 },
+          { "name": "ceiling_se", "temperature_c": 26.2, "humidity_pct": 61.0, "illuminance_lux": 305 },
+          { "name": "ceiling_nw", "temperature_c": 25.2, "humidity_pct": 57.4, "illuminance_lux": 218 },
+          { "name": "ceiling_ne", "temperature_c": 25.5, "humidity_pct": 58.0, "illuminance_lux": 207 }
+        ],
+        "sleep_02_00": [
+          { "name": "floor_sw", "temperature_c": 25.2, "humidity_pct": 58.2, "illuminance_lux": 5 },
+          { "name": "floor_se", "temperature_c": 25.1, "humidity_pct": 58.6, "illuminance_lux": 4 },
+          { "name": "floor_nw", "temperature_c": 24.2, "humidity_pct": 55.7, "illuminance_lux": 4 },
+          { "name": "floor_ne", "temperature_c": 24.7, "humidity_pct": 56.4, "illuminance_lux": 4 },
+          { "name": "ceiling_sw", "temperature_c": 25.0, "humidity_pct": 57.8, "illuminance_lux": 5 },
+          { "name": "ceiling_se", "temperature_c": 24.9, "humidity_pct": 58.2, "illuminance_lux": 5 },
+          { "name": "ceiling_nw", "temperature_c": 23.8, "humidity_pct": 54.9, "illuminance_lux": 4 },
+          { "name": "ceiling_ne", "temperature_c": 24.3, "humidity_pct": 55.6, "illuminance_lux": 4 }
+        ]
+      }
+    },
+    {
+      "date": "2026-04-15",
+      "day": "wednesday",
+      "snapshots": {
+        "morning_09_00": [
+          { "name": "floor_sw", "temperature_c": 24.9, "humidity_pct": 62.0, "illuminance_lux": 222 },
+          { "name": "floor_se", "temperature_c": 25.2, "humidity_pct": 62.7, "illuminance_lux": 262 },
+          { "name": "floor_nw", "temperature_c": 24.0, "humidity_pct": 59.9, "illuminance_lux": 130 },
+          { "name": "floor_ne", "temperature_c": 24.3, "humidity_pct": 60.5, "illuminance_lux": 125 },
+          { "name": "ceiling_sw", "temperature_c": 25.0, "humidity_pct": 62.3, "illuminance_lux": 247 },
+          { "name": "ceiling_se", "temperature_c": 25.4, "humidity_pct": 62.9, "illuminance_lux": 288 },
+          { "name": "ceiling_nw", "temperature_c": 23.7, "humidity_pct": 58.8, "illuminance_lux": 156 },
+          { "name": "ceiling_ne", "temperature_c": 24.1, "humidity_pct": 59.4, "illuminance_lux": 151 }
+        ],
+        "afternoon_15_00": [
+          { "name": "floor_sw", "temperature_c": 25.5, "humidity_pct": 61.0, "illuminance_lux": 236 },
+          { "name": "floor_se", "temperature_c": 25.9, "humidity_pct": 61.5, "illuminance_lux": 277 },
+          { "name": "floor_nw", "temperature_c": 24.6, "humidity_pct": 58.4, "illuminance_lux": 139 },
+          { "name": "floor_ne", "temperature_c": 24.9, "humidity_pct": 59.0, "illuminance_lux": 134 },
+          { "name": "ceiling_sw", "temperature_c": 25.7, "humidity_pct": 61.2, "illuminance_lux": 262 },
+          { "name": "ceiling_se", "temperature_c": 26.1, "humidity_pct": 61.7, "illuminance_lux": 303 },
+          { "name": "ceiling_nw", "temperature_c": 24.3, "humidity_pct": 57.4, "illuminance_lux": 163 },
+          { "name": "ceiling_ne", "temperature_c": 24.7, "humidity_pct": 58.0, "illuminance_lux": 158 }
+        ],
+        "night_22_00": [
+          { "name": "floor_sw", "temperature_c": 24.8, "humidity_pct": 59.7, "illuminance_lux": 186 },
+          { "name": "floor_se", "temperature_c": 24.9, "humidity_pct": 60.1, "illuminance_lux": 177 },
+          { "name": "floor_nw", "temperature_c": 24.3, "humidity_pct": 58.0, "illuminance_lux": 122 },
+          { "name": "floor_ne", "temperature_c": 24.5, "humidity_pct": 58.5, "illuminance_lux": 115 },
+          { "name": "ceiling_sw", "temperature_c": 25.1, "humidity_pct": 59.9, "illuminance_lux": 310 },
+          { "name": "ceiling_se", "temperature_c": 25.2, "humidity_pct": 60.3, "illuminance_lux": 302 },
+          { "name": "ceiling_nw", "temperature_c": 24.6, "humidity_pct": 57.0, "illuminance_lux": 215 },
+          { "name": "ceiling_ne", "temperature_c": 24.8, "humidity_pct": 57.5, "illuminance_lux": 205 }
+        ],
+        "sleep_02_00": [
+          { "name": "floor_sw", "temperature_c": 24.6, "humidity_pct": 58.1, "illuminance_lux": 5 },
+          { "name": "floor_se", "temperature_c": 24.5, "humidity_pct": 58.5, "illuminance_lux": 4 },
+          { "name": "floor_nw", "temperature_c": 23.9, "humidity_pct": 55.9, "illuminance_lux": 4 },
+          { "name": "floor_ne", "temperature_c": 24.2, "humidity_pct": 56.4, "illuminance_lux": 4 },
+          { "name": "ceiling_sw", "temperature_c": 24.4, "humidity_pct": 57.7, "illuminance_lux": 5 },
+          { "name": "ceiling_se", "temperature_c": 24.3, "humidity_pct": 58.0, "illuminance_lux": 5 },
+          { "name": "ceiling_nw", "temperature_c": 23.5, "humidity_pct": 55.0, "illuminance_lux": 4 },
+          { "name": "ceiling_ne", "temperature_c": 23.8, "humidity_pct": 55.5, "illuminance_lux": 4 }
+        ]
+      }
+    },
+    {
+      "date": "2026-04-16",
+      "day": "thursday",
+      "snapshots": {
+        "morning_09_00": [
+          { "name": "floor_sw", "temperature_c": 24.6, "humidity_pct": 62.5, "illuminance_lux": 218 },
+          { "name": "floor_se", "temperature_c": 24.9, "humidity_pct": 63.1, "illuminance_lux": 257 },
+          { "name": "floor_nw", "temperature_c": 23.8, "humidity_pct": 60.6, "illuminance_lux": 127 },
+          { "name": "floor_ne", "temperature_c": 24.0, "humidity_pct": 61.0, "illuminance_lux": 122 },
+          { "name": "ceiling_sw", "temperature_c": 24.7, "humidity_pct": 62.8, "illuminance_lux": 242 },
+          { "name": "ceiling_se", "temperature_c": 25.0, "humidity_pct": 63.3, "illuminance_lux": 282 },
+          { "name": "ceiling_nw", "temperature_c": 23.6, "humidity_pct": 59.4, "illuminance_lux": 153 },
+          { "name": "ceiling_ne", "temperature_c": 23.9, "humidity_pct": 59.9, "illuminance_lux": 148 }
+        ],
+        "afternoon_15_00": [
+          { "name": "floor_sw", "temperature_c": 25.1, "humidity_pct": 61.6, "illuminance_lux": 229 },
+          { "name": "floor_se", "temperature_c": 25.4, "humidity_pct": 62.0, "illuminance_lux": 268 },
+          { "name": "floor_nw", "temperature_c": 24.3, "humidity_pct": 59.3, "illuminance_lux": 135 },
+          { "name": "floor_ne", "temperature_c": 24.5, "humidity_pct": 59.8, "illuminance_lux": 130 },
+          { "name": "ceiling_sw", "temperature_c": 25.3, "humidity_pct": 61.7, "illuminance_lux": 253 },
+          { "name": "ceiling_se", "temperature_c": 25.6, "humidity_pct": 62.1, "illuminance_lux": 292 },
+          { "name": "ceiling_nw", "temperature_c": 24.1, "humidity_pct": 58.3, "illuminance_lux": 159 },
+          { "name": "ceiling_ne", "temperature_c": 24.4, "humidity_pct": 58.8, "illuminance_lux": 154 }
+        ],
+        "night_22_00": [
+          { "name": "floor_sw", "temperature_c": 24.5, "humidity_pct": 60.2, "illuminance_lux": 187 },
+          { "name": "floor_se", "temperature_c": 24.6, "humidity_pct": 60.6, "illuminance_lux": 178 },
+          { "name": "floor_nw", "temperature_c": 24.1, "humidity_pct": 58.6, "illuminance_lux": 123 },
+          { "name": "floor_ne", "temperature_c": 24.3, "humidity_pct": 59.0, "illuminance_lux": 116 },
+          { "name": "ceiling_sw", "temperature_c": 24.8, "humidity_pct": 60.4, "illuminance_lux": 311 },
+          { "name": "ceiling_se", "temperature_c": 24.9, "humidity_pct": 60.8, "illuminance_lux": 303 },
+          { "name": "ceiling_nw", "temperature_c": 24.4, "humidity_pct": 57.7, "illuminance_lux": 216 },
+          { "name": "ceiling_ne", "temperature_c": 24.6, "humidity_pct": 58.1, "illuminance_lux": 206 }
+        ],
+        "sleep_02_00": [
+          { "name": "floor_sw", "temperature_c": 24.7, "humidity_pct": 58.8, "illuminance_lux": 5 },
+          { "name": "floor_se", "temperature_c": 24.6, "humidity_pct": 59.2, "illuminance_lux": 4 },
+          { "name": "floor_nw", "temperature_c": 24.1, "humidity_pct": 56.9, "illuminance_lux": 4 },
+          { "name": "floor_ne", "temperature_c": 24.3, "humidity_pct": 57.3, "illuminance_lux": 4 },
+          { "name": "ceiling_sw", "temperature_c": 24.5, "humidity_pct": 58.4, "illuminance_lux": 5 },
+          { "name": "ceiling_se", "temperature_c": 24.4, "humidity_pct": 58.8, "illuminance_lux": 5 },
+          { "name": "ceiling_nw", "temperature_c": 23.8, "humidity_pct": 56.0, "illuminance_lux": 4 },
+          { "name": "ceiling_ne", "temperature_c": 24.0, "humidity_pct": 56.4, "illuminance_lux": 4 }
+        ]
+      }
+    },
+    {
+      "date": "2026-04-17",
+      "day": "friday",
+      "snapshots": {
+        "morning_09_00": [
+          { "name": "floor_sw", "temperature_c": 25.0, "humidity_pct": 62.1, "illuminance_lux": 224 },
+          { "name": "floor_se", "temperature_c": 25.4, "humidity_pct": 62.6, "illuminance_lux": 264 },
+          { "name": "floor_nw", "temperature_c": 24.2, "humidity_pct": 59.9, "illuminance_lux": 131 },
+          { "name": "floor_ne", "temperature_c": 24.5, "humidity_pct": 60.4, "illuminance_lux": 126 },
+          { "name": "ceiling_sw", "temperature_c": 25.2, "humidity_pct": 62.3, "illuminance_lux": 249 },
+          { "name": "ceiling_se", "temperature_c": 25.6, "humidity_pct": 62.8, "illuminance_lux": 290 },
+          { "name": "ceiling_nw", "temperature_c": 24.0, "humidity_pct": 58.8, "illuminance_lux": 157 },
+          { "name": "ceiling_ne", "temperature_c": 24.3, "humidity_pct": 59.2, "illuminance_lux": 152 }
+        ],
+        "afternoon_15_00": [
+          { "name": "floor_sw", "temperature_c": 25.7, "humidity_pct": 61.1, "illuminance_lux": 238 },
+          { "name": "floor_se", "temperature_c": 26.1, "humidity_pct": 61.6, "illuminance_lux": 280 },
+          { "name": "floor_nw", "temperature_c": 24.8, "humidity_pct": 58.6, "illuminance_lux": 140 },
+          { "name": "floor_ne", "temperature_c": 25.1, "humidity_pct": 59.1, "illuminance_lux": 135 },
+          { "name": "ceiling_sw", "temperature_c": 26.0, "humidity_pct": 61.3, "illuminance_lux": 265 },
+          { "name": "ceiling_se", "temperature_c": 26.3, "humidity_pct": 61.7, "illuminance_lux": 307 },
+          { "name": "ceiling_nw", "temperature_c": 24.6, "humidity_pct": 57.5, "illuminance_lux": 165 },
+          { "name": "ceiling_ne", "temperature_c": 24.9, "humidity_pct": 58.0, "illuminance_lux": 160 }
+        ],
+        "night_22_00": [
+          { "name": "floor_sw", "temperature_c": 24.9, "humidity_pct": 59.8, "illuminance_lux": 189 },
+          { "name": "floor_se", "temperature_c": 25.0, "humidity_pct": 60.2, "illuminance_lux": 180 },
+          { "name": "floor_nw", "temperature_c": 24.4, "humidity_pct": 57.9, "illuminance_lux": 124 },
+          { "name": "floor_ne", "temperature_c": 24.6, "humidity_pct": 58.4, "illuminance_lux": 117 },
+          { "name": "ceiling_sw", "temperature_c": 25.2, "humidity_pct": 60.0, "illuminance_lux": 313 },
+          { "name": "ceiling_se", "temperature_c": 25.3, "humidity_pct": 60.4, "illuminance_lux": 305 },
+          { "name": "ceiling_nw", "temperature_c": 24.7, "humidity_pct": 57.1, "illuminance_lux": 217 },
+          { "name": "ceiling_ne", "temperature_c": 24.9, "humidity_pct": 57.6, "illuminance_lux": 208 }
+        ],
+        "sleep_02_00": [
+          { "name": "floor_sw", "temperature_c": 24.7, "humidity_pct": 58.5, "illuminance_lux": 5 },
+          { "name": "floor_se", "temperature_c": 24.6, "humidity_pct": 58.8, "illuminance_lux": 4 },
+          { "name": "floor_nw", "temperature_c": 24.0, "humidity_pct": 56.3, "illuminance_lux": 4 },
+          { "name": "floor_ne", "temperature_c": 24.3, "humidity_pct": 56.7, "illuminance_lux": 4 },
+          { "name": "ceiling_sw", "temperature_c": 24.5, "humidity_pct": 58.0, "illuminance_lux": 5 },
+          { "name": "ceiling_se", "temperature_c": 24.4, "humidity_pct": 58.4, "illuminance_lux": 5 },
+          { "name": "ceiling_nw", "temperature_c": 23.7, "humidity_pct": 55.3, "illuminance_lux": 4 },
+          { "name": "ceiling_ne", "temperature_c": 24.0, "humidity_pct": 55.8, "illuminance_lux": 4 }
+        ]
+      }
+    },
+    {
+      "date": "2026-04-18",
+      "day": "saturday",
+      "snapshots": {
+        "morning_09_00": [
+          { "name": "floor_sw", "temperature_c": 24.1, "humidity_pct": 62.4, "illuminance_lux": 128 },
+          { "name": "floor_se", "temperature_c": 24.2, "humidity_pct": 62.8, "illuminance_lux": 136 },
+          { "name": "floor_nw", "temperature_c": 23.5, "humidity_pct": 60.7, "illuminance_lux": 90 },
+          { "name": "floor_ne", "temperature_c": 23.7, "humidity_pct": 61.0, "illuminance_lux": 88 },
+          { "name": "ceiling_sw", "temperature_c": 24.2, "humidity_pct": 62.6, "illuminance_lux": 135 },
+          { "name": "ceiling_se", "temperature_c": 24.3, "humidity_pct": 63.0, "illuminance_lux": 144 },
+          { "name": "ceiling_nw", "temperature_c": 23.3, "humidity_pct": 59.8, "illuminance_lux": 101 },
+          { "name": "ceiling_ne", "temperature_c": 23.5, "humidity_pct": 60.1, "illuminance_lux": 99 }
+        ],
+        "afternoon_15_00": [
+          { "name": "floor_sw", "temperature_c": 24.7, "humidity_pct": 61.7, "illuminance_lux": 222 },
+          { "name": "floor_se", "temperature_c": 25.0, "humidity_pct": 62.0, "illuminance_lux": 260 },
+          { "name": "floor_nw", "temperature_c": 23.9, "humidity_pct": 60.1, "illuminance_lux": 128 },
+          { "name": "floor_ne", "temperature_c": 24.1, "humidity_pct": 60.4, "illuminance_lux": 123 },
+          { "name": "ceiling_sw", "temperature_c": 24.8, "humidity_pct": 61.9, "illuminance_lux": 245 },
+          { "name": "ceiling_se", "temperature_c": 25.1, "humidity_pct": 62.2, "illuminance_lux": 283 },
+          { "name": "ceiling_nw", "temperature_c": 23.7, "humidity_pct": 59.1, "illuminance_lux": 152 },
+          { "name": "ceiling_ne", "temperature_c": 23.9, "humidity_pct": 59.4, "illuminance_lux": 147 }
+        ],
+        "night_22_00": [
+          { "name": "floor_sw", "temperature_c": 24.4, "humidity_pct": 60.5, "illuminance_lux": 186 },
+          { "name": "floor_se", "temperature_c": 24.5, "humidity_pct": 60.9, "illuminance_lux": 177 },
+          { "name": "floor_nw", "temperature_c": 23.9, "humidity_pct": 58.9, "illuminance_lux": 122 },
+          { "name": "floor_ne", "temperature_c": 24.1, "humidity_pct": 59.2, "illuminance_lux": 116 },
+          { "name": "ceiling_sw", "temperature_c": 24.6, "humidity_pct": 60.7, "illuminance_lux": 309 },
+          { "name": "ceiling_se", "temperature_c": 24.7, "humidity_pct": 61.1, "illuminance_lux": 301 },
+          { "name": "ceiling_nw", "temperature_c": 24.2, "humidity_pct": 58.1, "illuminance_lux": 214 },
+          { "name": "ceiling_ne", "temperature_c": 24.4, "humidity_pct": 58.5, "illuminance_lux": 205 }
+        ],
+        "sleep_02_00": [
+          { "name": "floor_sw", "temperature_c": 24.7, "humidity_pct": 59.2, "illuminance_lux": 5 },
+          { "name": "floor_se", "temperature_c": 24.7, "humidity_pct": 59.4, "illuminance_lux": 4 },
+          { "name": "floor_nw", "temperature_c": 24.4, "humidity_pct": 57.8, "illuminance_lux": 4 },
+          { "name": "floor_ne", "temperature_c": 24.5, "humidity_pct": 58.1, "illuminance_lux": 4 },
+          { "name": "ceiling_sw", "temperature_c": 24.6, "humidity_pct": 58.9, "illuminance_lux": 5 },
+          { "name": "ceiling_se", "temperature_c": 24.6, "humidity_pct": 59.1, "illuminance_lux": 5 },
+          { "name": "ceiling_nw", "temperature_c": 24.1, "humidity_pct": 57.0, "illuminance_lux": 4 },
+          { "name": "ceiling_ne", "temperature_c": 24.2, "humidity_pct": 57.3, "illuminance_lux": 4 }
+        ]
+      }
+    },
+    {
+      "date": "2026-04-19",
+      "day": "sunday",
+      "snapshots": {
+        "morning_09_00": [
+          { "name": "floor_sw", "temperature_c": 24.3, "humidity_pct": 62.0, "illuminance_lux": 131 },
+          { "name": "floor_se", "temperature_c": 24.5, "humidity_pct": 62.4, "illuminance_lux": 140 },
+          { "name": "floor_nw", "temperature_c": 23.7, "humidity_pct": 60.2, "illuminance_lux": 93 },
+          { "name": "floor_ne", "temperature_c": 23.9, "humidity_pct": 60.5, "illuminance_lux": 91 },
+          { "name": "ceiling_sw", "temperature_c": 24.4, "humidity_pct": 62.2, "illuminance_lux": 139 },
+          { "name": "ceiling_se", "temperature_c": 24.6, "humidity_pct": 62.6, "illuminance_lux": 148 },
+          { "name": "ceiling_nw", "temperature_c": 23.5, "humidity_pct": 59.4, "illuminance_lux": 103 },
+          { "name": "ceiling_ne", "temperature_c": 23.7, "humidity_pct": 59.7, "illuminance_lux": 101 }
+        ],
+        "afternoon_15_00": [
+          { "name": "floor_sw", "temperature_c": 25.6, "humidity_pct": 61.0, "illuminance_lux": 240 },
+          { "name": "floor_se", "temperature_c": 26.0, "humidity_pct": 61.4, "illuminance_lux": 282 },
+          { "name": "floor_nw", "temperature_c": 24.8, "humidity_pct": 59.1, "illuminance_lux": 139 },
+          { "name": "floor_ne", "temperature_c": 25.1, "humidity_pct": 59.5, "illuminance_lux": 134 },
+          { "name": "ceiling_sw", "temperature_c": 25.8, "humidity_pct": 61.1, "illuminance_lux": 267 },
+          { "name": "ceiling_se", "temperature_c": 26.2, "humidity_pct": 61.5, "illuminance_lux": 310 },
+          { "name": "ceiling_nw", "temperature_c": 24.6, "humidity_pct": 58.1, "illuminance_lux": 164 },
+          { "name": "ceiling_ne", "temperature_c": 24.9, "humidity_pct": 58.5, "illuminance_lux": 159 }
+        ],
+        "night_22_00": [
+          { "name": "floor_sw", "temperature_c": 25.0, "humidity_pct": 60.1, "illuminance_lux": 188 },
+          { "name": "floor_se", "temperature_c": 25.1, "humidity_pct": 60.5, "illuminance_lux": 179 },
+          { "name": "floor_nw", "temperature_c": 24.5, "humidity_pct": 58.3, "illuminance_lux": 123 },
+          { "name": "floor_ne", "temperature_c": 24.7, "humidity_pct": 58.7, "illuminance_lux": 117 },
+          { "name": "ceiling_sw", "temperature_c": 25.3, "humidity_pct": 60.3, "illuminance_lux": 312 },
+          { "name": "ceiling_se", "temperature_c": 25.4, "humidity_pct": 60.7, "illuminance_lux": 304 },
+          { "name": "ceiling_nw", "temperature_c": 24.8, "humidity_pct": 57.4, "illuminance_lux": 216 },
+          { "name": "ceiling_ne", "temperature_c": 25.0, "humidity_pct": 57.8, "illuminance_lux": 207 }
+        ],
+        "sleep_02_00": [
+          { "name": "floor_sw", "temperature_c": 24.8, "humidity_pct": 58.8, "illuminance_lux": 5 },
+          { "name": "floor_se", "temperature_c": 24.8, "humidity_pct": 59.1, "illuminance_lux": 4 },
+          { "name": "floor_nw", "temperature_c": 24.3, "humidity_pct": 57.2, "illuminance_lux": 4 },
+          { "name": "floor_ne", "temperature_c": 24.5, "humidity_pct": 57.5, "illuminance_lux": 4 },
+          { "name": "ceiling_sw", "temperature_c": 24.7, "humidity_pct": 58.4, "illuminance_lux": 5 },
+          { "name": "ceiling_se", "temperature_c": 24.7, "humidity_pct": 58.7, "illuminance_lux": 5 },
+          { "name": "ceiling_nw", "temperature_c": 24.1, "humidity_pct": 56.5, "illuminance_lux": 4 },
+          { "name": "ceiling_ne", "temperature_c": 24.3, "humidity_pct": 56.8, "illuminance_lux": 4 }
+        ]
+      }
+    },
+    {
+      "date": "2026-04-20",
+      "day": "monday",
+      "snapshots": {
+        "morning_09_00": [
+          { "name": "floor_sw", "temperature_c": 25.8, "humidity_pct": 61.5, "illuminance_lux": 229 },
+          { "name": "floor_se", "temperature_c": 26.2, "humidity_pct": 62.0, "illuminance_lux": 270 },
+          { "name": "floor_nw", "temperature_c": 24.8, "humidity_pct": 59.2, "illuminance_lux": 135 },
+          { "name": "floor_ne", "temperature_c": 25.0, "humidity_pct": 59.7, "illuminance_lux": 130 },
+          { "name": "ceiling_sw", "temperature_c": 26.0, "humidity_pct": 61.8, "illuminance_lux": 254 },
+          { "name": "ceiling_se", "temperature_c": 26.4, "humidity_pct": 62.3, "illuminance_lux": 296 },
+          { "name": "ceiling_nw", "temperature_c": 24.6, "humidity_pct": 58.3, "illuminance_lux": 161 },
+          { "name": "ceiling_ne", "temperature_c": 24.9, "humidity_pct": 58.8, "illuminance_lux": 156 }
+        ],
+        "afternoon_15_00": [
+          { "name": "floor_sw", "temperature_c": 26.7, "humidity_pct": 60.0, "illuminance_lux": 251 },
+          { "name": "floor_se", "temperature_c": 27.2, "humidity_pct": 60.5, "illuminance_lux": 301 },
+          { "name": "floor_nw", "temperature_c": 25.6, "humidity_pct": 57.9, "illuminance_lux": 149 },
+          { "name": "floor_ne", "temperature_c": 25.9, "humidity_pct": 58.4, "illuminance_lux": 144 },
+          { "name": "ceiling_sw", "temperature_c": 27.0, "humidity_pct": 60.4, "illuminance_lux": 280 },
+          { "name": "ceiling_se", "temperature_c": 27.5, "humidity_pct": 60.9, "illuminance_lux": 332 },
+          { "name": "ceiling_nw", "temperature_c": 25.4, "humidity_pct": 56.8, "illuminance_lux": 173 },
+          { "name": "ceiling_ne", "temperature_c": 25.8, "humidity_pct": 57.2, "illuminance_lux": 168 }
+        ],
+        "night_22_00": [
+          { "name": "floor_sw", "temperature_c": 25.5, "humidity_pct": 59.9, "illuminance_lux": 188 },
+          { "name": "floor_se", "temperature_c": 25.7, "humidity_pct": 60.4, "illuminance_lux": 179 },
+          { "name": "floor_nw", "temperature_c": 24.8, "humidity_pct": 58.0, "illuminance_lux": 124 },
+          { "name": "floor_ne", "temperature_c": 25.2, "humidity_pct": 58.5, "illuminance_lux": 116 },
+          { "name": "ceiling_sw", "temperature_c": 25.9, "humidity_pct": 60.3, "illuminance_lux": 312 },
+          { "name": "ceiling_se", "temperature_c": 26.0, "humidity_pct": 60.7, "illuminance_lux": 305 },
+          { "name": "ceiling_nw", "temperature_c": 25.1, "humidity_pct": 57.2, "illuminance_lux": 217 },
+          { "name": "ceiling_ne", "temperature_c": 25.4, "humidity_pct": 57.7, "illuminance_lux": 207 }
+        ],
+        "sleep_02_00": [
+          { "name": "floor_sw", "temperature_c": 25.2, "humidity_pct": 58.3, "illuminance_lux": 5 },
+          { "name": "floor_se", "temperature_c": 25.1, "humidity_pct": 58.7, "illuminance_lux": 4 },
+          { "name": "floor_nw", "temperature_c": 24.3, "humidity_pct": 55.9, "illuminance_lux": 4 },
+          { "name": "floor_ne", "temperature_c": 24.7, "humidity_pct": 56.4, "illuminance_lux": 4 },
+          { "name": "ceiling_sw", "temperature_c": 25.0, "humidity_pct": 58.0, "illuminance_lux": 5 },
+          { "name": "ceiling_se", "temperature_c": 24.9, "humidity_pct": 58.4, "illuminance_lux": 5 },
+          { "name": "ceiling_nw", "temperature_c": 23.9, "humidity_pct": 55.1, "illuminance_lux": 4 },
+          { "name": "ceiling_ne", "temperature_c": 24.3, "humidity_pct": 55.6, "illuminance_lux": 4 }
+        ]
+      }
+    }
+  ]
+}
+

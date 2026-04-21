@@ -1,0 +1,134 @@
+{
+  "schema_version": "room-design-v1",
+  "room": {
+    "name": "custom_room",
+    "description": "single rectangular room; replace dimensions and baseline values before use",
+    "width_m": 6.0,
+    "length_m": 4.0,
+    "height_m": 3.0,
+    "base_temperature_c": 29.0,
+    "base_humidity_pct": 67.0,
+    "base_illuminance_lux": 90.0
+  },
+  "grid_resolution": {
+    "nx": 16,
+    "ny": 12,
+    "nz": 6
+  },
+  "coordinate_system": {
+    "unit": "m",
+    "origin": "floor southwest corner",
+    "x_axis": "room width direction",
+    "y_axis": "room length direction",
+    "z_axis": "height from floor"
+  },
+  "environment": {
+    "outdoor_temperature_c": 33.0,
+    "outdoor_humidity_pct": 74.0,
+    "sunlight_illuminance_lux": 32000.0,
+    "daylight_factor": 0.95
+  },
+  "sensors": [
+    { "name": "floor_sw", "position": { "x": 0.0, "y": 0.0, "z": 0.0 } },
+    { "name": "floor_se", "position": { "x": 6.0, "y": 0.0, "z": 0.0 } },
+    { "name": "floor_nw", "position": { "x": 0.0, "y": 4.0, "z": 0.0 } },
+    { "name": "floor_ne", "position": { "x": 6.0, "y": 4.0, "z": 0.0 } },
+    { "name": "ceiling_sw", "position": { "x": 0.0, "y": 0.0, "z": 3.0 } },
+    { "name": "ceiling_se", "position": { "x": 6.0, "y": 0.0, "z": 3.0 } },
+    { "name": "ceiling_nw", "position": { "x": 0.0, "y": 4.0, "z": 3.0 } },
+    { "name": "ceiling_ne", "position": { "x": 6.0, "y": 4.0, "z": 3.0 } }
+  ],
+  "zones": [
+    {
+      "name": "window_zone",
+      "min_corner": { "x": 0.0, "y": 0.8, "z": 0.0 },
+      "max_corner": { "x": 1.8, "y": 3.2, "z": 2.2 }
+    },
+    {
+      "name": "center_zone",
+      "min_corner": { "x": 2.0, "y": 1.0, "z": 0.0 },
+      "max_corner": { "x": 4.2, "y": 3.0, "z": 2.2 }
+    },
+    {
+      "name": "door_side_zone",
+      "min_corner": { "x": 4.4, "y": 0.4, "z": 0.0 },
+      "max_corner": { "x": 6.0, "y": 3.6, "z": 2.2 }
+    }
+  ],
+  "devices": [
+    {
+      "name": "ac_main",
+      "kind": "ac",
+      "position": { "x": 5.4, "y": 2.0, "z": 2.75 },
+      "orientation": { "x": -1.0, "y": 0.0, "z": -0.25 },
+      "influence_radius_m": 3.2,
+      "power": 1.0,
+      "activation": 0.0,
+      "response_time_minutes": 12.0,
+      "metadata": {
+        "surface_width_m": 1.35,
+        "surface_height_m": 0.32,
+        "ac_mode": "cool",
+        "target_temperature_c": 24.0
+      }
+    },
+    {
+      "name": "window_main",
+      "kind": "window",
+      "position": { "x": 0.0, "y": 2.0, "z": 1.4 },
+      "orientation": { "x": 1.0, "y": 0.0, "z": 0.0 },
+      "influence_radius_m": 2.6,
+      "power": 1.0,
+      "activation": 0.0,
+      "response_time_minutes": 2.0,
+      "metadata": {
+        "surface_width_m": 1.55,
+        "surface_height_m": 1.25,
+        "opening_ratio": 0.0
+      }
+    },
+    {
+      "name": "light_main",
+      "kind": "light",
+      "position": { "x": 3.0, "y": 2.0, "z": 2.85 },
+      "orientation": { "x": 0.0, "y": 0.0, "z": -1.0 },
+      "influence_radius_m": 2.4,
+      "power": 1.0,
+      "activation": 0.0,
+      "response_time_minutes": 0.5,
+      "metadata": {
+        "illuminance_gain_lux": 1050.0,
+        "heat_gain_c": 0.8
+      }
+    }
+  ],
+  "furniture": [
+    {
+      "name": "example_table",
+      "kind": "table",
+      "min_corner": { "x": 2.2, "y": 1.55, "z": 0.0 },
+      "max_corner": { "x": 3.85, "y": 2.75, "z": 0.82 },
+      "activation": 0.0,
+      "metadata": {
+        "label": "Example Table",
+        "block_strength": 0.2,
+        "light_block": 0.18,
+        "ac_block": 0.14,
+        "window_block": 0.12
+      }
+    }
+  ],
+  "comfort_target": {
+    "temperature_c": 25.0,
+    "temperature_tolerance_c": 1.0,
+    "humidity_pct": 58.0,
+    "humidity_tolerance_pct": 6.0,
+    "illuminance_lux": 500.0,
+    "illuminance_tolerance_lux": 120.0
+  },
+  "metadata": {
+    "author": "",
+    "created_date": "",
+    "notes": "All coordinates must stay inside room bounds."
+  }
+}

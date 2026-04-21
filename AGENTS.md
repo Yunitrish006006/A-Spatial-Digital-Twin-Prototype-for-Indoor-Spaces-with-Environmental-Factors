@@ -13,6 +13,20 @@ Future edits to the IEEE manuscript should first optimize for the primary target
 
 This venue note records the current submission strategy only. It does not relax the synchronization rules below, and it does not imply that the IEEE manuscript is already submission-ready.
 
+## Room Design Data Requirement
+
+Any new room design, room scenario, or room-specific 3D dataset must follow `docs/requirements/room_design_format_requirements_zh.md`.
+
+At minimum, the design must provide:
+
+- A complete room dimension block with `width_m`, `length_m`, and `height_m`.
+- A consistent 3D coordinate system using meters and the origin at the floor southwest corner.
+- Sensor, zone, device, and furniture coordinates in `{x, y, z}` format.
+- Bounding boxes for zones and furniture using `min_corner` and `max_corner`.
+- Validation that every point and bounding box stays inside the room dimensions.
+
+Use `docs/templates/room_design_template.json` for new designs and `docs/templates/room_design_standard_room_example.json` as the current reference room.
+
 ## Mandatory Synchronization Scope
 
 Whenever the thesis topic, method, experiment setup, metrics, architecture, figures, chapter structure, or conclusions change, the assistant must update all of the following together:

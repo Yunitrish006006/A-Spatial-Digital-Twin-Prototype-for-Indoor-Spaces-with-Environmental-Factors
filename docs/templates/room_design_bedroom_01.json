@@ -1,0 +1,199 @@
+{
+  "schema_version": "room-design-v1",
+  "room": {
+    "name": "bedroom_01",
+    "description": "single bedroom with southeast-facing window, wall-mounted AC, desk, bed, and storage cabinets",
+    "width_m": 4.0,
+    "length_m": 4.6,
+    "height_m": 3.2,
+    "base_temperature_c": 26.0,
+    "base_humidity_pct": 62.0,
+    "base_illuminance_lux": 380.0
+  },
+  "grid_resolution": {
+    "nx": 30,
+    "ny": 30,
+    "nz": 15
+  },
+  "coordinate_system": {
+    "unit": "m",
+    "origin": "floor southwest corner",
+    "x_axis": "room width direction, west to east",
+    "y_axis": "room length direction, south to north",
+    "z_axis": "height from floor"
+  },
+  "environment": {
+    "outdoor_temperature_c": 31.0,
+    "outdoor_humidity_pct": 78.0,
+    "sunlight_illuminance_lux": 35000.0,
+    "daylight_factor": 0.05,
+    "window_facing_azimuth_deg": 115.0,
+    "window_facing_label": "southeast"
+  },
+  "sensors": [
+    { "name": "floor_sw", "position": { "x": 0.0, "y": 0.0, "z": 0.0 } },
+    { "name": "floor_se", "position": { "x": 4.0, "y": 0.0, "z": 0.0 } },
+    { "name": "floor_nw", "position": { "x": 0.0, "y": 4.6, "z": 0.0 } },
+    { "name": "floor_ne", "position": { "x": 4.0, "y": 4.6, "z": 0.0 } },
+    { "name": "ceiling_sw", "position": { "x": 0.0, "y": 0.0, "z": 3.2 } },
+    { "name": "ceiling_se", "position": { "x": 4.0, "y": 0.0, "z": 3.2 } },
+    { "name": "ceiling_nw", "position": { "x": 0.0, "y": 4.6, "z": 3.2 } },
+    { "name": "ceiling_ne", "position": { "x": 4.0, "y": 4.6, "z": 3.2 } }
+  ],
+  "zones": [
+    {
+      "name": "bed_area",
+      "min_corner": { "x": 2.4, "y": 2.6, "z": 0.0 },
+      "max_corner": { "x": 4.0, "y": 4.6, "z": 1.0 }
+    },
+    {
+      "name": "desk_area",
+      "min_corner": { "x": 0.0, "y": 1.6, "z": 0.0 },
+      "max_corner": { "x": 1.4, "y": 2.3, "z": 0.75 }
+    },
+    {
+      "name": "walking_area",
+      "min_corner": { "x": 1.2, "y": 0.8, "z": 0.0 },
+      "max_corner": { "x": 3.0, "y": 3.0, "z": 2.0 }
+    },
+    {
+      "name": "window_zone",
+      "min_corner": { "x": 0.8, "y": 0.0, "z": 0.8 },
+      "max_corner": { "x": 3.2, "y": 0.1, "z": 2.2 }
+    },
+    {
+      "name": "door_zone",
+      "min_corner": { "x": 0.0, "y": 3.8, "z": 0.0 },
+      "max_corner": { "x": 0.8, "y": 4.6, "z": 2.1 }
+    }
+  ],
+  "devices": [
+    {
+      "name": "wall_ac",
+      "kind": "ac",
+      "position": { "x": 1.3, "y": 4.5, "z": 2.6 },
+      "orientation": { "x": 0.0, "y": -1.0, "z": -0.3 },
+      "influence_radius_m": 2.7,
+      "power": 1.0,
+      "activation": 0.75,
+      "response_time_minutes": 12.0,
+      "metadata": {
+        "ac_mode": "cool",
+        "target_temperature_c": 25.0,
+        "adjustable": true,
+        "activation_range": [0.2, 1.0],
+        "influence_radius_range_m": [1.5, 3.5]
+      }
+    },
+    {
+      "name": "south_window",
+      "kind": "window",
+      "position": { "x": 2.0, "y": 0.0, "z": 1.5 },
+      "orientation": { "x": 0.0, "y": 1.0, "z": 0.0 },
+      "influence_radius_m": 2.0,
+      "power": 1.0,
+      "activation": 0.5,
+      "response_time_minutes": 2.0,
+      "metadata": {
+        "facing_azimuth_deg": 115.0,
+        "facing_label": "southeast",
+        "max_open_ratio": 0.5,
+        "adjustable": true,
+        "activation_range": [0.0, 0.5]
+      }
+    },
+    {
+      "name": "main_ceiling_light",
+      "kind": "light",
+      "position": { "x": 2.0, "y": 2.3, "z": 3.0 },
+      "orientation": { "x": 0.0, "y": 0.0, "z": -1.0 },
+      "influence_radius_m": 3.0,
+      "power": 1.0,
+      "activation": 1.0,
+      "response_time_minutes": 0.5,
+      "metadata": {
+        "adjustable": false
+      }
+    },
+    {
+      "name": "desk_lamp",
+      "kind": "light",
+      "position": { "x": 0.4, "y": 2.0, "z": 0.75 },
+      "orientation": { "x": 0.5, "y": 0.0, "z": -1.0 },
+      "influence_radius_m": 1.0,
+      "power": 1.0,
+      "activation": 0.7,
+      "response_time_minutes": 0.5,
+      "metadata": {
+        "adjustable": true,
+        "activation_range": [0.0, 1.0]
+      }
+    }
+  ],
+  "furniture": [
+    {
+      "name": "top_center_cabinet",
+      "kind": "cabinet",
+      "min_corner": { "x": 0.8, "y": 3.9, "z": 0.0 },
+      "max_corner": { "x": 2.3, "y": 4.4, "z": 1.2 },
+      "activation": 0.0,
+      "metadata": {
+        "block_strength": 0.7
+      }
+    },
+    {
+      "name": "desk",
+      "kind": "desk",
+      "min_corner": { "x": 0.0, "y": 1.6, "z": 0.0 },
+      "max_corner": { "x": 1.4, "y": 2.3, "z": 0.75 },
+      "activation": 0.0,
+      "metadata": {
+        "block_strength": 0.4
+      }
+    },
+    {
+      "name": "bed",
+      "kind": "bed",
+      "min_corner": { "x": 2.4, "y": 2.6, "z": 0.0 },
+      "max_corner": { "x": 4.0, "y": 4.6, "z": 0.5 },
+      "activation": 0.0,
+      "metadata": {
+        "block_strength": 0.3
+      }
+    },
+    {
+      "name": "left_bottom_cabinet",
+      "kind": "cabinet",
+      "min_corner": { "x": 0.0, "y": 0.0, "z": 0.0 },
+      "max_corner": { "x": 0.9, "y": 0.5, "z": 1.2 },
+      "activation": 0.0,
+      "metadata": {
+        "block_strength": 0.8
+      }
+    },
+    {
+      "name": "right_bottom_cabinet",
+      "kind": "cabinet",
+      "min_corner": { "x": 2.8, "y": 0.0, "z": 0.0 },
+      "max_corner": { "x": 4.0, "y": 0.6, "z": 1.85 },
+      "activation": 0.0,
+      "metadata": {
+        "block_strength": 0.9
+      }
+    }
+  ],
+  "comfort_target": {
+    "location_name": "pillow_position",
+    "position": { "x": 3.2, "y": 4.2, "z": 0.7 },
+    "temperature_c": 25.0,
+    "temperature_tolerance_c": 1.0,
+    "humidity_pct": 52.0,
+    "humidity_tolerance_pct": 6.0,
+    "illuminance_lux": 120.0,
+    "illuminance_tolerance_lux": 60.0
+  },
+  "metadata": {
+    "source": "user_provided_room_design",
+    "notes": "Normalized from pasted bedroom_01 design. Furniture block_strength values are stored in metadata for compatibility with the project Furniture model."
+  }
+}
