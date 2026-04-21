@@ -51,11 +51,6 @@ G.~Gokhale, B.~Claessens, and C.~Develder, ``Physics informed neural networks
   for control oriented thermal modeling of buildings,'' \emph{Applied Energy},
   vol. 314, p. 118852, 2022.
 
-\bibitem{shepard1968two}
-D.~Shepard, ``A two-dimensional interpolation function for irregularly-spaced
-  data,'' in \emph{Proceedings of the 1968 ACM National Conference}, 1968, pp.
-  517--524.
-
 \bibitem{teshome2004zonalreview}
 E.~J. Teshome and F.~Haghighat, ``Zonal models for indoor air flow - a critical
   review,'' \emph{International Journal of Ventilation}, vol.~3, no.~2, pp.
@@ -82,6 +77,11 @@ Y.~L. Chen and J.~Wen, ``Application of zonal model on indoor air sensor
   network design,'' in \emph{Sensors and Smart Structures Technologies for
   Civil, Mechanical, and Aerospace Systems 2007}, ser. Proceedings of SPIE,
   vol. 6529, 2007, p. 652911.
+
+\bibitem{shepard1968two}
+D.~Shepard, ``A two-dimensional interpolation function for irregularly-spaced
+  data,'' in \emph{Proceedings of the 1968 ACM National Conference}, 1968, pp.
+  517--524.
 
 \bibitem{mcp2025}
 {Model Context Protocol}, ``Model context protocol documentation,''

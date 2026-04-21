@@ -23,12 +23,16 @@ OUTLINE_PATH = ROOT / "docs" / "thesis" / "presentation_outline_zh.md"
 LONG_PRESENTATION_PATH = PAPERS / "thesis_presentation_zh_30min.pptx"
 LONG_OUTLINE_PATH = ROOT / "docs" / "thesis" / "presentation_outline_zh_30min.md"
 
-TITLE_COLOR = RGBColor(27, 42, 65)
-TEXT_COLOR = RGBColor(40, 48, 56)
-ACCENT_COLOR = RGBColor(17, 104, 145)
-MUTED_COLOR = RGBColor(100, 108, 117)
-CARD_FILL = RGBColor(245, 247, 250)
-CARD_LINE = RGBColor(210, 217, 226)
+BACKGROUND_COLOR = RGBColor(238, 242, 247)
+HEADER_FILL = RGBColor(23, 37, 61)
+HEADER_TEXT = RGBColor(255, 255, 255)
+HEADER_SUBTITLE = RGBColor(211, 225, 241)
+TITLE_COLOR = HEADER_TEXT
+TEXT_COLOR = RGBColor(25, 32, 40)
+ACCENT_COLOR = RGBColor(0, 83, 130)
+MUTED_COLOR = RGBColor(70, 80, 92)
+CARD_FILL = RGBColor(255, 255, 255)
+CARD_LINE = RGBColor(124, 143, 165)
 
 
 def read_json(path: Path) -> dict:
@@ -64,8 +68,24 @@ def init_presentation() -> Presentation:
     return prs
 
 
+def style_slide(slide) -> None:
+    background = slide.background.fill
+    background.solid()
+    background.fore_color.rgb = BACKGROUND_COLOR
+
+
+def new_slide(prs: Presentation):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    style_slide(slide)
+    return slide
+
+
 def add_title(slide, text: str, subtitle: str = "") -> None:
-    title_box = slide.shapes.add_textbox(Inches(0.6), Inches(0.35), Inches(12.0), Inches(0.9))
+    header = slide.shapes.add_shape(1, Inches(0), Inches(0), Inches(13.333), Inches(1.16))
+    header.fill.solid()
+    header.fill.fore_color.rgb = HEADER_FILL
+    header.line.color.rgb = HEADER_FILL
+    title_box = slide.shapes.add_textbox(Inches(0.58), Inches(0.17), Inches(12.2), Inches(0.62))
     frame = title_box.text_frame
     frame.clear()
     frame.word_wrap = True
@@ -73,11 +93,11 @@ def add_title(slide, text: str, subtitle: str = "") -> None:
     run = p.add_run()
     run.text = text
     run.font.name = "PingFang TC"
-    run.font.size = Pt(24)
+    run.font.size = Pt(22 if len(text) > 24 else 24)
     run.font.bold = True
     run.font.color.rgb = TITLE_COLOR
     if subtitle:
-        sub_box = slide.shapes.add_textbox(Inches(0.65), Inches(1.0), Inches(12.0), Inches(0.4))
+        sub_box = slide.shapes.add_textbox(Inches(0.6), Inches(0.75), Inches(12.1), Inches(0.34))
         sub_frame = sub_box.text_frame
         sub_frame.clear()
         sub_p = sub_frame.paragraphs[0]
@@ -85,7 +105,7 @@ def add_title(slide, text: str, subtitle: str = "") -> None:
         sub_run.text = subtitle
         sub_run.font.name = "PingFang TC"
         sub_run.font.size = Pt(11)
-        sub_run.font.color.rgb = MUTED_COLOR
+        sub_run.font.color.rgb = HEADER_SUBTITLE
 
 
 def add_footer(slide, page: int) -> None:
@@ -157,10 +177,12 @@ def build_presentation() -> Presentation:
     validation_summary = read_json(DATA / "validation_summary.json")
     submission_summary = read_json(DATA / "submission_readiness_summary.json")
     window_summary = read_json(DATA / "window_matrix_summary.json")
+    bedroom_summary = read_json(DATA / "bedroom_01_weekly" / "weekly_simulation_summary.json")
     avg_mae = average_field_mae(validation_summary)
+    bedroom_aggregate = bedroom_summary["aggregate"]
 
     # Slide 1
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(
         slide,
         "單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型",
@@ -174,7 +196,7 @@ def build_presentation() -> Presentation:
         3.8,
         [
             "研究生：林昀佑",
-            "指導教授：易昶霈",
+            "指導教授：易昶霈教授、沈慧宇副教授",
             "系所：國立彰化師範大學資訊工程學系碩士班",
             "主題：以 8 顆角落感測器重建單房間溫度、濕度、照度場",
         ],
@@ -184,7 +206,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 1)
 
     # Slide 2
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "研究問題與動機")
     add_card(
         slide,
@@ -228,7 +250,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 2)
 
     # Slide 3
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "系統架構")
     add_picture(slide, ARCHITECTURE / "整體分層架構.svg", 0.8, 1.4, 6.0, 5.2)
     add_bullets(
@@ -248,7 +270,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 3)
 
     # Slide 4
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "房間拓樸、感測器與目標區域")
     add_picture(slide, ARCHITECTURE / "房間感測器與目標區域配置.svg", 0.8, 1.4, 6.0, 5.3)
     add_card(
@@ -269,7 +291,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 4)
 
     # Slide 5
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "數學模型")
     add_card(
         slide,
@@ -303,7 +325,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 5)
 
     # Slide 6
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "感測器校正與影響學習")
     add_picture(slide, ARCHITECTURE / "感測器校正與學習流程.svg", 0.7, 1.35, 6.3, 5.25)
     add_bullets(
@@ -323,7 +345,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 6)
 
     # Slide 7
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "系統實作與介面")
     add_card(
         slide,
@@ -369,7 +391,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 7)
 
     # Slide 8
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "驗證流程與比較原則")
     add_picture(slide, ARCHITECTURE / "驗證與實驗流程圖.svg", 0.8, 1.35, 5.8, 5.1)
     add_bullets(
@@ -384,7 +406,9 @@ def build_presentation() -> Presentation:
             "比較 nominal、corrected estimate 與 IDW baseline",
             "新增 no-reflection / no-calibration / no-trilinear 消融",
             "hybrid residual 加入 no-Fourier 與 LOO cross-validation",
-            "輸出 MAE、zone averages、learned impacts 與推薦排序",
+            f"真實 bedroom_01 快照：{bedroom_summary['snapshot_count']} 筆，檢查 pillow 位置",
+            "推薦排序屬於校正模型反事實模擬",
+            "推薦有效性需用 before/after 介入實驗量測 actual improvement",
             f"窗戶矩陣總共 {window_summary.get('count', 0)} 組情境",
         ],
         level0_size=17,
@@ -392,7 +416,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 8)
 
     # Slide 9
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "主要結果：場重建與 baseline 比較")
     add_card(
         slide,
@@ -424,7 +448,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 9)
 
     # Slide 10
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "Hybrid Residual Neural Network 結果")
     default_hybrid = submission_summary["default_holdout_hybrid"]
     no_fourier = submission_summary["no_fourier_holdout_hybrid"]
@@ -453,14 +477,14 @@ def build_presentation() -> Presentation:
         1.5,
         [
             "hybrid residual 是第二層修正器，不取代主模型",
-            "目前仍是 synthetic dense-field benchmark，真實房間資料列為後續工作",
+            "另以 bedroom_01 真實快照檢查 sparse calibration 對 pillow 點的改善",
         ],
         level0_size=17,
     )
     add_footer(slide, 10)
 
     # Slide 11
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "研究貢獻與資料策略")
     add_bullets(
         slide,
@@ -473,6 +497,7 @@ def build_presentation() -> Presentation:
             "以 bulk + local field、power calibration 與 trilinear correction 建立可解釋估測流程",
             "以 least-squares 學習非連網裝置影響，並用 hybrid residual 做第二層修正",
             "完整 3D 場比較以 canonical synthetic benchmark 為主",
+            f"真實臥室快照校正後 pillow MAE: {bedroom_aggregate['estimated_pillow_mae']}",
             "公開資料集則採 task-aligned benchmark：CU-BEMS / SML2010 / ASHRAE 各比相容子任務",
         ],
         level0_size=20,
@@ -480,7 +505,7 @@ def build_presentation() -> Presentation:
     add_footer(slide, 11)
 
     # Slide 12
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "結論與未來工作")
     add_card(
         slide,
@@ -492,7 +517,8 @@ def build_presentation() -> Presentation:
         [
             "有限角落感測器下仍可用分層式模型重建單房間三因子分布",
             "非連網裝置可透過環境變化進行影響學習與校正",
-            "模型已能輸出區域估計、控制推薦與 AI 可查詢工具",
+            "bedroom_01 7 天快照顯示校正後可改善未參與 fitting 的 pillow 點",
+            "模型已能輸出區域估計、反事實推薦排序與 AI 可查詢工具",
         ],
     )
     add_card(
@@ -503,10 +529,11 @@ def build_presentation() -> Presentation:
         4.8,
         "未來工作",
         [
-            "接入真實 ESP32 感測資料",
+            "擴大 ESP32 長期真實資料",
             "擴充 CO2 / PM2.5 等因子",
             "改進 multi-zone / partition 模型",
             "建立 task-aligned 公開資料集 benchmark",
+            "執行推薦動作 before/after 介入驗證",
             "研究遠端 MCP 與閉環控制",
         ],
     )
@@ -519,11 +546,13 @@ def build_presentation_30min() -> Presentation:
     validation_summary = read_json(DATA / "validation_summary.json")
     submission_summary = read_json(DATA / "submission_readiness_summary.json")
     window_summary = read_json(DATA / "window_matrix_summary.json")
+    bedroom_summary = read_json(DATA / "bedroom_01_weekly" / "weekly_simulation_summary.json")
     avg_mae = average_field_mae(validation_summary)
     scenarios = scenario_map(validation_summary)
+    bedroom_aggregate = bedroom_summary["aggregate"]
 
     # 1 cover
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(
         slide,
         "單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型",
@@ -537,7 +566,7 @@ def build_presentation_30min() -> Presentation:
         4.0,
         [
             "研究生：林昀佑",
-            "指導教授：易昶霈",
+            "指導教授：易昶霈教授、沈慧宇副教授",
             "國立彰化師範大學資訊工程學系碩士班",
             "主題：單房間三因子數位孿生、非連網裝置影響學習、工具化服務介面",
         ],
@@ -547,7 +576,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 1)
 
     # 2 roadmap
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "報告流程")
     add_bullets(
         slide,
@@ -568,7 +597,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 2)
 
     # 3 background
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "研究背景與問題")
     add_card(
         slide,
@@ -612,7 +641,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 3)
 
     # 4 questions and contributions
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "研究問題與貢獻")
     add_card(
         slide,
@@ -647,7 +676,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 4)
 
     # 5 literature gap
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "文獻定位、研究缺口與比較原則")
     add_card(
         slide,
@@ -695,7 +724,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 5)
 
     # 6 architecture
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "整體系統架構")
     add_picture(slide, ARCHITECTURE / "整體分層架構.svg", 0.8, 1.35, 6.2, 5.3)
     add_bullets(
@@ -715,7 +744,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 6)
 
     # 7 execution flow
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "主要執行資料流")
     add_picture(slide, ARCHITECTURE / "主要執行資料流.svg", 0.8, 1.35, 5.9, 5.25)
     add_bullets(
@@ -735,7 +764,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 7)
 
     # 8 room topology
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "房間拓樸、感測器與目標區域")
     add_picture(slide, ARCHITECTURE / "房間感測器與目標區域配置.svg", 0.8, 1.35, 6.0, 5.3)
     add_card(
@@ -756,7 +785,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 8)
 
     # 9 devices and furniture
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "模組化裝置與家具阻擋")
     add_picture(slide, ARCHITECTURE / "可模組化裝置與家具架構.svg", 0.8, 1.35, 5.9, 5.1)
     add_bullets(
@@ -776,7 +805,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 9)
 
     # 10 math model
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "數學模型：bulk + local field")
     add_card(
         slide,
@@ -811,7 +840,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 10)
 
     # 11 calibration and learning
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "感測器校正與裝置影響學習")
     add_picture(slide, ARCHITECTURE / "感測器校正與學習流程.svg", 0.7, 1.3, 6.2, 5.3)
     add_card(
@@ -830,7 +859,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 11)
 
     # 12 implementation interfaces
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "系統實作與介面")
     add_card(
         slide,
@@ -875,7 +904,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 12)
 
     # 13 validation design
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "驗證設計")
     add_picture(slide, ARCHITECTURE / "驗證與實驗流程圖.svg", 0.75, 1.35, 6.0, 5.2)
     add_bullets(
@@ -888,15 +917,16 @@ def build_presentation_30min() -> Presentation:
             "標準情境共 8 組",
             f"窗戶矩陣共 {window_summary.get('count', 0)} 組",
             "比較 corrected estimate 與 IDW baseline",
+            f"真實 bedroom_01 快照共 {bedroom_summary['snapshot_count']} 筆",
             "公開資料集僅作 task-aligned benchmark，不直接當 full-field 基準",
-            "輸出 field MAE、sensor MAE、zone MAE、ranking、learned impacts",
+            "推薦排序為 counterfactual simulation；實際效果需 before/after intervention",
         ],
         level0_size=17,
     )
     add_footer(slide, 13)
 
     # 14 scenarios and time/window settings
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "情境設計與輸入模式")
     add_card(
         slide,
@@ -942,7 +972,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 14)
 
     # 15 quantitative results
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "主要量化結果")
     add_card(
         slide,
@@ -979,14 +1009,15 @@ def build_presentation_30min() -> Presentation:
         1.35,
         "範例推薦結果",
         [
-            f"idle → {scenarios['idle']['recommendations'][0]['name']} (improvement {scenarios['idle']['recommendations'][0]['improvement']})",
-            f"all_active → {scenarios['all_active']['recommendations'][0]['name']} (improvement {scenarios['all_active']['recommendations'][0]['improvement']})",
+            f"真實臥室 raw pillow MAE: {bedroom_aggregate['raw_pillow_mae']}",
+            f"校正後 pillow MAE: {bedroom_aggregate['estimated_pillow_mae']}",
+            "推薦動作以實測 penalty 下降作為後續驗證指標",
         ],
     )
     add_footer(slide, 15)
 
     # 16 qualitative visual results
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "3D 視覺化結果")
     add_picture(slide, FIGURES / "all_active_temperature_3d.svg", 0.65, 1.5, 4.0, 4.8)
     add_picture(slide, FIGURES / "window_only_illuminance_3d.svg", 4.68, 1.5, 4.0, 4.8)
@@ -994,7 +1025,7 @@ def build_presentation_30min() -> Presentation:
     add_footer(slide, 16)
 
     # 17 hybrid result
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "Hybrid Residual Neural Network 結果")
     default_hybrid = submission_summary["default_holdout_hybrid"]
     no_fourier = submission_summary["no_fourier_holdout_hybrid"]
@@ -1024,14 +1055,14 @@ def build_presentation_30min() -> Presentation:
         [
             "no-Fourier 對照顯示照度改善不是頻域處理造成",
             "LOO 降低單一 held-out split 過度樂觀的風險",
-            "真實房間長期部署仍是主要限制",
+            "真實臥室快照已驗證 calibration，推薦有效性仍需介入實驗",
         ],
         level0_size=16,
     )
     add_footer(slide, 17)
 
     # 18 conclusion and future
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = new_slide(prs)
     add_title(slide, "結論、限制與未來工作")
     add_card(
         slide,
@@ -1043,6 +1074,7 @@ def build_presentation_30min() -> Presentation:
         [
             "單房間三因子數位孿生原型已可運作",
             "可估場、可校正、可學習、可推薦",
+            "bedroom_01 快照顯示校正後 pillow 點 MAE 明顯下降",
             "資料比較需依任務層級切分",
             "MCP 與 Web 展示已完成",
         ],
@@ -1055,10 +1087,10 @@ def build_presentation_30min() -> Presentation:
         4.9,
         "限制",
         [
-            "目前仍以模擬驗證為主",
+            "已有小型真實臥室快照，但仍缺長期 dense field",
             "不是 CFD 等級模型",
             "公開資料集缺乏 full-field ground truth",
-            "濕度與家具阻擋仍屬簡化近似",
+            "推薦動作尚未完成真實介入式因果驗證",
         ],
     )
     add_card(
@@ -1069,10 +1101,11 @@ def build_presentation_30min() -> Presentation:
         4.9,
         "未來工作",
         [
-            "接入 ESP32 真實資料",
+            "擴大 ESP32 長期真實資料",
             "加入 CO2 / PM2.5",
             "發展 multi-zone / partition model",
             "把 CU-BEMS / SML2010 / ASHRAE 納入 task-aligned benchmark",
+            "執行推薦動作 before/after 介入驗證",
             "朝閉環控制與遠端 MCP 延伸",
         ],
     )
@@ -1082,18 +1115,18 @@ def build_presentation_30min() -> Presentation:
 
 def build_outline() -> str:
     slides = [
-        ("封面", ["題目、姓名、指導教授、研究定位"]),
+        ("封面", ["題目、姓名、雙指導教授、研究定位"]),
         ("研究問題與動機", ["非連網裝置無法直接回報狀態", "有限感測器下仍需估計全室環境", "早期純插值與 local-only 模型都不合理"]),
         ("系統架構", ["入口分成使用者互動層與 AI 工具呼叫層", "服務編排、主模型與 residual 修正的分工"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器", "三個主要區域與三個核心裝置"]),
         ("數學模型", ["bulk + local field", "trilinear correction", "裝置與家具模組化"]),
         ("感測器校正與影響學習", ["power calibration", "least-squares impact learning"]),
         ("系統實作與介面", ["MCP tools", "Gemma bridge", "Web demo"]),
-        ("驗證流程與比較原則", ["truth-adjusted simulation", "IDW baseline 比較", "synthetic ablation", "no-Fourier 與 LOO cross-validation", "48 組窗戶矩陣"]),
-        ("主要結果", ["平均 field MAE", "IDW / Base / LOO Hybrid 誤差比較", "3D 視覺化案例"]),
+        ("驗證流程與比較原則", ["truth-adjusted simulation", "IDW baseline 比較", "synthetic ablation", "no-Fourier 與 LOO cross-validation", "48 組窗戶矩陣", "bedroom_01 7 天真實快照", "推薦動作 before/after 介入驗證方法"]),
+        ("主要結果", ["平均 field MAE", "IDW / Base / LOO Hybrid 誤差比較", "真實臥室 pillow MAE 比較", "推薦排序目前為 counterfactual simulation", "3D 視覺化案例"]),
         ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO MAE", "train/test sample count", "研究定位不是黑盒替代"]),
-        ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + task-aligned public datasets"]),
-        ("結論與未來工作", ["真實資料、更多因子、multi-zone、task-aligned benchmark、閉環控制"]),
+        ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets"]),
+        ("結論與未來工作", ["長期真實資料、更多因子、multi-zone、task-aligned benchmark、推薦動作介入驗證、閉環控制"]),
     ]
     lines = ["# 論文報告投影片大綱", ""]
     for index, (title, bullets) in enumerate(slides, start=1):
@@ -1105,7 +1138,7 @@ def build_outline() -> str:
 
 def build_outline_30min() -> str:
     slides = [
-        ("封面", ["題目、姓名、指導教授、30 分鐘口試版"]),
+        ("封面", ["題目、姓名、雙指導教授、30 分鐘口試版"]),
         ("報告流程", ["背景、文獻、方法、實作、驗證、結論"]),
         ("研究背景與問題", ["非連網裝置造成空間影響但無法直接讀取", "有限感測器仍需估全室環境"]),
         ("研究問題與貢獻", ["RQ1-RQ4、主要技術貢獻、task-aligned benchmark 策略"]),
@@ -1117,12 +1150,12 @@ def build_outline_30min() -> str:
         ("數學模型", ["bulk + local field + correction", "早期純插值與 local-only 模型失敗後的調整"]),
         ("感測器校正與裝置影響學習", ["power calibration 與 least squares"]),
         ("系統實作與介面", ["MCP、Gemma/Ollama、Web Demo"]),
-        ("驗證設計", ["truth-adjusted simulation、IDW、synthetic ablation、window matrix", "no-Fourier 與 LOO cross-validation", "public datasets 僅作 task-aligned benchmark"]),
+        ("驗證設計", ["truth-adjusted simulation、IDW、synthetic ablation、window matrix", "bedroom_01 7 天真實快照與 pillow 位置比較", "推薦動作 before/after intervention protocol", "no-Fourier 與 LOO cross-validation", "public datasets 僅作 task-aligned benchmark"]),
         ("情境設計與輸入模式", ["8 組 scenario、48 組窗戶矩陣、direct input、timeline"]),
-        ("主要量化結果", ["平均 MAE、IDW/Base/LOO Hybrid 誤差圖與推薦示例"]),
+        ("主要量化結果", ["平均 MAE、IDW/Base/LOO Hybrid 誤差圖", "真實臥室 raw vs corrected pillow MAE", "推薦有效性以 actual comfort-penalty reduction 驗證"]),
         ("3D 視覺化結果", ["溫度與照度熱區案例"]),
-        ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO robustness checks", "train/test sample count 與 synthetic benchmark 限制"]),
-        ("結論、限制與未來工作", ["目前完成度、限制、task-aligned benchmark 與後續方向"]),
+        ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO robustness checks", "train/test sample count 與 synthetic benchmark 限制", "真實快照作為 sparse calibration 驗證"]),
+        ("結論、限制與未來工作", ["目前完成度、真實快照限制、推薦動作尚需介入驗證、task-aligned benchmark 與後續方向"]),
     ]
     lines = ["# 論文報告投影片大綱（30 分鐘版）", ""]
     for index, (title, bullets) in enumerate(slides, start=1):

@@ -1,7 +1,7 @@
 # 論文報告投影片大綱
 
 ## Slide 1: 封面
-- 題目、姓名、指導教授、研究定位
+- 題目、姓名、雙指導教授、研究定位
 
 ## Slide 2: 研究問題與動機
 - 非連網裝置無法直接回報狀態
@@ -36,10 +36,14 @@
 - synthetic ablation
 - no-Fourier 與 LOO cross-validation
 - 48 組窗戶矩陣
+- bedroom_01 7 天真實快照
+- 推薦動作 before/after 介入驗證方法
 
 ## Slide 9: 主要結果
 - 平均 field MAE
 - IDW / Base / LOO Hybrid 誤差比較
+- 真實臥室 pillow MAE 比較
+- 推薦排序目前為 counterfactual simulation
 - 3D 視覺化案例
 
 ## Slide 10: Hybrid Residual 結果
@@ -49,7 +53,7 @@
 
 ## Slide 11: 研究貢獻與資料策略
 - 三因子、有限感測器、非連網裝置、服務化
-- canonical synthetic benchmark + task-aligned public datasets
+- canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets
 
 ## Slide 12: 結論與未來工作
-- 真實資料、更多因子、multi-zone、task-aligned benchmark、閉環控制
+- 長期真實資料、更多因子、multi-zone、task-aligned benchmark、推薦動作介入驗證、閉環控制

@@ -73,7 +73,7 @@ def build_blocks() -> List[Block]:
         title("單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型", 1),
         paragraph("A Sparse-Sensing Spatial Digital Twin for Learning Environmental Impacts of Non-Networked Appliances in a Single Room", align="center"),
         paragraph("研究生：林昀佑", align="center"),
-        paragraph("指導教授：易昶霈", align="center"),
+        paragraph("指導教授：易昶霈 教授、沈慧宇 副教授", align="center"),
         paragraph("版本：論文初稿 v0.2", align="center"),
         paragraph("日期：2026 年 4 月 15 日", align="center"),
         page_break(),
@@ -87,11 +87,12 @@ def build_blocks() -> List[Block]:
         paragraph("委員："),
         paragraph("委員："),
         paragraph("指導教授：易昶霈 博士"),
+        paragraph("共同指導教授：沈慧宇 副教授"),
         paragraph("所長："),
         paragraph("中華民國 115 年 月"),
         page_break(),
         heading("誌謝", 1),
-        paragraph("本研究能夠完成，首先感謝指導教授易昶霈博士在研究方向、方法與寫作上的指導與支持，以及各位口試委員的指正與建議。感謝求學過程中幫助我的各位師長所提供的學習環境，也感謝家人的支持與包容。"),
+        paragraph("本研究能夠完成，首先感謝指導教授易昶霈教授與沈慧宇副教授在研究方向、方法與寫作上的指導與支持，以及各位口試委員的指正與建議。感謝求學過程中幫助我的各位師長所提供的學習環境，也感謝家人的支持與包容。"),
         paragraph("林昀佑 謹誌於"),
         paragraph("國立彰化師範大學資訊工程學系（所）"),
         paragraph("中華民國 115 年 4 月"),
@@ -104,7 +105,7 @@ def build_blocks() -> List[Block]:
             "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。研究過程中，本研究先後比較純插值、僅局部影響場與資料驅動修正等作法，最終採用 bulk + local field 作為主模型，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的作用。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差進行主動設備 power scale 校準與 trilinear residual correction，以修正背景場與設備影響函數之偏差。在此基礎上，本研究再加入 hybrid residual neural network 延伸模組，以小型多層感知器學習主模型的剩餘誤差，而不直接取代原本的可解釋結構。"
         ),
         paragraph(
-            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為補足 direct source + obstruction 對照度間接回填亮度的低估，本研究另在 illuminance 路徑加入 lightweight single-bounce diffuse reflection 近似，以地板、天花板、牆面與啟用中的家具表面作為次級反射面。為提升系統可存取性，本研究另提供本地服務介面，其中包含 MCP server 與 web demo，作為同一套模型能力的工具化存取層。評估方面，本研究以 8 組標準情境、48 組窗戶矩陣、IDW baseline 比較、synthetic ablation 與 hybrid residual leave-one-scenario-out 測試驗證方法可行性；其中 base model 在標準情境下之平均 MAE 分別為溫度 0.0474、濕度 0.1765 與照度 2.0835，明顯低於 IDW baseline 的 0.1723、0.4633 與 75.0516。加入 Fourier low-pass denoising 的 hybrid residual correction 在預設 6/2 held-out split 中可將 field MAE 降至溫度 0.0023、濕度 0.0041 與照度 0.1675；8-fold leave-one-scenario-out 平均則為 0.0017、0.0055 與 0.1581。"
+            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為補足 direct source + obstruction 對照度間接回填亮度的低估，本研究另在 illuminance 路徑加入 lightweight single-bounce diffuse reflection 近似，以地板、天花板、牆面與啟用中的家具表面作為次級反射面。為提升系統可存取性，本研究另提供本地服務介面，其中包含 MCP server 與 web demo，作為同一套模型能力的工具化存取層。評估方面，本研究以 8 組標準情境、48 組窗戶矩陣、IDW baseline 比較、synthetic ablation、hybrid residual leave-one-scenario-out 測試，以及 7 天真實臥室快照比較驗證方法可行性；其中 base model 在標準情境下之平均 MAE 分別為溫度 0.0474、濕度 0.1765 與照度 2.0835，明顯低於 IDW baseline 的 0.1723、0.4633 與 75.0516。加入 Fourier low-pass denoising 的 hybrid residual correction 在預設 6/2 held-out split 中可將 field MAE 降至溫度 0.0023、濕度 0.0041 與照度 0.1675；8-fold leave-one-scenario-out 平均則為 0.0017、0.0055 與 0.1581。真實臥室快照驗證中，校正後 pillow 位置 MAE 由 0.8967°C、4.1286% 與 358.6392 lux 降至 0.1676°C、0.3939% 與 21.3753 lux。推薦動作目前定位為基於校正模型的反事實模擬排序；若要驗證其實際因果改善效果，需進一步執行 before/after 介入實驗。"
         ),
         paragraph("關鍵字：空間數位孿生、稀疏感測、非連網家電、室內環境建模、溫度、濕度、照度、角落感測器。"),
         page_break(),
@@ -116,7 +117,7 @@ def build_blocks() -> List[Block]:
             "This thesis proposes a sparse-sensing spatial digital twin for a single room. The final design is a reduced-order bulk-plus-local field model with parameterized appliance influence functions, active-device power calibration, and trilinear residual correction from eight corner sensors. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, ranks candidate control actions according to target-zone comfort improvement, and extends the base estimator with an optional hybrid residual neural correction layer instead of replacing the base model with an end-to-end black-box predictor."
         ),
         paragraph(
-            "The prototype is implemented in Python and exposed through a local service layer, including an MCP interface and a rotatable web demo, enabling interactive scenario queries, point-level estimation, baseline comparison, appliance-impact learning, and a 48-case window simulation matrix across time of day, weather, and season. A lightweight one-bounce diffuse reflection approximation is further added to the illuminance path so that floors, walls, ceilings, and active furniture surfaces can contribute indirect fill light without requiring full optical rendering. Across the canonical scenarios, the base model achieves average MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance, compared with 0.1723, 0.4633, and 75.0516 for IDW. The hybrid residual layer with Fourier low-pass denoising on temperature and humidity residual traces further reduces default held-out field MAE to 0.0023, 0.0041, and 0.1675, while leave-one-scenario-out evaluation averages 0.0017, 0.0055, and 0.1581, respectively. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
+            "The prototype is implemented in Python and exposed through a local service layer, including an MCP interface and a rotatable web demo, enabling interactive scenario queries, point-level estimation, baseline comparison, appliance-impact learning, and a 48-case window simulation matrix across time of day, weather, and season. A lightweight one-bounce diffuse reflection approximation is further added to the illuminance path so that floors, walls, ceilings, and active furniture surfaces can contribute indirect fill light without requiring full optical rendering. Across the canonical scenarios, the base model achieves average MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance, compared with 0.1723, 0.4633, and 75.0516 for IDW. The hybrid residual layer with Fourier low-pass denoising on temperature and humidity residual traces further reduces default held-out field MAE to 0.0023, 0.0041, and 0.1675, while leave-one-scenario-out evaluation averages 0.0017, 0.0055, and 0.1581, respectively. A preliminary seven-day real-bedroom snapshot validation reduces pillow-point MAE from 0.8967, 4.1286, and 358.6392 to 0.1676, 0.3939, and 21.3753 for temperature, humidity, and illuminance. Action recommendations are treated as model-based counterfactual rankings; causal validation of recommendation efficacy requires a before/after intervention protocol. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
         ),
         paragraph("Keywords: spatial digital twin, sparse sensing, non-networked appliances, indoor environment modeling, temperature, humidity, illuminance, corner sensors."),
         page_break(),
@@ -165,9 +166,10 @@ def build_blocks() -> List[Block]:
         paragraph("  5.5 非連網裝置影響學習…… 14"),
         paragraph("  5.6 窗戶時段、天氣、季節矩陣與直接輸入…… 14"),
         paragraph("  5.7 Hybrid Residual Neural Network 結果…… 15"),
-        paragraph("  5.8 公開資料集 Task-Aligned Benchmark 結果…… 16"),
-        paragraph("  5.9 研究過程與實作挑戰…… 18"),
-        paragraph("  5.10 可旋轉 3D 展示…… 18"),
+        paragraph("  5.8 真實臥室快照驗證與推薦動作驗證方法…… 16"),
+        paragraph("  5.9 公開資料集 Task-Aligned Benchmark 結果…… 17"),
+        paragraph("  5.10 研究過程與實作挑戰…… 19"),
+        paragraph("  5.11 可旋轉 3D 展示…… 19"),
         paragraph("第六章 結論與未來工作…… 19"),
         paragraph("  6.1 結論…… 19"),
         paragraph("  6.2 研究限制…… 19"),
@@ -187,8 +189,10 @@ def build_blocks() -> List[Block]:
         paragraph("表 5-3 消融實驗平均 field MAE…… 14"),
         paragraph("表 5-4 Hybrid residual robustness checks…… 15"),
         paragraph("表 5-5 窗戶矩陣情境節選…… 15"),
-        paragraph("表 5-6 SML2010 Benchmark 結果…… 16"),
-        paragraph("表 5-7 CU-BEMS Benchmark 結果…… 17"),
+        paragraph("表 5-6 真實臥室快照 MAE 與分時舒適度…… 16"),
+        paragraph("表 5-7 推薦動作介入驗證指標…… 17"),
+        paragraph("表 5-7 SML2010 Benchmark 結果…… 17"),
+        paragraph("表 5-8 CU-BEMS Benchmark 結果…… 18"),
         page_break(),
         heading("圖目錄", 1),
         paragraph("圖 3-1 系統整體分層架構…… 7"),
@@ -200,9 +204,9 @@ def build_blocks() -> List[Block]:
         paragraph("圖 5-3 僅冷氣作用溫度場 3D 點雲（ac_only）…… 14"),
         paragraph("圖 5-4 僅燈具作用照度場 3D 點雲（light_only）…… 14"),
         paragraph("圖 5-5 IDW、Base 與 LOO Hybrid field MAE 比較…… 15"),
-        paragraph("圖 5-6 三裝置全開溫度場 3D 點雲（5.10 節）…… 18"),
+        paragraph("圖 5-6 三裝置全開溫度場 3D 點雲（5.11 節）…… 19"),
         paragraph("圖 5-7 僅開窗溫度場 3D 點雲（window_only）…… 18"),
-        paragraph("圖 5-8 僅燈具照度場 3D 點雲（light_only，5.10 節）…… 18"),
+        paragraph("圖 5-8 僅燈具照度場 3D 點雲（light_only，5.11 節）…… 19"),
         page_break(),
         raw_latex(r"\clearpage\pagenumbering{arabic}"),
         heading("第一章 緒論", 1),
@@ -231,7 +235,7 @@ def build_blocks() -> List[Block]:
             [
                 "RQ1：在只有 8 顆角落感測器的條件下，是否能建立單房間溫度、濕度與照度的空間估計模型？",
                 "RQ2：在家電或環境裝置沒有連網狀態回報的情況下，是否能從環境感測資料學習其對空間不同區域的影響？",
-                "RQ3：學習後的裝置影響模型，是否能依三因子偏差輸出候選控制動作排序，例如選擇開冷氣、開窗或開燈？",
+                "RQ3：學習後的裝置影響模型，是否能依三因子偏差輸出候選控制動作排序，例如選擇開冷氣、開窗或開燈，且推薦動作的實際可行性應如何透過介入式 before/after 實驗驗證？",
                 "RQ4：將數位孿生模型封裝為標準化工具介面後，是否能讓 AI client 查詢、模擬與使用控制推薦能力？",
             ]
         ),
@@ -243,7 +247,7 @@ def build_blocks() -> List[Block]:
                 "設備類型聚焦於冷氣、窗戶與照明。",
                 "模型為簡化動態模型，不追求 CFD 等級高精度流場。",
                 "濕度保留於模型中，但作為次核心變數處理。",
-                "控制功能只做候選動作排序，不做自動閉環控制。",
+                "控制功能只做候選動作排序，不做自動閉環控制；推薦動作的真實因果效果需透過後續介入實驗驗證。",
                 "MCP 部分定位為本地 stdio server 與 AI-agent-accessible interface，不宣稱提出新的 MCP protocol。",
             ]
         ),
@@ -325,6 +329,9 @@ def build_blocks() -> List[Block]:
         ),
         paragraph(
             "具體而言，本研究可採兩層 benchmark 設計。第一層是 canonical synthetic benchmark，直接使用本研究的 8 組標準情境與 48 組窗戶矩陣，讓主模型、IDW baseline、移除設備先驗的純資料驅動模型，以及 hybrid residual correction 在完全相同的輸入、感測器配置與 ground truth 下比較 field MAE、zone MAE、sensor MAE 與推薦改善分數。第二層是 public task-aligned benchmark，亦即把公開資料集拆成與本研究相容的子任務：CU-BEMS 可用於比較 AC/lighting 事件前後的 zone-level temperature、humidity、illuminance 響應；SML2010 可用於比較窗戶/日照相關的溫濕度照度時序響應；Denmark IEQ 與 ASHRAE Global Thermal Comfort Database II 則適合比較舒適度目標函數、偏差分數或分類準確率。"
+        ),
+        paragraph(
+            "除上述兩層 benchmark 外，推薦動作本身仍需要第三層介入式驗證。此層不再只比較模型估測誤差，而是要求研究者實際執行系統排序第一的動作，並量測介入前後目標位置或目標區域的 comfort penalty 是否下降。換言之，場估計驗證回答「模型是否看得準」，介入驗證則回答「模型建議的動作是否真的讓房間更接近舒適目標」。"
         ),
         table(
             ["benchmark 層級", "資料來源", "比較任務", "本研究模型模式", "建議指標"],
@@ -463,7 +470,7 @@ def build_blocks() -> List[Block]:
             "相較於以固定時間窗做積分或區間平均的平滑方式，Fourier low-pass denoising 更適合目前題目。兩者都能降低短時振盪，但時間窗積分本質上屬於時間域中的固定 box filter，若視窗太小則去噪不足，若視窗太大則容易同時模糊瞬態響應與局部轉折，甚至造成較明顯的 lag。相對地，Fourier 低通是直接在頻域中抑制高頻成分，再還原回時間域，因此可以在保留低頻主趨勢的同時，仍然取得對應目前時間點的 denoised residual endpoint。換言之，它不是把時間資訊丟掉，而是在保留時間位置的前提下降低高頻擾動。"
         ),
         paragraph(
-            "整體而言，本研究的訓練資料流程可概括為：原始感測與事件資料先經時間對齊與情境整併，再由主模型產生 physics estimate，最後依任務不同分流為 least-squares impact learning、bulk parameter calibration 或 hybrid residual neural training。此設計的優點在於，即使未來資料來源從模擬切換到真實 ESP32 量測，資料進入訓練流程的接口仍可保持一致。"
+            "整體而言，本研究的訓練資料流程可概括為：原始感測與事件資料先經時間對齊與情境整併，再由主模型產生 physics estimate，最後依任務不同分流為 least-squares impact learning、bulk parameter calibration 或 hybrid residual neural training。此設計的優點在於，即使資料來源從模擬擴大到真實房間快照或長期 ESP32 量測，資料進入訓練流程的接口仍可保持一致。"
         ),
         heading("3.8 Hybrid Residual Neural Network 延伸", 2),
         paragraph(
@@ -480,6 +487,12 @@ def build_blocks() -> List[Block]:
         heading("3.9 控制動作排序", 2),
         paragraph(
             "本研究不做閉環控制，而是對候選控制動作進行排序。系統針對每個候選動作模擬目標區域的三因子值，並依舒適度目標計算改善分數。若房間偏熱，冷氣動作通常獲得較高排序；若照度不足，照明動作通常獲得較高排序。"
+        ),
+        paragraph(
+            "具體而言，系統先以目前感測資料校正模型，取得目標區域目前三因子估計值並計算 baseline comfort penalty。接著，對每一個候選動作建立反事實情境：例如將冷氣 activation 調至 0.85、開窗至 0.7，或將主要照明調至 0.8，再重新模擬目標區域的溫度、濕度與照度。候選動作分數定義為 baseline penalty 減去動作後預測 penalty，因此分數愈高代表模型預期改善愈大。"
+        ),
+        paragraph(
+            "comfort penalty 對每個因子使用目標值與容許範圍計算：若預測值落在容許範圍內，該因子 penalty 為 0；若超出容許範圍，則以超出量除以容許範圍後乘上對應權重。此設計避免微小偏差被過度懲罰，也使不同量綱的溫度、濕度與照度可被加總。需要注意的是，這裡的推薦排序屬於 model-based counterfactual simulation，並不等同於已完成實際控制驗證。"
         ),
         page_break(),
         heading("第四章 系統實作與服務介面", 1),
@@ -528,6 +541,9 @@ def build_blocks() -> List[Block]:
         heading("5.1 標準情境設定", 2),
         paragraph(
             "本研究建立 8 組標準情境，包含無設備作用、僅冷氣、僅開窗、僅照明、冷氣與窗戶、窗戶與照明、冷氣與照明，以及三者同時作用。每組情境均輸出場重建誤差、區域平均值、感測器校正效果、IDW baseline 比較、非連網裝置影響學習與推薦排序。"
+        ),
+        paragraph(
+            "表 5-1 的最佳推薦表示在目前 comfort target 與模型估測下，哪一個候選動作具有最高預測改善量。此表用來檢查推薦模組是否能依情境輸出合理排序，但仍屬模擬與反事實評估；若要宣稱推薦動作在真實房間中有效，需依 5.8 節所述介入式驗證方法量測實際改善量。"
         ),
         image(
             "outputs/figures/architecture/驗證與實驗流程圖.svg",
@@ -667,11 +683,55 @@ def build_blocks() -> List[Block]:
             "圖 5-5 IDW、base model 與 LOO hybrid residual correction 的平均 field MAE 比較。圖中使用 log-scale y-axis，數值為 8 組標準情境平均。",
             asset_name="field_mae_comparison",
         ),
-        heading("5.8 公開資料集 Task-Aligned Benchmark 結果", 2),
+        heading("5.8 真實臥室快照驗證", 2),
+        paragraph(
+            "除 canonical synthetic benchmark 與 public task-aligned benchmark 外，本研究也將使用者提供的 bedroom_01 真實房間快照資料納入初步驗證。該房間尺寸為 4.0 m × 4.6 m × 3.2 m，包含壁掛式冷氣、東南向窗戶、主燈、桌燈、床、書桌與收納櫃。資料涵蓋 2026-04-14 至 2026-04-20 共 7 天，每天包含 09:00、15:00、22:00 與 02:00 四個快照，共 28 筆時間點。每筆快照提供 8 顆角落感測器的 temperature、humidity、illuminance 觀測、裝置 activation、外部邊界條件，以及 pillow 位置的參考觀測值。"
+        ),
+        paragraph(
+            "本節比較 raw reduced-order model 與套用 active-device power calibration + trilinear residual correction 後的估計結果。8 顆角落感測器觀測值用於校正，因此校正後 corner sensor MAE 為 0 是預期結果，代表模型與稀疏感測點一致，不能單獨解讀為 dense field validation。相對地，pillow 位置未參與校正，可作為獨立局部檢查點。結果顯示，pillow 位置的 MAE 由 raw model 的 temperature 0.8967°C、humidity 4.1286%、illuminance 358.6392 lux，下降至校正後的 0.1676°C、0.3939% 與 21.3753 lux，顯示同一套 sparse-sensor calibration 管線可實際吸收真實房間觀測並改善非感測點估計。"
+        ),
+        paragraph(
+            "另外，本研究在真實臥室資料中加入分時 comfort target。一般時段沿用 pillow 位置原始 comfort target；sleep_02_00 快照則將照度目標設為 0 lux，容許範圍為 5 lux，以避免將睡眠時合理的黑暗狀態誤判為不舒適。分時後 sleep segment 的平均 comfort penalty 為 0.0000，而最差 penalty 轉移至 morning segment，表示舒適度評分已能反映不同使用情境。"
+        ),
+        table(
+            ["比較項目", "Temp. MAE", "Hum. MAE", "Illum. MAE", "Comfort penalty"],
+            [
+                ["Raw pillow all", "0.8967", "4.1286", "358.6392", "--"],
+                ["Corrected pillow all", "0.1676", "0.3939", "21.3753", "0.1052"],
+                ["Corrected morning", "0.2372", "0.3695", "8.6247", "0.2371"],
+                ["Corrected afternoon", "0.1358", "0.4890", "11.2235", "0.0812"],
+                ["Corrected night", "0.0913", "0.2193", "65.6203", "0.1024"],
+                ["Corrected sleep", "0.2060", "0.4979", "0.0326", "0.0000"],
+            ],
+        ),
+        paragraph(
+            "此資料仍屬小型初步驗證：它提供真實 sparse observations 與單一 pillow reference point，但沒有完整 dense spatial ground truth。因此，本研究仍以 synthetic benchmark 報告 full-field MAE，以真實臥室快照驗證 calibration pipeline 的實用性，兩者分別回答不同層級的問題。"
+        ),
+        heading("5.8.1 推薦動作實際介入驗證方法", 3),
+        paragraph(
+            "上述 bedroom_01 一週資料能驗證的是模型是否可利用真實稀疏感測資料改善非感測點估計；它尚未直接驗證推薦動作是否具有因果改善效果。為此，本研究將推薦動作驗證定義為介入式 before/after 實驗：先量測介入前 8 顆角落感測器與目標參考點，使用校正後模型輸出候選動作排序，實際執行排名第一的動作，等待固定 settling interval（建議先採 18 至 30 分鐘），再量測介入後狀態。若介入後實測 comfort penalty 下降，且改善方向與模型預測一致，才可視為該次推薦有效。"
+        ),
+        paragraph(
+            "此驗證方法建議至少記錄四類數值：第一，介入前實測 penalty；第二，系統對每個候選動作預測的 penalty 與 predicted improvement；第三，介入後實測 penalty；第四，predicted improvement 與 actual improvement 的差距。若同一初始條件可測試多個候選動作，則可進一步比較預測排名與實測排名的一致性。"
+        ),
+        table(
+            ["指標", "定義", "用途"],
+            [
+                ["actual improvement", "penalty_before - measured_penalty_after", "判斷實際是否變舒適"],
+                ["success rate", "actual improvement > 0 的比例", "衡量推薦成功率"],
+                ["prediction error", "abs(predicted improvement - actual improvement)", "衡量預測改善量準確度"],
+                ["direction accuracy", "三因子改善方向是否一致", "檢查建議方向是否合理"],
+                ["top-1 regret", "實測最佳動作與推薦第一名的改善差距", "衡量排序代價"],
+            ],
+        ),
+        paragraph(
+            "因此，本研究目前可主張的範圍是：校正後模型能在真實臥室快照中改善 pillow 參考點估計，並能根據 comfort penalty 對候選動作輸出反事實排序；推薦動作的實際有效性則應由上述介入實驗補足。此寫法可避免將估測準確度與控制因果效果混為一談。"
+        ),
+        heading("5.9 公開資料集 Task-Aligned Benchmark 結果", 2),
         paragraph(
             "為驗證模型在非合成資料上的外部可比性，本研究以 SML2010 與 CU-BEMS 兩個公開資料集執行 task-aligned benchmark，並以 MAE、RMSE 與 Pearson Correlation 三項指標進行評估。MAE 衡量平均絕對誤差，RMSE 對尖峰偏差更敏感，Correlation 則反映模型是否能正確追蹤時序趨勢，三者共同提供較完整的評估視角。預測目標為下一個 15 分鐘或 60 分鐘時步的感測值，比較對象為 persistence（以上一時步值作預測）與 linear regression 兩個 baseline。"
         ),
-        paragraph("表 5-6 列出 SML2010 benchmark 各任務三項指標的完整對比。"),
+        paragraph("表 5-7 列出 SML2010 benchmark 各任務三項指標的完整對比。"),
         table(
             ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
             [
@@ -704,7 +764,7 @@ def build_blocks() -> List[Block]:
                 ["S3 複合照度", "60min", "dining_illuminance", "Corr", "0.000", "0.715", "0.472"],
             ],
         ),
-        paragraph("表 5-7 列出 CU-BEMS benchmark 各任務三項指標的完整對比。"),
+        paragraph("表 5-8 列出 CU-BEMS benchmark 各任務三項指標的完整對比。"),
         table(
             ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
             [
@@ -728,7 +788,7 @@ def build_blocks() -> List[Block]:
                 ["C2 照度",   "60min", "illuminance", "Corr", "0.864", "0.866", "0.792"],
             ],
         ),
-        heading("5.8.1 優勢分析", 3),
+        heading("5.9.1 優勢分析", 3),
         paragraph(
             "第一項優勢是複合任務的趨勢追蹤能力。在 S3 與 C3 等複合任務中，persistence 的 Correlation 值全為 0.000，原因是這些任務包含裝置切換或外部條件突變，使前一時步值完全失去預測能力。相較之下，本研究模型在 S3 15min dining_temperature 的 Correlation 達 0.950，S3 15min dining_humidity 達 0.612，S3 60min dining_temperature 達 0.937，均為三者最高。這說明物理結構與設備影響函數提供的先驗資訊，在環境條件快速變化時比純時序延續有更強的趨勢預測能力。"
         ),
@@ -738,7 +798,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "第三項優勢是複合任務的 RMSE 表現。以 S3 60min dining_illuminance 為例，本研究的 RMSE 為 19.344，低於 persistence 的 21.931 與 linear regression 的 22.763。RMSE 對離群誤差的放大效應更敏感，這表示本研究模型在極端照度事件的重建上較其他方法更為穩定。"
         ),
-        heading("5.8.2 劣勢分析", 3),
+        heading("5.9.2 劣勢分析", 3),
         paragraph(
             "最明顯的劣勢出現在短視窗純照度任務。SML2010 S1 15min dining_illuminance 的 MAE 為 5.346，高於 persistence 的 3.418 與 linear regression 的 4.023；Correlation 為 0.957，略低於另外兩者的 0.963 與 0.966。CU-BEMS C2 15min illuminance 的差距更大，MAE 7.700 對比 persistence 1.363，RMSE 11.938 對比 persistence 6.344。主要原因是短視窗照度的最佳預測策略接近 persistence（照度在 15 分鐘內變化緩慢），而本研究在對應時段的日照估計引入了額外誤差，反而不如直接沿用上一時步值。"
         ),
@@ -754,14 +814,14 @@ def build_blocks() -> List[Block]:
         paragraph(
             "需要特別說明的是，task-aligned benchmark 採用的是「下一時步預測」框架（15min 或 60min 視窗），而本研究的核心使用情境並非短視窗自回歸預測，而是在設備達到準穩態後的空間場估計。實際應用中，使用者先啟動冷氣或開窗，系統再估計若干分鐘後整個房間的三因子空間分布，並據此輸出控制動作推薦。此類穩態導向估計不依賴前一時步值作為主要訊號，而是依賴設備配置、外部環境條件與物理影響函數。因此，persistence 在短視窗下的優勢屬於不同任務假設的產物，並不代表本研究模型在其實際設計目標上的劣勢。本研究進行 task-aligned benchmark 的目的，是為了在共同可比的框架下提供外部資料集的相對定位，而非宣稱本研究的主要評估對象是次步預測誤差。"
         ),
-        heading("5.9 研究過程與實作挑戰", 2),
+        heading("5.10 研究過程與實作挑戰", 2),
         paragraph(
             "本研究在實作過程中有三個直接影響最終模型設計的問題。第一，初期若僅使用 local field 疊加設備作用，會出現冷氣附近快速降溫、房間遠端卻幾乎維持原溫的不合理結果，因此後續必須加入 bulk state 描述全室平均狀態的時間收斂。第二，若只以 8 顆角落感測器直接監督整個 3D 場，則黑盒神經網路雖可能把角落點擬合得很好，但對室內中央、窗邊與家具後方的場仍缺乏足夠監督，因此本研究把神經網路限制在 residual correction 層，而不是直接取代主模型。第三，公開資料集與本研究情境在幾何、裝置標記與感測器拓樸上通常不一致，因此必須採用 task-aligned benchmark，不能直接把所有實驗都搬到同一公開資料集上比較。"
         ),
         paragraph(
             "這些困難也說明本研究的設計取捨不是任意拼接，而是由實作過程逐步收斂而來：bulk + local field 負責處理全室與局部差異，single-bounce diffuse reflection 負責補足 direct lighting 對間接回填亮度的低估，trilinear correction 負責利用有限角落感測器修正低階偏差，least-squares impact learning 負責從設備前後差異學習非連網裝置影響，hybrid residual neural network 則只處理主模型尚未吸收的系統性誤差。"
         ),
-        heading("5.10 可旋轉 3D 展示", 2),
+        heading("5.11 可旋轉 3D 展示", 2),
         paragraph(
             "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。圖 5-6 至 5-8 為靜態輸出之三因子場 3D 點雲，展示三種代表情境：三裝置全開、單獨窗戶、單獨燈具。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
         ),
@@ -787,7 +847,7 @@ def build_blocks() -> List[Block]:
             "本研究建立一個面向非連網家電環境影響學習的單房間三因子空間數位孿生原型，針對 temperature、humidity 與 illuminance 的空間變化進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準、single-bounce diffuse reflection 與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型與照度反射近似後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計；新增的消融實驗也說明反射、校準與 trilinear correction 在不同指標上扮演不同角色。進一步加入只作用於 temperature / humidity residual trace 的 Fourier low-pass denoising 與 hybrid residual neural correction 後，預設 held-out 與 leave-one-scenario-out 情境的場重建誤差皆可再顯著下降。"
         ),
         paragraph(
-            "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並用於更準確的控制動作推薦。"
+            "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並用於更可解釋的控制動作推薦排序。"
         ),
         paragraph(
             "在公開資料集 task-aligned benchmark 方面，本研究以 MAE、RMSE 與 Pearson Correlation 三項指標，對比 persistence 與 linear regression 兩個 baseline。結果顯示，本研究在複合任務（S3、C3）與長視窗（60min）溫度任務上具備明顯優勢：S3 複合任務中 persistence 的 Correlation 全為 0.000（因裝置切換導致趨勢中斷），而本研究仍維持 0.61–0.95 的有效趨勢預測能力；60min 視窗下溫度 MAE 與 RMSE 均為三者最低，說明物理結構在長視窗預測中優於純時序延續策略。劣勢則主要集中於短視窗純照度任務（15min）與外部資料濕度尺度不匹配：前者因照度在短時間內變化緩慢，persistence 策略本身即為有效 baseline；後者反映 SML2010 濕度量測尺度與本研究估計基準存在系統性偏差。此分析說明本研究的優勢來自模型結構對裝置影響的顯式建模，而非針對純時序預測最佳化。"
@@ -795,27 +855,34 @@ def build_blocks() -> List[Block]:
         paragraph(
             "另一項結論是，公開資料集並非不能使用，而是必須依資料本身支援的任務層級進行比較。對完整 3D 場重建，本研究目前仍以 canonical synthetic benchmark 作為主要依據；對 zone-level 響應、兩點時序響應與舒適度評分，則可分別利用相容的公開資料建立 task-aligned benchmark。此作法比直接宣稱所有資料集都能完整驗證本研究系統更嚴謹。"
         ),
+        paragraph(
+            "真實臥室快照驗證進一步補足了純模擬實驗的不足。7 天、28 筆快照結果顯示，當 8 顆角落感測器提供真實觀測時，校正後模型能將未參與校正的 pillow 位置估計誤差降至 0.1676°C、0.3939% 與 21.3753 lux。此結果不等同於完整 3D 場 ground truth，但已證明本研究的 sparse-sensor calibration pipeline 可直接接入真實房間資料。"
+        ),
+        paragraph(
+            "對推薦動作而言，本研究目前完成的是模型導向的反事實排序與驗證方法設計，而非真實閉環控制。實際因果驗證應以介入前後量測為準，檢查排名第一的動作是否帶來正的 actual improvement，並比較 predicted improvement 與 measured improvement 是否一致。"
+        ),
         heading("6.2 研究限制", 2),
         bullets(
             [
-                "目前結果主要來自文獻參數與合理物理假設模擬，尚未加入大量真實房間資料。",
+                "目前已加入小型真實臥室快照驗證，但仍缺乏長期連續部署資料與 dense spatial ground truth。",
                 "模型不處理多房間氣流、牆體熱容或完整流體動力學。",
                 "濕度模型採簡化耦合，驗證強度低於溫度與照度；在外部資料集（SML2010）中存在系統性基準偏差，需進一步對齊量測尺度。",
                 "短視窗（15min）純照度預測上，persistence baseline 因照度短期穩定性而具優勢，本研究的物理估計引入額外誤差。",
                 "公開資料集多缺乏完整單房間幾何與 dense ground truth，因此無法直接作為 full-field benchmark。",
                 "MCP server 目前為本地 stdio 版本，尚未包含遠端部署、OAuth 或多使用者管理。",
-                "控制功能為推薦排序，尚未進入自動閉環控制。",
+                "控制功能目前為推薦排序，尚未完成真實介入式因果驗證，也尚未進入自動閉環控制。",
             ]
         ),
         heading("6.3 未來工作", 2),
         bullets(
             [
-                "加入實體 ESP32 感測器資料，以校正與驗證模型參數。",
+                "擴大實體 ESP32 感測器部署，收集更長期且自動化的真實房間資料。",
                 "擴充自訂房間 JSON 輸入，使系統可支援不同房間尺寸與設備位置。",
                 "為角落感測器加入照度量測通道（如光照感測元件），使角落光照資料可直接引入 trilinear residual correction，從而消除目前物理照度模型的系統性偏差，實現照度場的自我校正。",
                 "加入更多環境變數，例如 CO2、PM2.5 或人體熱源。",
                 "將 MCP server 擴充為遠端 HTTP MCP，並加入權限控管。",
-                "進一步研究閉環控制，將推薦排序延伸為實際控制策略。",
+                "依 before/after 介入驗證方法實測推薦動作，量化 actual improvement、success rate 與 top-1 regret。",
+                "進一步研究閉環控制，將已驗證的推薦排序延伸為實際控制策略。",
                 "加入長時間資料以學習季節性與日夜週期變化。",
                 "以真實量測資料重新訓練與驗證 hybrid residual neural network，檢驗其在真實房間中的泛化能力。",
             ]

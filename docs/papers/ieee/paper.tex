@@ -13,12 +13,19 @@
 \IEEEauthorblockA{
 Department of Computer Science and Information Engineering\\
 National Changhua University of Education\\
-Changhua, Taiwan}
+Changhua, Taiwan\\
+yunitrish0419@gmail.com}
 \and
 \IEEEauthorblockN{Chang-Pei Yi}
 \IEEEauthorblockA{
 Department of Computer Science and Information Engineering\\
 National Changhua University of Education\\
+Changhua, Taiwan}
+\and
+\IEEEauthorblockN{Hui-Yu Shen}
+\IEEEauthorblockA{
+Department of Electrical Engineering\\
+Chienkuo Technology University\\
 Changhua, Taiwan}
 }
 
@@ -26,7 +33,7 @@ Changhua, Taiwan}
 \maketitle
 
 \begin{abstract}
-Many room-scale digital twins assume that influential appliances are network-connected and can report their states directly. In ordinary rooms, however, conventional air conditioners, manual windows, and ordinary lights often expose no telemetry, while only a few sensors can be installed. This paper presents a sparse-sensing spatial digital twin for a single room under these constraints. The design combines an appliance-aware reduced-order bulk-plus-local field model with a lightweight one-bounce diffuse illuminance reflection term, eight-corner residual calibration, least-squares appliance-impact learning, and an optional hybrid residual neural layer with Fourier low-pass denoising of temperature and humidity residual traces instead of an end-to-end black-box field predictor. Across eight canonical scenarios, the base model achieves average MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance, compared with 0.1723/0.4633/75.0516 for IDW. On the default held-out split with 576 training and 192 test samples, the hybrid residual layer reduces field MAE from 0.0474/0.1765/2.3087 to 0.0023/0.0041/0.1675; leave-one-scenario-out evaluation gives 0.0017/0.0055/0.1581. The same estimator is exposed through a local service layer, including an MCP interface and a rotatable 3D web demo. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers.
+Practical room-scale digital twins must often operate with sparse sensors and non-networked appliances that expose no telemetry. This paper presents a single-room spatial digital twin that estimates temperature, humidity, and illuminance fields from eight corner sensors while modeling conventional air conditioners, manual windows, and ordinary lights. The proposed design combines an appliance-aware bulk-plus-local field model, lightweight one-bounce diffuse illuminance reflection, active-device power calibration, trilinear residual correction, least-squares appliance-impact learning, and an optional hybrid residual neural layer. Across eight canonical scenarios, the base estimator achieves average field MAE of 0.0474/0.1765/2.0835 for temperature, humidity, and illuminance, compared with 0.1723/0.4633/75.0516 for IDW. A leave-one-scenario-out hybrid residual evaluation further reduces MAE to 0.0017/0.0055/0.1581. On a preliminary seven-day bedroom snapshot dataset, calibration reduces held-out pillow-point MAE from 0.8967/4.1286/358.6392 to 0.1676/0.3939/21.3753. These results indicate that sparse corner sensing can support an interpretable and trainable indoor twin when physical structure, calibration, and residual learning are assigned complementary roles.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -34,232 +41,98 @@ spatial digital twin, sparse sensing, indoor environment modeling, non-networked
 \end{IEEEkeywords}
 
 \section{Introduction}
-Smart homes and smart buildings increasingly rely on indoor environmental data to support comfort assessment, energy management, and device control. A practical system should not only know the value measured at a sensor, but also estimate environmental conditions at relevant regions such as the center of a room, a window-side zone, or an equipment-adjacent area. This is difficult because dense sensing is expensive and intrusive. In a typical room, only a small number of sensors can be installed, and their measurements are spatially sparse.
+Smart homes and smart buildings require indoor environmental awareness for comfort assessment, energy management, and device control. A practical system should estimate conditions at relevant regions such as a room center, window-side zone, or bed location, not only at installed sensors. This is difficult because dense sensing is intrusive, while ordinary rooms also contain conventional appliances that do not report state, power, or operating parameters.
 
-A second practical limitation is that many appliances that influence the environment are not network-connected. Traditional air conditioners, manual windows, and ordinary lights may significantly affect temperature, humidity, and illuminance, but they may not expose state, output power, or operating parameters through an API. Therefore, a digital twin that depends only on connected-device telemetry may fail to represent a realistic room. The challenge is to infer how such non-networked appliances influence the room from environmental observations alone.
+This work asks whether a single-room digital twin can estimate three-factor spatial fields, learn the effect of non-networked appliances, and expose the resulting functions through interactive tool interfaces under an eight-corner sensing layout. Pure interpolation ignores appliance geometry and directionality, while a purely local field model misses whole-room settling after air-conditioner activation. We therefore use a reduced-order appliance-aware model as the primary estimator, sensor residuals for calibration, and neural learning only for structured residual correction rather than for an end-to-end black-box field predictor.
 
-During prototype development, two practical difficulties repeatedly shaped the final design. First, pure interpolation and purely local influence fields produced plausible-looking but semantically wrong room states, especially when an air conditioner changed the whole-room trend while a window or lamp only changed a subregion. Second, the eight-corner configuration provided too little supervision to justify training a full end-to-end neural field predictor for the entire 3-D room. These observations motivated the final architecture: an appliance-aware reduced-order model as the primary estimator, explicit calibration from sparse sensors, and neural learning reserved for structured residual correction.
-
-This paper addresses the following research question: can a single-room spatial digital twin estimate temperature, humidity, and illuminance distributions, learn the impact of non-networked appliances from limited corner sensors, and expose the resulting capabilities as AI-agent-accessible tools? We propose a lightweight prototype that uses eight fixed corner sensors, parameterized appliance influence functions, active-device power calibration, trilinear sensor residual correction, and before-and-after impact learning.
-
-The main contributions are as follows:
-\begin{itemize}
-\item A single-room three-factor digital twin that combines a bulk-plus-local field model, lightweight one-bounce diffuse reflection for illuminance, and appliance-aware influence functions under a fixed eight-corner sensing layout.
-\item A sparse-sensor estimation pipeline that couples active-device power calibration, trilinear residual correction, and before-and-after impact learning for non-networked appliances.
-\item A data pathway that keeps the reduced-order model as the primary estimator, applies neural learning only for residual correction, and optionally denoises thermal and humidity residual traces in the Fourier domain before training.
-\item A deployable research prototype with interactive service interfaces, including a local MCP endpoint and a 3-D web interface, evaluated on canonical synthetic scenarios, ablation variants, a leave-one-scenario-out residual benchmark, a window condition matrix, and task-aligned public datasets.
-\end{itemize}
+The contributions are: (i) a three-factor room digital twin with bulk-plus-local appliance influence functions and one-bounce diffuse illuminance reflection; (ii) a sparse-sensor calibration pipeline combining active-device power fitting, trilinear residual correction, and before/after impact learning; (iii) a hybrid residual pathway that preserves the reduced-order estimator while refining systematic error; and (iv) an implementation evaluated on synthetic scenarios, ablations, leave-one-scenario-out residual learning, window-condition cases, public task-aligned datasets, and preliminary real-bedroom snapshots.
 
 \section{Related Work}
-\subsection{Building Digital Twins and Control-Oriented Indoor Models}
-Digital twins provide computational representations of physical systems and are increasingly used in manufacturing, infrastructure, and smart buildings \cite{tao2019digitaltwin,fuller2020digitaltwin}. In the building domain, recent reviews indicate that operational digital twins mainly emphasize data integration, BIM or BMS connectivity, and system architecture, whereas sparse-sensor spatial estimation in ordinary rooms remains comparatively underexplored \cite{cespedes2024bdtreview}. This gap is particularly relevant for rooms in which influential appliances exist but do not expose machine-readable telemetry.
+Digital twins provide computational representations of physical systems and are increasingly used in manufacturing, infrastructure, and smart buildings \cite{tao2019digitaltwin,fuller2020digitaltwin}. Building-oriented reviews show strong attention to BIM/BMS connectivity and system architecture, but sparse-sensor spatial estimation in ordinary rooms remains less explored \cite{cespedes2024bdtreview}. For control-oriented indoor modeling, reduced-order and grey-box approaches remain attractive because they are interpretable and tractable compared with CFD \cite{bacher2011heatdynamics,hietaharju2018dynamicmodel,gokhale2022pinnthermal}. Zonal and hybrid indoor models preserve dominant spatial non-uniformity at lower cost \cite{teshome2004zonalreview,megri2022doma,huljak2025hybrid}, while data-assimilation studies show that finite observations can reconstruct indoor temperature and humidity fields and that sensor placement matters \cite{qian2025dafield,chen2007zonalnetwork}. The present work combines these strands by coupling sparse sensing with appliance-aware influence bases and residual calibration. IDW \cite{shepard1968two} is used as a geometry-free interpolation baseline. The service interface is secondary to the modeling contribution, but the same estimator is exposed through local APIs, a web demo, and an MCP-compatible tool layer \cite{mcp2025}.
 
-Indoor environmental modeling spans a spectrum from computational fluid dynamics to reduced-order thermal models. When the goal is estimation and control rather than detailed flow reconstruction, reduced-order and grey-box approaches remain attractive because they retain interpretability, low parameter count, and tractable identification \cite{bacher2011heatdynamics,hietaharju2018dynamicmodel}. Physics-informed and hybrid surrogates further show that embedding prior thermal structure can improve data efficiency and predictive robustness \cite{gokhale2022pinnthermal}. These observations motivate the present work to adopt a reduced-order spatial surrogate instead of a high-fidelity flow solver.
-
-\subsection{Sparse Sensing and Spatial Field Reconstruction}
-When only sparse sensor observations are available, interpolation is a natural baseline. IDW estimates an unknown value from distance-weighted nearby observations and has long been used for spatial approximation \cite{shepard1968two}. Its limitation in the present setting is that it does not encode appliance semantics such as outlet direction, window placement, or localized lighting gain. Zonal and hybrid indoor models provide an intermediate option between well-mixed room models and CFD, preserving dominant spatial non-uniformity at lower computational cost \cite{teshome2004zonalreview,megri2022doma,huljak2025hybrid}. In parallel, recent data-assimilation studies have shown that finite observations can reconstruct indoor temperature and humidity fields in real residential rooms, and that sensor placement materially affects reconstruction quality \cite{qian2025dafield,chen2007zonalnetwork}. The present work combines these strands by coupling sparse sensing with appliance-aware influence functions and residual calibration.
-
-\subsection{Interactive Service Interfaces}
-Digital twins become easier to evaluate and integrate when the same estimator can be accessed from dashboards, scripts, or AI assistants through explicit tool interfaces. MCP provides one standardized mechanism through which AI clients can access external tools and resources \cite{mcp2025}. In this work, such interfaces are treated only as a deployment layer; they do not define the main modeling contribution, but they make the prototype directly callable for scenario execution, point queries, and action ranking.
-
-\section{System Overview}
-\subsection{Room and Sensor Configuration}
-The prototype considers a single rectangular room with width $6.0$ m, length $4.0$ m, and height $3.0$ m. The sensing configuration is fixed to eight corner nodes: four on the floor and four on the ceiling. Each node measures temperature, humidity, and illuminance.
-
-The room is divided into three evaluation zones: a window-side zone, a center zone, and a door-side zone. The standard target zone for most validation scenarios is the center zone, while the window matrix uses the window-side zone as the target to emphasize window effects.
-
-\subsection{Appliance Representation}
-Three appliance types are modeled:
-\begin{itemize}
-\item \textbf{Air conditioner}: primarily lowers temperature and weakly lowers humidity. In the visualization, it is represented as a horizontal wall bar.
-\item \textbf{Window}: exchanges heat and humidity with outdoor conditions and introduces daylight. In the visualization, it is represented as a wall rectangle rather than a point.
-\item \textbf{Light}: primarily increases illuminance and adds a small heat gain. In the visualization, it is represented as a point-like ceiling device.
-\end{itemize}
-
-The web demo uses checkbox controls for the three appliance states. The base room state is the idle scenario, and checked devices overwrite their activation levels. This design removes scenario drop-down selection and makes the user interface directly reflect appliance activation.
+\section{Method}
+\subsection{Room, Devices, and Field Model}
+The canonical room is a $6.0$ m by $4.0$ m by $3.0$ m rectangular room with eight corner sensing nodes, four on the floor and four on the ceiling. Each node measures temperature, humidity, and illuminance. The room contains three evaluation zones and three appliance classes: an air conditioner, a window, and a light. The web demo represents these appliances as wall or ceiling markers and allows their activations to be toggled.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{../thesis/assets/fig_3_1_overall_architecture.png}
+\includegraphics[width=0.98\linewidth]{../thesis/assets/fig_3_1_overall_architecture.png}
 \caption{Layered architecture of the proposed single-room spatial digital twin.}
 \label{fig:architecture}
 \end{figure}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{../thesis/assets/fig_3_3_room_topology.png}
+\includegraphics[width=0.96\linewidth]{../thesis/assets/fig_3_3_room_topology.png}
 \caption{Room topology, appliance placement, target zones, and the eight floor/ceiling corner sensors.}
 \label{fig:room_topology}
 \end{figure}
 
-\section{Proposed Method}
-\subsection{Three-Factor Spatial Field Model}
-The indoor state is represented using three fields:
-\begin{align}
-T(x,y,z,t) &: \text{temperature field},\\
-H(x,y,z,t) &: \text{humidity field},\\
-L(x,y,z,t) &: \text{illuminance field}.
-\end{align}
-For a metric $m \in \{T,H,L\}$, the estimated field is:
+For metric $m\in\{T,H,L\}$ at point $\mathbf{p}=(x,y,z)$ and elapsed time $t$, the estimated field is
 \begin{equation}
-F_m(\mathbf{p},t) = B^{\mathrm{bulk}}_m(t) + B^{\mathrm{local}}_m(\mathbf{p},t) + \sum_j I^{\mathrm{local}}_{j,m}(\mathbf{p},t) + C_m(\mathbf{p}),
+F_m(\mathbf{p},t)=B_m^{\mathrm{bulk}}(t)+B_m^{\mathrm{local}}(\mathbf{p},t)+\sum_j I_{j,m}(\mathbf{p},t)+C_m(\mathbf{p}).
 \end{equation}
-where $\mathbf{p}=(x,y,z)$, $B^{\mathrm{bulk}}_m$ is a room-level bulk state, $B^{\mathrm{local}}_m$ is a simplified background stratification term, $I^{\mathrm{local}}_{j,m}$ is the local influence of appliance $j$, and $C_m$ is a correction field fitted from sensor residuals.
-
-The bulk term represents whole-room settling over time, while the local terms preserve spatial non-uniformity near air-conditioner outlets, windows, and lights. For illuminance, direct window and lamp terms alone produced a systematic dark bias near the floor, walls, and furniture because secondary fill light was ignored. Full radiosity or ray tracing would be disproportionate for the present sparse-sensing prototype, so we add a lightweight one-bounce diffuse reflection term only for illuminance:
-\begin{equation}
-I^{\mathrm{refl}}(\mathbf{p},t)=\sum_{s\in\mathcal{S}}\rho_s \bar{I}_s A^{\mathrm{rel}}_s e^{-\|\mathbf{p}-\mathbf{c}_s\|/\ell_s}\gamma_s(\mathbf{p})V_s(\mathbf{p}),
-\end{equation}
-where $\mathcal{S}$ includes the floor, ceiling, four walls, and active furniture faces; $\rho_s$ is surface reflectance; $\bar{I}_s$ is direct illuminance at surface center $\mathbf{c}_s$; $A^{\mathrm{rel}}_s$ is a normalized area factor; $\ell_s$ is an attenuation length; $\gamma_s(\mathbf{p})=\max(0,\mathbf{n}_s\cdot \hat{\mathbf{r}}_{s\to p})$ is a diffuse alignment term; and $V_s$ reuses the same obstruction logic as direct lighting. The illuminance field is therefore evaluated as $L=B^{\mathrm{bulk}}_L+B^{\mathrm{local}}_L+\sum_j I^{\mathrm{local}}_{j,L}+I^{\mathrm{refl}}+C_L$, which preserves interpretability while remaining much cheaper than full optical simulation.
-
-\subsection{Appliance Influence Envelope}
-Each appliance influence is modulated by an envelope:
+The bulk term captures whole-room settling, local terms preserve spatial gradients, $I_{j,m}$ represents appliance influence, and $C_m$ is fitted from sparse sensor residuals. Each appliance influence is modulated by
 \begin{equation}
 E_j(\mathbf{p},t)=a_j(1-e^{-t/\tau_j})D_j(\mathbf{p})G_j(\mathbf{p}),
 \end{equation}
-where $a_j$ is the activation level, $\tau_j$ is the response time constant, $D_j$ is distance attenuation, and $G_j$ is a simplified directional gain. The exact parameters are appliance-specific. The air conditioner has negative coefficients for temperature and humidity, the window uses outdoor temperature, outdoor humidity, and sunlight as inputs, and the light has a positive illuminance gain with a small heat gain.
+where $a_j$ is activation, $\tau_j$ is a response time constant, $D_j$ is distance attenuation, and $G_j$ is directional gain. The air conditioner lowers temperature and humidity, the window uses outdoor temperature, humidity, and sunlight, and the light primarily raises illuminance with a small heat gain.
 
-\subsection{Corner Sensor Residual Correction}
-Let $\hat{y}_{i,m}$ be the predicted value at sensor $i$ for metric $m$, and let $y_{i,m}$ be the observed value. The residual is:
+Direct window and lamp terms underestimate indirect fill light near floors, walls, and furniture. Instead of full ray tracing, illuminance adds a lightweight one-bounce diffuse term
 \begin{equation}
-r_{i,m}=y_{i,m}-\hat{y}_{i,m}.
+I^{\mathrm{refl}}(\mathbf{p},t)=\sum_{s\in\mathcal{S}}\rho_s\bar I_sA_s^{\mathrm{rel}}e^{-\|\mathbf{p}-\mathbf{c}_s\|/\ell_s}\gamma_s(\mathbf{p})V_s(\mathbf{p}),
 \end{equation}
-The prototype first estimates active-device power scale adjustments using least squares over sensor residuals. It then fits a trilinear correction:
+where surfaces $\mathcal{S}$ include room boundaries and active furniture faces, $\rho_s$ is reflectance, $\bar I_s$ is direct illuminance at surface center $\mathbf{c}_s$, $A_s^{\mathrm{rel}}$ is normalized area, $\ell_s$ is attenuation length, $\gamma_s$ is diffuse alignment, and $V_s$ is an obstruction term.
+
+\subsection{Sparse Calibration and Learning}
+Given predicted sensor value $\hat y_{i,m}$ and observed value $y_{i,m}$, residual $r_{i,m}=y_{i,m}-\hat y_{i,m}$ is used in two steps. First, active-device power scales are fitted by least squares over sensor residuals. Second, a trilinear correction is fitted:
 \begin{align}
-C_m(x,y,z)={}&c_{0,m}+c_{1,m}X+c_{2,m}Y+c_{3,m}Z \nonumber\\
-&+c_{4,m}XY+c_{5,m}XZ \nonumber\\
-&+c_{6,m}YZ+c_{7,m}XYZ .
+C_m(x,y,z)={}&c_{0,m}+c_{1,m}X+c_{2,m}Y+c_{3,m}Z+c_{4,m}XY\nonumber\\
+&+c_{5,m}XZ+c_{6,m}YZ+c_{7,m}XYZ,
 \end{align}
-Here $X$, $Y$, and $Z$ are normalized room coordinates. This correction cannot represent high-frequency turbulence or complex local reflections, but it can use the eight corner measurements to correct bias, first-order gradients, and corner interaction terms.
+where $X,Y,Z$ are normalized room coordinates. This cannot recover high-frequency turbulence, but it corrects bias, first-order gradients, and corner interactions from the eight observations.
 
-\subsection{Learning Non-Networked Appliance Impacts}
-For non-networked devices, the system estimates impact coefficients from before-and-after observations. Given sensor deltas $\Delta y_m$ and appliance envelopes collected into matrix $X$, the coefficient vector for metric $m$ is estimated by least squares:
+For non-networked devices, before/after sensor deltas supervise impact learning. Given metric deltas $\Delta\mathbf{y}_m$ and appliance envelopes in matrix $X$, coefficients are estimated by
 \begin{equation}
-\boldsymbol{\beta}_m = \arg\min_{\boldsymbol{\beta}}\|\Delta \mathbf{y}_m-X\boldsymbol{\beta}\|_2^2.
+\boldsymbol{\beta}_m=\arg\min_{\boldsymbol{\beta}}\|\Delta\mathbf{y}_m-X\boldsymbol{\beta}\|_2^2.
 \end{equation}
-For a single active device, the learned coefficient describes the direction and magnitude of its effect. For multiple active devices, the regression separates their contributions according to their spatial bases.
+For residual learning, point features include normalized coordinates, elapsed time, indoor/outdoor conditions, base estimates, device activations, calibrated powers, appliance envelopes, and air-conditioner mode indicators. The hybrid residual layer predicts $R_m(\mathbf{p},t;\theta_m)$ and returns $F_m^{\mathrm{hybrid}}=F_m+R_m$. Temperature and humidity residual traces can be Fourier low-pass filtered before training; illuminance uses raw residual labels because filtering removed useful short-timescale variation in preliminary tests.
 
-\subsection{Data Assembly for Learning}
-The learning pipeline uses four aligned data records: corner-sensor time series, device event logs, outdoor boundary-condition series, and scenario metadata or optional spatial probes. After timestamp alignment, each time step is passed through the reduced-order model to obtain base estimates. The appliance-impact learner uses before-and-after sensor deltas as supervision. The residual learner instead uses point-wise features built from normalized coordinates, elapsed time, indoor and outdoor conditions, base-model predictions, device activations, calibrated powers, and appliance envelopes. When synthetic truth or dense spatial probes are available, the residual target is the difference between the truth field and the reduced-order estimate. In the current implementation, the training pipeline can optionally construct short residual trajectories over elapsed time and apply Fourier low-pass denoising before using the final residual as supervision; this option is enabled only for temperature and humidity because filtering illuminance removed useful short-timescale variation in preliminary tests. When only eight real corner sensors are available, the same pipeline can still be used for parameter calibration, impact learning, and corner-level residual fine-tuning, but not as sufficient evidence for a full 3-D black-box field benchmark.
+Candidate control actions are evaluated as model-based counterfactuals. A weighted comfort penalty is computed from normalized deviations beyond target tolerances for temperature, humidity, and illuminance. Each action is ranked by current penalty minus simulated post-action penalty. This is recommendation ranking, not closed-loop control; causal validation requires before/after intervention trials.
 
-\subsection{Hybrid Residual Neural Correction}
-The reduced-order model remains the primary estimator in the proposed system. To further reduce structured residual error without sacrificing interpretability, we add an optional hybrid residual correction layer:
-\begin{equation}
-F^{\mathrm{hybrid}}_m(\mathbf{p},t)=F_m(\mathbf{p},t)+R_m(\mathbf{p},t;\theta_m),
-\end{equation}
-where $F_m$ is the reduced-order field estimate and $R_m$ is a compact multilayer perceptron trained to predict the residual between the truth field and the base model output. The training target is
-\begin{equation}
-R^*_m(\mathbf{p},t)=F^{\mathrm{truth}}_m(\mathbf{p},t)-F_m(\mathbf{p},t),
-\end{equation}
-and the loss is regularized mean squared error:
-\begin{equation}
-\mathcal{L}(\theta_m)=\frac{1}{N}\sum_i \left\|R^*_m(\mathbf{p}_i,t_i)-R_m(\mathbf{p}_i,t_i;\theta_m)\right\|_2^2+\lambda\|\theta_m\|_2^2.
-\end{equation}
-For temperature and humidity, the implementation can replace $R^*_m$ by a denoised target $\tilde{R}^*_m=\mathcal{F}^{-1}(M\odot \mathcal{F}(R^*_m))$, where $\mathcal{F}$ denotes a discrete Fourier transform and $M$ is a low-pass mask over a short residual trajectory sampled along elapsed time. A closer time-domain alternative would be to smooth the residual trajectory by fixed-window integration or local averaging so that the slope oscillates less between nearby samples. We do not use that approach because it behaves as a box filter with a window size that must be chosen in advance: if the window is too small, much of the short-timescale fluctuation remains; if it is too large, transient responses and local turning points are blurred and a stronger lag is introduced. In contrast, Fourier low-pass filtering explicitly suppresses high-frequency components while preserving the low-frequency trend of the trajectory; after the inverse transform, the denoised endpoint still corresponds to the current elapsed time and can be used as a smoother but time-aligned label. The residual network takes normalized coordinates, elapsed time, indoor and outdoor conditions, base-model predictions, device activations, calibrated powers, appliance envelopes, and air-conditioner mode indicators as input. This design preserves the appliance-aware structure while allowing a data-driven second-stage correction.
+\section{Implementation and Experimental Setup}
+The prototype is implemented as a zero-dependency Python package with modules for entities, scenarios, field simulation, impact learning, hybrid residual training, IDW comparison, action ranking, service APIs, an MCP endpoint, and a rotatable web demo. The shared service layer supports scenario execution, point sampling, baseline comparison, impact learning, action ranking, the full window matrix, and direct window simulation from user-supplied outdoor temperature, humidity, sunlight, and opening ratio.
 
-\subsection{Action Ranking}
-Candidate actions are evaluated by simulating their resulting target-zone values. A weighted comfort penalty is computed from deviations from target temperature, humidity, and illuminance. Actions are ranked by the reduction in this penalty. The system does not perform closed-loop control; it outputs an interpretable recommendation order.
+The service layer is intentionally kept separate from the estimator. A command-line script, the MCP endpoint, and the browser demo call the same scenario and sampling functions, so evaluation results are not produced by a separate code path from the interactive prototype. The browser interface supports metric switching, appliance toggling, indoor baseline editing, season-weather-time presets, outdoor boundary overrides, point sampling, target-zone summaries, impact-learning output, and estimator switching between the base and hybrid residual fields when a saved checkpoint is available.
 
-\section{Implementation}
-\subsection{Python Prototype}
-The implementation is a zero-dependency Python prototype. The main modules define entities, scenarios, field simulation, impact learning, hybrid residual training and inference, IDW baseline comparison, action ranking, service APIs, an MCP endpoint, and the web demo. The same service layer is shared by the local tool interface and the web interface.
-
-\subsection{Service Interface}
-The prototype exposes a shared local service layer for listing scenarios, running a scenario, ranking actions, sampling a point, comparing against IDW, learning appliance impacts, listing window scenarios, running the full window matrix, and running a direct window simulation from user-supplied outdoor temperature, humidity, sunlight, and opening ratio. One concrete interface is a local MCP server, which allows MCP-compatible clients to access the digital twin without directly importing Python modules.
-
-\subsection{Interactive Web Demo}
-The web demo provides a rotatable 3D canvas visualization. The user can rotate and zoom the estimated field, switch the metric using checkbox controls, and toggle appliances using checkboxes. The air conditioner is displayed as a wall bar, the window as a wall rectangle, and the light as a point marker. The interface also displays target-zone estimates, recommendations, baseline comparison, impact learning results, point sampling, and a time-evolution view. In the current interface, indoor baseline conditions can be edited directly, season-weather-time presets define outdoor humidity and sunlight, outdoor temperature together with opening ratio can be manually overridden from the sidebar, and an estimator toggle can switch the view between the base reduced-order model and the hybrid residual-corrected field whenever a saved checkpoint is available.
-
-\subsection{Experimental Setup and Reproducibility}
-All full-field experiments use the same 6.0\,m by 4.0\,m by 3.0\,m room, three appliance locations, three evaluation zones, and eight corner sensors shown in Fig.~\ref{fig:room_topology}. The canonical grid resolution is $16\times 12\times 6$, yielding 1152 spatial points per field. Unless otherwise stated, scenarios are evaluated after an 18-minute settling interval under an outdoor boundary condition of 33.0$^\circ$C, 74.0\% relative humidity, and 32000 lux sunlight. The validation set contains eight appliance-state combinations: idle, AC only, window only, light only, AC+window, window+light, AC+light, and all active.
-
-Because this submission does not yet include a physical room deployment, the dense field target is generated by applying deterministic truth adjustments to appliance power scales and then synthesizing corner observations from the truth sensor predictions. The observation perturbation is fixed by sensor index: temperature adds $0.08((i\bmod 4)-1.5)$, humidity adds $0.3((i\bmod 4)-1.5)$, and illuminance adds $3.0((i\bmod 4)-1.5)$. This makes every result exactly reproducible and keeps the synthetic supervision separate from the nominal estimator. The main scripts used for reproduction are \texttt{scripts/run\_demo.py}, \texttt{scripts/run\_hybrid\_residual\_experiment.py}, \texttt{scripts/run\_submission\_readiness\_experiments.py}, and \texttt{scripts/run\_public\_dataset\_model\_comparison.py}. The residual network uses one hidden layer with 10 units for the leave-one-scenario-out benchmark, L2 regularization of $10^{-5}$, 80 epochs, a learning rate of 0.018, and a fixed random seed.
+All synthetic full-field experiments use the canonical room and $16\times12\times6$ grid, giving 1152 spatial samples per field. Scenarios are evaluated after an 18-minute settling interval with outdoor temperature $33.0^\circ$C, relative humidity $74.0\%$, and sunlight 32000 lux. The eight canonical scenarios are idle, AC only, window only, light only, AC+window, window+light, AC+light, and all active. Dense synthetic truth is generated by deterministic appliance power adjustments and sensor observations are synthesized from truth sensor predictions with fixed index-based perturbations: temperature adds $0.08((i\bmod4)-1.5)$, humidity adds $0.3((i\bmod4)-1.5)$, and illuminance adds $3.0((i\bmod4)-1.5)$. The main reproduction scripts are \texttt{run\_demo.py}, \texttt{run\_hybrid\_residual\_experiment.py}, \texttt{run\_submission\_readiness\_experiments.py}, \texttt{run\_bedroom\_weekly\_simulation.py}, and \texttt{run\_public\_dataset\_model\_comparison.py}.
 
 \section{Evaluation}
-\subsection{Standard Appliance Scenarios}
-Eight standard scenarios were evaluated: idle, air conditioner only, window only, light only, air conditioner plus window, window plus light, air conditioner plus light, and all active. Table~\ref{tab:zone} summarizes representative target-zone estimates and best actions.
-
-\begin{table}[t]
-\caption{Representative Center-Zone Estimates and Best Ranked Actions}
-\label{tab:zone}
-\centering
-\begin{tabular}{|l|c|c|c|l|}
-\hline
-Scenario & Temp. & Hum. & Illum. & Best action\\
-\hline
-idle & 28.84 & 67.60 & 90.00 & ac\_and\_light\\
-ac\_only & 25.56 & 65.75 & 90.00 & turn\_on\_light\\
-window\_only & 29.51 & 68.42 & 214.60 & ac\_and\_light\\
-light\_only & 29.11 & 67.60 & 452.99 & turn\_on\_ac\\
-all\_active & 26.39 & 66.34 & 478.82 & turn\_on\_ac\\
-\hline
-\end{tabular}
-\end{table}
-
-\subsection{Field Reconstruction Error}
-Across the eight validation scenarios, the average mean absolute error (MAE) was 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance. Temperature and humidity errors are small relative to their physical scales, while illuminance remains more difficult because it depends strongly on source position, daylight, obstruction, and indirect reflection. Fig.~\ref{fig:field_mae_comparison} compares the proposed base estimator, IDW, and the leave-one-scenario-out hybrid estimator. The large IDW illuminance error confirms that geometry-free interpolation is inadequate when active light and window sources dominate the field.
-
-\begin{table}[t]
-\caption{Field Reconstruction Error Summary}
-\label{tab:mae}
-\centering
-\begin{tabular}{|l|c|c|}
-\hline
-Metric & Average MAE & Maximum MAE\\
-\hline
-Temperature & 0.0474 & 0.0481\\
-Humidity & 0.1765 & 0.1770\\
-Illuminance & 2.0835 & 2.5774\\
-\hline
-\end{tabular}
-\end{table}
+\subsection{Synthetic Field Reconstruction}
+Across the eight canonical scenarios, the base estimator achieves average field MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance. IDW gives 0.1723, 0.4633, and 75.0516, respectively. Table~\ref{tab:synthetic} summarizes the main comparisons and ablations. Removing appliance-aware feedback produces larger temperature and illuminance errors; removing one-bounce reflection or active-device calibration mainly hurts illuminance. The no-trilinear variant can be lower on dense synthetic humidity and illuminance because trilinear correction enforces sparse sensor consistency rather than guaranteed dense-field monotonic improvement.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{assets/field_mae_comparison.png}
-\caption{Field MAE comparison among IDW, the base estimator, and leave-one-scenario-out hybrid residual correction. Values are averaged over the eight canonical scenarios.}
+\includegraphics[width=0.96\linewidth]{assets/field_mae_comparison.png}
+\caption{Average field MAE for IDW, the base estimator, and leave-one-scenario-out hybrid residual correction. The y-axis is logarithmic.}
 \label{fig:field_mae_comparison}
 \end{figure}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{../thesis/assets/fig_5_7_light_only_illum_3d.png}
+\includegraphics[width=0.98\linewidth]{../thesis/assets/fig_5_7_light_only_illum_3d.png}
 \caption{Example 3-D illuminance field for the light-only scenario, showing localized lighting influence and reflected fill.}
 \label{fig:illum_3d}
 \end{figure}
 
-\subsection{Comparison with IDW Baseline}
-Table~\ref{tab:idw} compares the proposed model with IDW for two scenarios. In the light-only scenario, the proposed model substantially reduces illuminance MAE because the light source location and indirect diffuse fill from surfaces are explicitly modeled. In the air-conditioner-only scenario, IDW is slightly better for illuminance because no illumination device is active, showing that a simple interpolation baseline can be adequate when a metric is not affected by active equipment.
-
 \begin{table}[t]
-\caption{Representative IDW Baseline Comparison}
-\label{tab:idw}
-\centering
-\begin{tabular}{|l|l|c|c|c|}
-\hline
-Scenario & Metric & Model & IDW & Reduction\\
-\hline
-light\_only & Temp. & 0.0470 & 0.1232 & 61.85\%\\
-light\_only & Hum. & 0.1762 & 0.4656 & 62.16\%\\
-light\_only & Illum. & 2.5774 & 112.2559 & 97.70\%\\
-ac\_only & Temp. & 0.0481 & 0.2536 & 81.03\%\\
-ac\_only & Hum. & 0.1770 & 0.4787 & 63.02\%\\
-ac\_only & Illum. & 1.7625 & 1.3210 & -33.42\%\\
-\hline
-\end{tabular}
-\end{table}
-
-\subsection{Synthetic Ablation Study}
-To make the synthetic evidence more defensible, Table~\ref{tab:ablation} reports ablations on the same eight scenarios, sensor layout, grid, and deterministic truth generation. Removing appliance-aware feedback entirely produces larger temperature and illuminance errors. Removing the one-bounce reflection term mainly affects illuminance, while removing active-device power calibration also increases illuminance error. The no-trilinear variant gives lower dense-field error for humidity and illuminance in this synthetic benchmark because it calibrates active device power but does not force the full interior field to pass through a corner-fitted residual surface. This result is useful rather than contradictory: it shows that trilinear correction should be interpreted as a sparse-sensor consistency layer, not as a guarantee of lower dense-field MAE under every synthetic truth.
-
-\begin{table}[t]
-\caption{Average Field MAE Under Synthetic Ablations}
-\label{tab:ablation}
+\caption{Synthetic Field MAE and Robustness Summary}
+\label{tab:synthetic}
 \centering
 \scriptsize
 \begin{tabular}{|l|c|c|c|}
 \hline
-Variant & Temp. & Hum. & Illum.\\
+Setting & Temp. & Hum. & Illum.\\
 \hline
 IDW baseline & 0.1723 & 0.4633 & 75.0516\\
 Raw nominal & 0.1312 & 0.0842 & 4.4267\\
@@ -267,88 +140,69 @@ No reflection & 0.0471 & 0.1761 & 3.6792\\
 No calibration & 0.0493 & 0.1772 & 3.7532\\
 No trilinear & 0.0448 & 0.0278 & 1.3586\\
 Full base & 0.0474 & 0.1765 & 2.0835\\
+LOO hybrid avg. & 0.0017 & 0.0055 & 0.1581\\
 \hline
 \end{tabular}
 \end{table}
 
-\subsection{Learning Appliance Impact Coefficients}
-For the air-conditioner-only scenario, the learned coefficient is negative for temperature and humidity and approximately zero for illuminance. For the light-only scenario, the learned coefficient is strongly positive for illuminance, weakly positive for temperature, and approximately zero for humidity. These directions match the intended physical interpretation of the appliances.
+For impact learning, the AC-only scenario learns negative coefficients for temperature and humidity and near-zero illuminance effect. The light-only scenario learns a strongly positive illuminance coefficient, weak positive heat gain, and near-zero humidity effect. These directions match the intended physical interpretation of the appliances.
 
-\subsection{Hybrid Residual Correction Results}
-Under the default held-out split used in the current prototype, six scenarios are used for residual-network training and two scenarios (\texttt{light\_only} and \texttt{all\_active}) are held out for evaluation. This split contains 576 training samples and 192 test samples. Table~\ref{tab:hybrid} reports both this split and a leave-one-scenario-out (LOO) evaluation. With Fourier low-pass denoising enabled for temperature and humidity residual traces only, the default split reduces field MAE from 0.0474/0.1765/2.3087 to 0.0023/0.0041/0.1675. Disabling Fourier denoising gives 0.0022/0.0045/0.1675, showing that denoising mainly stabilizes humidity and is not responsible for the illuminance gain. In LOO evaluation, each fold trains on seven scenarios and tests on the remaining scenario, with 672 training samples and 96 test samples per fold. The average LOO hybrid MAE is 0.0017/0.0055/0.1581, corresponding to 96.41\%, 96.88\%, and 92.41\% reductions relative to the base estimator.
+\subsection{Hybrid Residual Correction}
+The default held-out residual experiment trains on six scenarios and tests on \texttt{light\_only} and \texttt{all\_active}, yielding 576 training and 192 test samples. With Fourier denoising for temperature and humidity residual traces, hybrid MAE is 0.0023/0.0041/0.1675, compared with base MAE of 0.0474/0.1765/2.3087 on the same split. Disabling Fourier gives 0.0022/0.0045/0.1675, showing that the illuminance improvement is not caused by frequency-domain smoothing. In leave-one-scenario-out evaluation, each fold trains on seven scenarios and tests on one scenario, with 672/96 train/test samples. The average LOO hybrid MAE is 0.0017/0.0055/0.1581, corresponding to 96.41\%, 96.88\%, and 92.41\% reductions relative to the base estimator.
 
-\begin{table}[t]
-\caption{Hybrid Residual Robustness Checks (Temp./Hum./Illum.)}
-\label{tab:hybrid}
-\centering
-\scriptsize
-\begin{tabular}{|l|c|c|c|}
-\hline
-Setting & Samples & Base MAE & Hybrid MAE\\
-\hline
-Default 6/2 & 576/192 & .0474/.1765/2.3087 & .0023/.0041/.1675\\
-No Fourier & 576/192 & .0474/.1765/2.3087 & .0022/.0045/.1675\\
-LOO avg. & 672/96 & .0474/.1765/2.0835 & .0017/.0055/.1581\\
-\hline
-\end{tabular}
-\end{table}
+\subsection{Preliminary Real-Bedroom Snapshot Validation}
+We further evaluate calibration on a user-supplied bedroom dataset. The room is a 4.0 m by 4.6 m by 3.2 m bedroom with wall-mounted AC, southeast-facing window, ceiling light, desk lamp, bed, desk, and cabinets. The dataset covers 2026-04-14 to 2026-04-20, with 09:00, 15:00, 22:00, and 02:00 snapshots each day, for 28 cases. Each case provides eight corner observations, appliance activations, outdoor boundary information, and a pillow-location reference observation. Corner sensors are used for active-device calibration and trilinear correction; the pillow point is held out.
 
-\subsection{Window Time-Weather-Season Matrix}
-The window matrix contains 48 cases: four times of day, three weather states, and four seasons. This matrix evaluates the window as an environmental variable rather than a simple binary switch. In addition to the enumerated matrix, the system supports a direct window-input mode in which a user or external data source supplies outdoor temperature, outdoor humidity, sunlight illuminance, and the equivalent opening ratio. The direct mode uses the same influence function and sensor-calibration pipeline, but it avoids discretizing the outside condition into season, weather, and time categories. Table~\ref{tab:window} shows representative enumerated cases.
+Table~\ref{tab:real} shows that calibration reduces pillow-point MAE from 0.8967$^\circ$C, 4.1286\% relative humidity, and 358.6392 lux to 0.1676$^\circ$C, 0.3939\%, and 21.3753 lux. Sleep snapshots use a 0 lux illuminance target with 5 lux tolerance so dark sleep conditions are not penalized. These snapshots validate sparse-sensor calibration and point-level estimation, not the causal efficacy of recommendations; physical recommendation validation requires before/after intervention trials comparing measured comfort-penalty reduction against predicted improvement.
 
 \begin{table}[t]
-\caption{Representative Window Matrix Results}
-\label{tab:window}
+\caption{Real-Bedroom Snapshot Comparison}
+\label{tab:real}
 \centering
 \scriptsize
 \begin{tabular}{|l|c|c|c|c|}
 \hline
-Case & $T_o$ & $H_o$ & Sun & $L_w$\\
+Case & Temp. & Hum. & Illum. & Penalty\\
 \hline
-winter-rain-night & 11.0 & 78.0 & 15.2 & 68.97\\
-spring-cloud-morn. & 21.5 & 70.0 & 5005.0 & 93.22\\
-summer-sun-noon & 37.0 & 71.0 & 36000.0 & 243.71\\
+Raw pillow MAE & 0.8967 & 4.1286 & 358.6392 & --\\
+Calib. pillow MAE & 0.1676 & 0.3939 & 21.3753 & 0.1052\\
+Morning calib. & 0.2372 & 0.3695 & 8.6247 & 0.2371\\
+Afternoon calib. & 0.1358 & 0.4890 & 11.2235 & 0.0812\\
+Night calib. & 0.0913 & 0.2193 & 65.6203 & 0.1024\\
+Sleep calib. & 0.2060 & 0.4979 & 0.0326 & 0.0000\\
 \hline
 \end{tabular}
 \end{table}
 
-The summer sunny noon case produces the highest daylight input among the representative examples, while the winter rainy night case contributes almost no sunlight and shifts the window-side zone toward colder and more humid outdoor conditions.
+\subsection{Window Matrix and Public Benchmarks}
+The window matrix contains 48 cases from four times of day, three weather states, and four seasons. It evaluates the window as an environmental variable rather than a binary switch, and the direct-input mode accepts outdoor temperature, outdoor humidity, sunlight, and opening ratio without discretizing the outside condition. Representative results include winter-rain-night ($T_o=11.0^\circ$C, $H_o=78.0\%$, sunlight 15.2 lux, window-zone illuminance 68.97 lux), spring-cloud-morning (21.5, 70.0, 5005.0, 93.22), and summer-sun-noon (37.0, 71.0, 36000.0, 243.71).
 
-\subsection{Task-Aligned Public Dataset Benchmark}
-To evaluate generalizability beyond synthetic scenarios, we applied the proposed model in a dataset-compatible mode on two public benchmarks: SML2010 \cite{romeu2014sml2010} and CU-BEMS \cite{chitalia2020cubems}. For each dataset, tasks were defined at the granularity the dataset can actually support—two-point time-series prediction for SML2010 and zone-level response for CU-BEMS. We compared against two baselines: persistence (repeating the last observed value) and ordinary least-squares linear regression. Three metrics were used: MAE, RMSE, and Pearson Correlation.
-
-Table~\ref{tab:benchmark} summarizes representative results. The compound-task rows (S3 and C3) are most informative because they contain abrupt appliance-state transitions. In these rows, persistence produces a Correlation of 0.000 because the regime shift makes the previous value a useless predictor. The proposed model maintains meaningful Correlation (0.61--0.95 for S3 dining temperature and humidity at 15\,min, and 0.94 at 60\,min), and achieves the lowest RMSE for 60\,min illuminance on S3 (19.34 vs.\ 21.93 for persistence). In contrast, the short-window pure-illuminance tasks (S1 and C2 at 15\,min) favor persistence because illuminance changes slowly over 15 minutes and the model's daylight estimation introduces additional error (S1 MAE: 5.35 vs.\ 3.42; C2 MAE: 7.70 vs.\ 1.36). The SML2010 humidity tasks also reveal a systematic baseline offset (S2 dining humidity MAE 0.83 vs.\ 0.20 for persistence), attributable to a measurement-scale mismatch between the model's humidity estimate and the dataset's sensor range. These results are consistent with the intended design scope: the model is optimized for appliance-transition tracking and long-horizon structural estimation, not for short-window autoregressive prediction.
+For external comparison, we evaluate task-aligned modes on SML2010 \cite{romeu2014sml2010} and CU-BEMS \cite{chitalia2020cubems}. Because these datasets do not provide the same room geometry or dense 3-D ground truth, tasks are restricted to compatible two-point time-series or zone-level response prediction. Compared with persistence and linear regression, the proposed model is strongest on compound tasks with appliance or external-condition transitions and on longer-horizon temperature prediction. For example, SML2010 S3 15 min temperature MAE/correlation is 0.071/0.950, compared with 0.233/0.000 for persistence and 0.093/0.909 for linear regression; S3 60 min temperature MAE is 0.190 versus 0.563 and 0.212. Weak cases are also informative: short-window pure illuminance favors persistence (S1 15 min illuminance MAE 5.35 versus 3.42), and SML2010 humidity exposes a measurement-scale mismatch (S2 15 min humidity MAE 0.83 versus 0.20 for persistence).
 
 \begin{table}[t]
-\caption{Selected Task-Aligned Benchmark Results (MAE / Correlation)}
+\caption{Selected Task-Aligned Benchmark Results}
 \label{tab:benchmark}
 \centering
 \scriptsize
 \begin{tabular}{|l|l|c|c|c|}
 \hline
-Task & Target & Pers. & LinReg & Proposed\\
+Task & Metric & Pers. & LinReg & Proposed\\
 \hline
 S3 15min temp. & MAE  & 0.233 & 0.093 & \textbf{0.071}\\
-S3 15min temp. & Corr & 0.000 & 0.909 & \textbf{0.950}\\
+S3 15min temp. & Corr. & 0.000 & 0.909 & \textbf{0.950}\\
 S3 60min temp. & MAE  & 0.563 & 0.212 & \textbf{0.190}\\
 S3 60min illum. & RMSE & 21.93 & 22.76 & \textbf{19.34}\\
 S1 15min illum. & MAE  & \textbf{3.42} & 4.02 & 5.35\\
 C2 15min illum. & MAE  & \textbf{1.36} & 1.79 & 7.70\\
-S2 15min hum.   & MAE  & \textbf{0.20} & 0.21 & 0.83\\
-C1 15min temp. & MAE  & 0.262 & 0.288 & 0.282\\
+S2 15min hum. & MAE  & \textbf{0.20} & 0.21 & 0.83\\
 \hline
 \end{tabular}
 \end{table}
 
-\section{Discussion}
-The results suggest that an appliance-aware field model can be more informative than pure interpolation under sparse sensing. The final architecture was not chosen only for theoretical reasons. In early iterations, purely local field formulations underestimated whole-room settling after air-conditioner activation, while interpolation-only baselines ignored appliance geometry and directionality. The bulk-plus-local split and residual calibration were retained because they addressed these concrete implementation failures without making the system too heavy for local experimentation.
+\section{Discussion and Conclusion}
+The results suggest that appliance-aware reduced-order modeling is more informative than geometry-free interpolation under sparse sensing. The architecture was not selected only for theoretical elegance: early local-only formulations underestimated whole-room AC settling, while IDW ignored source geometry and directionality. The bulk-plus-local split, sensor residual correction, and residual neural layer address these observed failures while keeping the system lightweight.
 
-The task-aligned benchmark results provide a clearer picture of where the model's structure adds value and where it does not. The model's advantages concentrate on compound tasks with regime transitions (S3, C3) and on long-horizon temperature prediction where persistence-based methods accumulate error rapidly. The explicit appliance-state representation prevents the Correlation collapse that persistence exhibits when the environment shifts abruptly. The model's disadvantages are also predictable from its design: short-window pure-illuminance prediction is best served by a persistence strategy, because illuminance changes slowly over 15 minutes and the daylight estimation term introduces unnecessary variance; and the SML2010 humidity outputs reflect a sensor-scale mismatch rather than a modeling error, since the estimated humidity baseline does not align with the external dataset's measurement range. These asymmetries are consistent with the prototype being designed for structural field estimation under appliance influence, not for minimizing single-step autoregressive error. It is worth emphasizing that the task-aligned benchmark uses a next-step prediction framework (15- or 60-minute horizon), whereas the core intended use of the proposed system is steady-state field estimation after an appliance reaches near-equilibrium: the user activates an air conditioner or opens a window, and the system estimates the three-factor spatial distribution across the room after a settling interval, then ranks candidate actions accordingly. This estimation mode relies on appliance configuration, outdoor boundary conditions, and physical influence functions rather than on the previous observed value as the dominant signal. Persistence's advantage in short-horizon autoregressive tasks is therefore a consequence of a different task assumption, not evidence of a weakness in the model's intended operating regime. The benchmark is included to provide relative positioning on commonly comparable public data, not to claim that next-step prediction error is the primary evaluation criterion for the prototype. Full-field reconstruction requires dense room-scale ground truth, which most public datasets do not provide; canonical synthetic scenarios should therefore remain the main benchmark for full spatial-field evaluation, while public datasets such as CU-BEMS and SML2010 are most useful for the subproblems they actually support.
-
-The prototype is intentionally lightweight: it does not attempt CFD-grade airflow modeling, full wall thermal mass modeling, or detailed optical rendering. For illuminance, the one-bounce diffuse reflection term is intended to approximate the dominant indirect contribution from walls, the floor, ceiling, and furniture, but it still ignores specular effects, multi-bounce transport, and material-specific BRDFs. The humidity component is modeled using a simplified first-order coupling with the air conditioner and window, so humidity should be interpreted as secondary evidence compared with temperature and illuminance. In addition, the current evaluation uses simulated observations with deterministic perturbations rather than long-term real deployment data. The hybrid residual layer improves held-out reconstruction accuracy in the current setting, but its reported gain should still be interpreted as an extension built on synthetic truth rather than a replacement for real-room validation. Likewise, the Fourier denoising step should be interpreted as a robustness-oriented preprocessing option for slow residual traces, not as evidence that all indoor variables should be spectrally smoothed.
-
-\section{Conclusion}
-This paper presented a sparse-sensing spatial digital twin for learning environmental impacts of non-networked appliances in a single room. The core result is not merely that a room can be simulated, but that sparse corner sensing, appliance-aware modeling, lightweight illuminance reflection, calibration, and residual learning can be assigned complementary roles within one coherent system. The prototype estimates temperature, humidity, and illuminance fields, learns appliance impacts from before-and-after observations, ranks candidate control actions, and exposes the resulting capabilities through a local service layer and an interactive 3D web demo. The reported results show that this layered design is practical under sparse sensing constraints and that hybrid residual learning is most useful when it refines, rather than replaces, the reduced-order twin. Task-aligned benchmarking on SML2010 and CU-BEMS confirmed that the model's structural advantage is concentrated on compound-task and long-horizon scenarios, while short-window pure-illuminance tasks and humidity estimation on mismatched external datasets remain weaker points. Future work will focus on physical ESP32 deployment, retraining on measured data, humidity scale alignment, broader service deployment, and eventually closed-loop control.
+The evidence should be interpreted at the correct level. Synthetic scenarios provide controlled full-field ground truth and ablations; public datasets provide task-aligned external positioning; the bedroom snapshots show that real sparse observations can improve a held-out pillow reference point. They do not yet constitute a dense room-scale ground-truth campaign, and action rankings remain counterfactual recommendations until before/after interventions are collected. Future work will focus on longer ESP32 deployment, measured intervention validation, larger real datasets, humidity scale alignment, broader service deployment, and eventually closed-loop control.
 
 \section*{Acknowledgment}
 The authors thank the Department of Computer Science and Information Engineering, National Changhua University of Education, for supporting the thesis prototype development.

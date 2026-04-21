@@ -1,67 +1,39 @@
 \relax 
-\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
 \citation{tao2019digitaltwin,fuller2020digitaltwin}
 \citation{cespedes2024bdtreview}
-\citation{bacher2011heatdynamics,hietaharju2018dynamicmodel}
-\citation{gokhale2022pinnthermal}
-\citation{shepard1968two}
+\citation{bacher2011heatdynamics,hietaharju2018dynamicmodel,gokhale2022pinnthermal}
 \citation{teshome2004zonalreview,megri2022doma,huljak2025hybrid}
 \citation{qian2025dafield,chen2007zonalnetwork}
+\citation{shepard1968two}
 \citation{mcp2025}
-\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Building Digital Twins and Control-Oriented Indoor Models}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Sparse Sensing and Spatial Field Reconstruction}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Interactive Service Interfaces}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {III}System Overview}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Room and Sensor Configuration}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Appliance Representation}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {IV}Proposed Method}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Three-Factor Spatial Field Model}{2}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Layered architecture of the proposed single-room spatial digital twin.}}{3}{}\protected@file@percent }
-\newlabel{fig:architecture}{{1}{3}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Room topology, appliance placement, target zones, and the eight floor/ceiling corner sensors.}}{3}{}\protected@file@percent }
-\newlabel{fig:room_topology}{{2}{3}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Appliance Influence Envelope}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Corner Sensor Residual Correction}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Learning Non-Networked Appliance Impacts}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Data Assembly for Learning}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Hybrid Residual Neural Correction}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Action Ranking}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {V}Implementation}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Python Prototype}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Service Interface}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Interactive Web Demo}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Experimental Setup and Reproducibility}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {VI}Evaluation}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}Standard Appliance Scenarios}{5}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Representative Center-Zone Estimates and Best Ranked Actions}}{5}{}\protected@file@percent }
-\newlabel{tab:zone}{{I}{5}}
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Field Reconstruction Error Summary}}{5}{}\protected@file@percent }
-\newlabel{tab:mae}{{II}{5}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-B}}Field Reconstruction Error}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-C}}Comparison with IDW Baseline}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-D}}Synthetic Ablation Study}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{1}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Layered architecture of the proposed single-room spatial digital twin.}}{2}{}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{2}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Method}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Room, Devices, and Field Model}{2}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Room topology, appliance placement, target zones, and the eight floor/ceiling corner sensors.}}{2}{}\protected@file@percent }
+\newlabel{fig:room_topology}{{2}{2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Sparse Calibration and Learning}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Implementation and Experimental Setup}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Average field MAE for IDW, the base estimator, and leave-one-scenario-out hybrid residual correction. The y-axis is logarithmic.}}{3}{}\protected@file@percent }
+\newlabel{fig:field_mae_comparison}{{3}{3}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Synthetic Field MAE and Robustness Summary}}{3}{}\protected@file@percent }
+\newlabel{tab:synthetic}{{I}{3}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Evaluation}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Synthetic Field Reconstruction}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Hybrid Residual Correction}{3}{}\protected@file@percent }
 \citation{romeu2014sml2010}
 \citation{chitalia2020cubems}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Field MAE comparison among IDW, the base estimator, and leave-one-scenario-out hybrid residual correction. Values are averaged over the eight canonical scenarios.}}{6}{}\protected@file@percent }
-\newlabel{fig:field_mae_comparison}{{3}{6}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Example 3-D illuminance field for the light-only scenario, showing localized lighting influence and reflected fill.}}{6}{}\protected@file@percent }
-\newlabel{fig:illum_3d}{{4}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-E}}Learning Appliance Impact Coefficients}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-F}}Hybrid Residual Correction Results}{6}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Representative IDW Baseline Comparison}}{6}{}\protected@file@percent }
-\newlabel{tab:idw}{{III}{6}}
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Average Field MAE Under Synthetic Ablations}}{6}{}\protected@file@percent }
-\newlabel{tab:ablation}{{IV}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-G}}Window Time-Weather-Season Matrix}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-H}}Task-Aligned Public Dataset Benchmark}{6}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Hybrid Residual Robustness Checks (Temp./Hum./Illum.)}}{7}{}\protected@file@percent }
-\newlabel{tab:hybrid}{{V}{7}}
-\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Representative Window Matrix Results}}{7}{}\protected@file@percent }
-\newlabel{tab:window}{{VI}{7}}
-\@writefile{toc}{\contentsline {section}{\numberline {VII}Discussion}{7}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Selected Task-Aligned Benchmark Results (MAE / Correlation)}}{7}{}\protected@file@percent }
-\newlabel{tab:benchmark}{{VII}{7}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Example 3-D illuminance field for the light-only scenario, showing localized lighting influence and reflected fill.}}{4}{}\protected@file@percent }
+\newlabel{fig:illum_3d}{{4}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Preliminary Real-Bedroom Snapshot Validation}{4}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Real-Bedroom Snapshot Comparison}}{4}{}\protected@file@percent }
+\newlabel{tab:real}{{II}{4}}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Selected Task-Aligned Benchmark Results}}{4}{}\protected@file@percent }
+\newlabel{tab:benchmark}{{III}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Window Matrix and Public Benchmarks}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Discussion and Conclusion}{4}{}\protected@file@percent }
 \bibstyle{IEEEtran}
 \bibdata{references}
 \bibcite{tao2019digitaltwin}{1}
@@ -70,15 +42,14 @@
 \bibcite{bacher2011heatdynamics}{4}
 \bibcite{hietaharju2018dynamicmodel}{5}
 \bibcite{gokhale2022pinnthermal}{6}
-\bibcite{shepard1968two}{7}
-\bibcite{teshome2004zonalreview}{8}
-\bibcite{megri2022doma}{9}
-\bibcite{huljak2025hybrid}{10}
-\bibcite{qian2025dafield}{11}
-\bibcite{chen2007zonalnetwork}{12}
+\bibcite{teshome2004zonalreview}{7}
+\bibcite{megri2022doma}{8}
+\bibcite{huljak2025hybrid}{9}
+\bibcite{qian2025dafield}{10}
+\bibcite{chen2007zonalnetwork}{11}
+\bibcite{shepard1968two}{12}
 \bibcite{mcp2025}{13}
 \bibcite{romeu2014sml2010}{14}
 \bibcite{chitalia2020cubems}{15}
-\@writefile{toc}{\contentsline {section}{\numberline {VIII}Conclusion}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{References}{8}{}\protected@file@percent }
-\gdef \@abspage@last{8}
+\@writefile{toc}{\contentsline {section}{References}{5}{}\protected@file@percent }
+\gdef \@abspage@last{5}
