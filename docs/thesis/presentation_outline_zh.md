@@ -33,15 +33,18 @@
 ## Slide 8: 驗證流程與比較原則
 - truth-adjusted simulation
 - IDW baseline 比較
-- task-aligned public benchmark
+- synthetic ablation
+- no-Fourier 與 LOO cross-validation
 - 48 組窗戶矩陣
 
 ## Slide 9: 主要結果
 - 平均 field MAE
+- IDW / Base / LOO Hybrid 誤差比較
 - 3D 視覺化案例
 
 ## Slide 10: Hybrid Residual 結果
-- held-out MAE 降幅
+- default held-out、no-Fourier、LOO MAE
+- train/test sample count
 - 研究定位不是黑盒替代
 
 ## Slide 11: 研究貢獻與資料策略

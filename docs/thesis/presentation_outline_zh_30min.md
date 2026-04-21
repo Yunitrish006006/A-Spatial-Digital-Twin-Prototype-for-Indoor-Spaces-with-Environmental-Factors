@@ -40,20 +40,22 @@
 - MCP、Gemma/Ollama、Web Demo
 
 ## Slide 13: 驗證設計
-- truth-adjusted simulation、IDW、window matrix
+- truth-adjusted simulation、IDW、synthetic ablation、window matrix
+- no-Fourier 與 LOO cross-validation
 - public datasets 僅作 task-aligned benchmark
 
 ## Slide 14: 情境設計與輸入模式
 - 8 組 scenario、48 組窗戶矩陣、direct input、timeline
 
 ## Slide 15: 主要量化結果
-- 平均 MAE 與推薦示例
+- 平均 MAE、IDW/Base/LOO Hybrid 誤差圖與推薦示例
 
 ## Slide 16: 3D 視覺化結果
 - 溫度與照度熱區案例
 
 ## Slide 17: Hybrid Residual 結果
-- held-out MAE 降幅與研究定位
+- default held-out、no-Fourier、LOO robustness checks
+- train/test sample count 與 synthetic benchmark 限制
 
 ## Slide 18: 結論、限制與未來工作
 - 目前完成度、限制、task-aligned benchmark 與後續方向

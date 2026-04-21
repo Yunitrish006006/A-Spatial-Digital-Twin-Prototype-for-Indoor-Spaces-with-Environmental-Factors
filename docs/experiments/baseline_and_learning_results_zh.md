@@ -23,9 +23,9 @@ background field + appliance influence function + one-bounce diffuse reflection 
 
 | 指標 | 本研究模型 MAE | IDW MAE | MAE 降低比例 |
 | --- | ---: | ---: | ---: |
-| Temperature | 0.0470 | 0.1306 | 64.01% |
+| Temperature | 0.0470 | 0.1232 | 61.85% |
 | Humidity | 0.1762 | 0.4656 | 62.16% |
-| Illuminance | 2.6633 | 129.9798 | 97.95% |
+| Illuminance | 2.5774 | 112.2559 | 97.70% |
 
 此結果表示，對照明情境而言，只靠角落感測器做 IDW 插值難以重建中央照明影響；加入設備位置、影響函數與 single-bounce diffuse reflection 後，照度場重建誤差明顯下降。
 

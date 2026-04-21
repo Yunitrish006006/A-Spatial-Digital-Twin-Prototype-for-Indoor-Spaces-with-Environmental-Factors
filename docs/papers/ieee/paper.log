@@ -140,7 +140,25 @@ LaTeX Info: Redefining \cite on input line 302.
 LaTeX Info: Redefining \nocite on input line 332.
 Package: cite 2015/02/27  v 5.5
 )
-(url.sty
+(graphicx.sty
+Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
+ (keyval.sty
+Package: keyval 2014/10/28 v1.15 key=value parser (DPC)
+\KV@toks@=\toks23
+) (graphics.sty
+Package: graphics 2021/03/04 v1.4d Standard LaTeX Graphics (DPC,SPQR)
+ (trig.sty
+Package: trig 2021/08/11 v1.11 sin cos tan (DPC)
+) (graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: xetex.def on input line 107.
+ (xetex.def
+File: xetex.def 2021/03/18 v5.0k Graphics/color driver for xetex
+))
+\Gin@req@height=\dimen173
+\Gin@req@width=\dimen174
+) (url.sty
 \Urlmuskip=\muskip17
 Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
 ) (l3backend-xetex.def
@@ -156,129 +174,125 @@ File: l3backend-xetex.def 2022-02-07 L3 backend support: XeTeX
 ) (paper.aux)
 \openout1 = `paper.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 24.
-LaTeX Font Info:    ... okay on input line 24.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 24.
-LaTeX Font Info:    ... okay on input line 24.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 24.
-LaTeX Font Info:    ... okay on input line 24.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 24.
-LaTeX Font Info:    ... okay on input line 24.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 24.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 25.
+LaTeX Font Info:    ... okay on input line 25.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 25.
+LaTeX Font Info:    ... okay on input line 25.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 25.
+LaTeX Font Info:    ... okay on input line 25.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 25.
+LaTeX Font Info:    ... okay on input line 25.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 25.
 LaTeX Font Info:    Trying to load font information for TS1+cmr on input line 2
-4.
+5.
  (ts1cmr.fd
 File: ts1cmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
 )
-LaTeX Font Info:    ... okay on input line 24.
-LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 24.
-LaTeX Font Info:    ... okay on input line 24.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 24.
-LaTeX Font Info:    ... okay on input line 24.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 24.
-LaTeX Font Info:    ... okay on input line 24.
+LaTeX Font Info:    ... okay on input line 25.
+LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 25.
+LaTeX Font Info:    ... okay on input line 25.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 25.
+LaTeX Font Info:    ... okay on input line 25.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 25.
+LaTeX Font Info:    ... okay on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 24.
+(Font)              using `TU/ptm/bx/n' instead on input line 25.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/it' undefined
-(Font)              using `TU/ptm/bx/it' instead on input line 24.
+(Font)              using `TU/ptm/bx/it' instead on input line 25.
 
 -- Lines per column: 56 (exact).
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 27.
+(Font)              using `TU/ptm/bx/n' instead on input line 28.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 31.
+(Font)              using `TU/ptm/bx/n' instead on input line 32.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/m/sc' undefined
-(Font)              using `TU/ptm/m/n' instead on input line 35.
+(Font)              using `TU/ptm/m/n' instead on input line 36.
 
 [1
 
 
 ]
-
-LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 73.
-
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 74.
@@ -287,50 +301,115 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 75.
 
-[2] [3] [4]
-LaTeX Font Info:    Trying to load font information for TU+pcr on input line 24
-4.
-LaTeX Font Info:    No file TUpcr.fd. on input line 244.
+
+LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
+(Font)              using `TU/ptm/bx/n' instead on input line 76.
+
+File: ../thesis/assets/fig_3_1_overall_architecture.png Graphic file (type bmp)
+
+<../thesis/assets/fig_3_1_overall_architecture.png>
+File: ../thesis/assets/fig_3_3_room_topology.png Graphic file (type bmp)
+<../thesis/assets/fig_3_3_room_topology.png>
+[2]
+Underfull \vbox (badness 1412) has occurred while \output is active []
+
+ [3]
+[4]
+LaTeX Font Info:    Trying to load font information for TU+pcr on input line 17
+6.
+LaTeX Font Info:    No file TUpcr.fd. on input line 176.
 
 
 LaTeX Font Warning: Font shape `TU/pcr/m/n' undefined
-(Font)              using `TU/lmr/m/n' instead on input line 244.
+(Font)              using `TU/lmr/m/n' instead on input line 176.
 
 
-Underfull \hbox (badness 4647) in paragraph at lines 270--271
-[]\TU/pcr/m/n/10 Table V[] summarizes representative results. The
+Underfull \hbox (badness 2165) in paragraph at lines 176--177
+[]\TU/pcr/m/n/10 Because this submission does not yet include a
  []
 
-[5]
+
+Underfull \hbox (badness 3098) in paragraph at lines 176--177
+\TU/pcr/m/n/10 observation perturbation is fixed by sensor index:
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 176--177
+\TU/pcr/m/n/10 temperature adds $\OT1/cmr/m/n/10 0\OML/cmm/m/it/10 :\OT1/cmr/m/
+n/10 08((\OML/cmm/m/it/10 i  []  \OT1/cmr/m/n/10 4) \OMS/cmsy/m/n/10 ^^@ \OT1/c
+mr/m/n/10 1\OML/cmm/m/it/10 :\OT1/cmr/m/n/10 5)$\TU/pcr/m/n/10 , humidity
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 176--177
+\TU/pcr/m/n/10 adds $\OT1/cmr/m/n/10 0\OML/cmm/m/it/10 :\OT1/cmr/m/n/10 3((\OML
+/cmm/m/it/10 i  []  \OT1/cmr/m/n/10 4) \OMS/cmsy/m/n/10 ^^@ \OT1/cmr/m/n/10 1\O
+ML/cmm/m/it/10 :\OT1/cmr/m/n/10 5)$\TU/pcr/m/n/10 , and illuminance adds
+ []
+
+
+Underfull \hbox (badness 7595) in paragraph at lines 176--177
+\TU/pcr/m/n/10 reproducible and keeps the synthetic supervision
+ []
+
+
+Underfull \hbox (badness 6047) in paragraph at lines 176--177
+\TU/pcr/m/n/10 separate from the nominal estimator. The main
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 176--177
+\TU/pcr/m/n/10 scripts/run_hybrid_residual_experiment.py,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 176--177
+\TU/pcr/m/n/10 scripts/run_submission_readiness_experiments.py,
+ []
+
+
+Underfull \hbox (badness 3138) in paragraph at lines 176--177
+\TU/pcr/m/n/10 units for the leave-one-scenario-out benchmark, L2
+ []
+
+File: assets/field_mae_comparison.png Graphic file (type bmp)
+<assets/field_mae_comparison.png>
+File: ../thesis/assets/fig_5_7_light_only_illum_3d.png Graphic file (type bmp)
+<../thesis/assets/fig_5_7_light_only_illum_3d.png>
+[5] [6]
+Underfull \hbox (badness 2057) in paragraph at lines 320--321
+[]\TU/pcr/m/n/10 Table VII[] summarizes representative results. The
+ []
+
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 281.
+(Font)              using `TU/ptm/bx/n' instead on input line 331.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 282.
+(Font)              using `TU/ptm/bx/n' instead on input line 332.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 283.
+(Font)              using `TU/ptm/bx/n' instead on input line 333.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 284.
+(Font)              using `TU/ptm/bx/n' instead on input line 334.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 285.
+(Font)              using `TU/ptm/bx/n' instead on input line 335.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 286.
+(Font)              using `TU/ptm/bx/n' instead on input line 336.
 
 
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 287.
+(Font)              using `TU/ptm/bx/n' instead on input line 337.
 
-[6] (paper.bbl
+[7] (paper.bbl
 Underfull \hbox (badness 4024) in paragraph at lines 91--93
 []\TU/ptm/m/sc/8 P. Romeu-Guallart and F. Zamora-Martinez, “SML2010
  []
@@ -347,9 +426,9 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[7] (paper.aux)
+[8] (paper.aux)
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (7 pages, 339060 bytes).
+Output written on paper.xdv (8 pages, 375364 bytes).

@@ -155,7 +155,7 @@ def add_two_column_title_body(slide, title: str, left_items: Sequence[str], righ
 def build_presentation() -> Presentation:
     prs = init_presentation()
     validation_summary = read_json(DATA / "validation_summary.json")
-    hybrid_summary = read_json(DATA / "hybrid_residual_summary.json")
+    submission_summary = read_json(DATA / "submission_readiness_summary.json")
     window_summary = read_json(DATA / "window_matrix_summary.json")
     avg_mae = average_field_mae(validation_summary)
 
@@ -382,8 +382,9 @@ def build_presentation() -> Presentation:
             "以標準 scenario 建立 truth-adjusted simulation",
             "由 truth 結果合成 8 顆角落觀測值",
             "比較 nominal、corrected estimate 與 IDW baseline",
+            "新增 no-reflection / no-calibration / no-trilinear 消融",
+            "hybrid residual 加入 no-Fourier 與 LOO cross-validation",
             "輸出 MAE、zone averages、learned impacts 與推薦排序",
-            "公開資料集只做 task-aligned benchmark，不直接當 full-field ground truth",
             f"窗戶矩陣總共 {window_summary.get('count', 0)} 組情境",
         ],
         level0_size=17,
@@ -425,35 +426,36 @@ def build_presentation() -> Presentation:
     # Slide 10
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_title(slide, "Hybrid Residual Neural Network 結果")
-    reduction = hybrid_summary["field_mae_reduction"]
+    default_hybrid = submission_summary["default_holdout_hybrid"]
+    no_fourier = submission_summary["no_fourier_holdout_hybrid"]
+    loo = submission_summary["leave_one_scenario_out"]
     add_card(
         slide,
         0.7,
         1.45,
         5.0,
         4.9,
-        "Held-out 測試結果",
+        "Held-out + LOO",
         [
-            f"Temperature field MAE 降低 {reduction['temperature']:.2f}%",
-            f"Humidity field MAE 降低 {reduction['humidity']:.2f}%",
-            f"Illuminance field MAE 降低 {reduction['illuminance']:.2f}%",
-            f"Train scenarios: {', '.join(hybrid_summary['dataset']['train_scenarios'])}",
-            f"Test scenarios: {', '.join(hybrid_summary['dataset']['test_scenarios'])}",
+            f"Default samples: {default_hybrid['dataset']['train_samples']} / {default_hybrid['dataset']['test_samples']}",
+            f"Default hybrid MAE: {default_hybrid['hybrid_test_field_mae']}",
+            f"No-Fourier hybrid MAE: {no_fourier['hybrid_test_field_mae']}",
+            f"LOO avg hybrid MAE: {loo['average_hybrid_field_mae']}",
+            f"LOO reduction: T {loo['average_field_mae_reduction_percent']['temperature']:.2f}%, H {loo['average_field_mae_reduction_percent']['humidity']:.2f}%, L {loo['average_field_mae_reduction_percent']['illuminance']:.2f}%",
         ],
     )
-    add_card(
+    add_picture(slide, FIGURES / "submission" / "field_mae_comparison.png", 6.0, 1.35, 6.2, 3.1)
+    add_bullets(
         slide,
-        6.0,
-        1.45,
-        6.0,
-        4.9,
-        "研究定位",
+        6.1,
+        4.65,
+        5.9,
+        1.5,
         [
-            "hybrid residual 是第二層修正器",
-            "主模型仍是可解釋的 bulk + local field",
-            "不是用黑盒網路直接取代物理啟發式模型",
-            "因此仍可保留裝置影響、時間響應與校正流程",
+            "hybrid residual 是第二層修正器，不取代主模型",
+            "目前仍是 synthetic dense-field benchmark，真實房間資料列為後續工作",
         ],
+        level0_size=17,
     )
     add_footer(slide, 10)
 
@@ -515,7 +517,7 @@ def build_presentation() -> Presentation:
 def build_presentation_30min() -> Presentation:
     prs = init_presentation()
     validation_summary = read_json(DATA / "validation_summary.json")
-    hybrid_summary = read_json(DATA / "hybrid_residual_summary.json")
+    submission_summary = read_json(DATA / "submission_readiness_summary.json")
     window_summary = read_json(DATA / "window_matrix_summary.json")
     avg_mae = average_field_mae(validation_summary)
     scenarios = scenario_map(validation_summary)
@@ -968,17 +970,16 @@ def build_presentation_30min() -> Presentation:
             "照度與局部熱區重建效果明顯較差",
         ],
     )
+    add_picture(slide, FIGURES / "submission" / "field_mae_comparison.png", 4.55, 1.25, 7.7, 3.25)
     add_card(
         slide,
         4.6,
-        1.4,
+        4.75,
         7.7,
-        4.7,
+        1.35,
         "範例推薦結果",
         [
             f"idle → {scenarios['idle']['recommendations'][0]['name']} (improvement {scenarios['idle']['recommendations'][0]['improvement']})",
-            f"window_only → {scenarios['window_only']['recommendations'][0]['name']} (improvement {scenarios['window_only']['recommendations'][0]['improvement']})",
-            f"light_only → {scenarios['light_only']['recommendations'][0]['name']} (improvement {scenarios['light_only']['recommendations'][0]['improvement']})",
             f"all_active → {scenarios['all_active']['recommendations'][0]['name']} (improvement {scenarios['all_active']['recommendations'][0]['improvement']})",
         ],
     )
@@ -995,36 +996,37 @@ def build_presentation_30min() -> Presentation:
     # 17 hybrid result
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_title(slide, "Hybrid Residual Neural Network 結果")
-    reduction = hybrid_summary["field_mae_reduction"]
+    default_hybrid = submission_summary["default_holdout_hybrid"]
+    no_fourier = submission_summary["no_fourier_holdout_hybrid"]
+    loo = submission_summary["leave_one_scenario_out"]
     add_card(
         slide,
         0.75,
         1.45,
         5.2,
         4.9,
-        "Held-out test",
+        "Robustness checks",
         [
-            f"Temperature 降低 {reduction['temperature']:.2f}%",
-            f"Humidity 降低 {reduction['humidity']:.2f}%",
-            f"Illuminance 降低 {reduction['illuminance']:.2f}%",
-            f"Train: {', '.join(hybrid_summary['dataset']['train_scenarios'])}",
-            f"Test: {', '.join(hybrid_summary['dataset']['test_scenarios'])}",
+            f"Default samples: {default_hybrid['dataset']['train_samples']} / {default_hybrid['dataset']['test_samples']}",
+            f"Default MAE: {default_hybrid['hybrid_test_field_mae']}",
+            f"No-Fourier MAE: {no_fourier['hybrid_test_field_mae']}",
+            f"LOO avg MAE: {loo['average_hybrid_field_mae']}",
+            f"LOO reduction: {loo['average_field_mae_reduction_percent']}",
         ],
     )
-    add_card(
+    add_picture(slide, FIGURES / "submission" / "field_mae_comparison.png", 6.15, 1.35, 6.1, 3.0)
+    add_bullets(
         slide,
-        6.2,
-        1.45,
-        5.95,
-        4.9,
-        "解讀",
+        6.25,
+        4.55,
+        5.8,
+        1.7,
         [
-            "hybrid residual 是可選修正層",
-            "temperature / humidity 可再加 Fourier low-pass denoising",
-            "保留主模型的物理啟發與可解釋性",
-            "在 held-out 情境上可進一步降低誤差",
-            "但仍需真實量測資料做外部驗證",
+            "no-Fourier 對照顯示照度改善不是頻域處理造成",
+            "LOO 降低單一 held-out split 過度樂觀的風險",
+            "真實房間長期部署仍是主要限制",
         ],
+        level0_size=16,
     )
     add_footer(slide, 17)
 
@@ -1087,9 +1089,9 @@ def build_outline() -> str:
         ("數學模型", ["bulk + local field", "trilinear correction", "裝置與家具模組化"]),
         ("感測器校正與影響學習", ["power calibration", "least-squares impact learning"]),
         ("系統實作與介面", ["MCP tools", "Gemma bridge", "Web demo"]),
-        ("驗證流程與比較原則", ["truth-adjusted simulation", "IDW baseline 比較", "task-aligned public benchmark", "48 組窗戶矩陣"]),
-        ("主要結果", ["平均 field MAE", "3D 視覺化案例"]),
-        ("Hybrid Residual 結果", ["held-out MAE 降幅", "研究定位不是黑盒替代"]),
+        ("驗證流程與比較原則", ["truth-adjusted simulation", "IDW baseline 比較", "synthetic ablation", "no-Fourier 與 LOO cross-validation", "48 組窗戶矩陣"]),
+        ("主要結果", ["平均 field MAE", "IDW / Base / LOO Hybrid 誤差比較", "3D 視覺化案例"]),
+        ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO MAE", "train/test sample count", "研究定位不是黑盒替代"]),
         ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + task-aligned public datasets"]),
         ("結論與未來工作", ["真實資料、更多因子、multi-zone、task-aligned benchmark、閉環控制"]),
     ]
@@ -1115,11 +1117,11 @@ def build_outline_30min() -> str:
         ("數學模型", ["bulk + local field + correction", "早期純插值與 local-only 模型失敗後的調整"]),
         ("感測器校正與裝置影響學習", ["power calibration 與 least squares"]),
         ("系統實作與介面", ["MCP、Gemma/Ollama、Web Demo"]),
-        ("驗證設計", ["truth-adjusted simulation、IDW、window matrix", "public datasets 僅作 task-aligned benchmark"]),
+        ("驗證設計", ["truth-adjusted simulation、IDW、synthetic ablation、window matrix", "no-Fourier 與 LOO cross-validation", "public datasets 僅作 task-aligned benchmark"]),
         ("情境設計與輸入模式", ["8 組 scenario、48 組窗戶矩陣、direct input、timeline"]),
-        ("主要量化結果", ["平均 MAE 與推薦示例"]),
+        ("主要量化結果", ["平均 MAE、IDW/Base/LOO Hybrid 誤差圖與推薦示例"]),
         ("3D 視覺化結果", ["溫度與照度熱區案例"]),
-        ("Hybrid Residual 結果", ["held-out MAE 降幅與研究定位"]),
+        ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO robustness checks", "train/test sample count 與 synthetic benchmark 限制"]),
         ("結論、限制與未來工作", ["目前完成度、限制、task-aligned benchmark 與後續方向"]),
     ]
     lines = ["# 論文報告投影片大綱（30 分鐘版）", ""]

@@ -104,7 +104,7 @@ def build_blocks() -> List[Block]:
             "本研究以單一矩形房間為研究場域，提出一個基於有限角落感測器與連續影響場估計之三因子空間數位孿生原型。研究過程中，本研究先後比較純插值、僅局部影響場與資料驅動修正等作法，最終採用 bulk + local field 作為主模型，並以冷氣、窗戶與照明之參數化影響函數描述非連網裝置對不同區域的作用。系統固定使用 8 顆角落感測器，即天花板四角與地面四角，每個節點量測溫度、濕度與照度，並以感測器殘差進行主動設備 power scale 校準與 trilinear residual correction，以修正背景場與設備影響函數之偏差。在此基礎上，本研究再加入 hybrid residual neural network 延伸模組，以小型多層感知器學習主模型的剩餘誤差，而不直接取代原本的可解釋結構。"
         ),
         paragraph(
-            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為補足 direct source + obstruction 對照度間接回填亮度的低估，本研究另在 illuminance 路徑加入 lightweight single-bounce diffuse reflection 近似，以地板、天花板、牆面與啟用中的家具表面作為次級反射面。為提升系統可存取性，本研究另提供本地服務介面，其中包含 MCP server 與 web demo，作為同一套模型能力的工具化存取層。評估方面，本研究以 8 組標準情境、48 組窗戶矩陣、IDW baseline 比較與 hybrid residual held-out 測試驗證方法可行性；其中 base model 在標準情境下之平均 MAE 分別為溫度 0.0474、濕度 0.1764 與照度 2.1288，而加入 Fourier low-pass denoising 的 hybrid residual correction 在 held-out 情境下可進一步將 field MAE 降至溫度 0.0026、濕度 0.0040 與照度 0.1752。"
+            "除空間場估計外，本研究亦建立裝置啟用前後感測資料之影響學習流程，透過最小平方法估計非連網裝置的環境影響係數，並根據目標區域的舒適度偏差輸出候選控制動作排序。為補足 direct source + obstruction 對照度間接回填亮度的低估，本研究另在 illuminance 路徑加入 lightweight single-bounce diffuse reflection 近似，以地板、天花板、牆面與啟用中的家具表面作為次級反射面。為提升系統可存取性，本研究另提供本地服務介面，其中包含 MCP server 與 web demo，作為同一套模型能力的工具化存取層。評估方面，本研究以 8 組標準情境、48 組窗戶矩陣、IDW baseline 比較、synthetic ablation 與 hybrid residual leave-one-scenario-out 測試驗證方法可行性；其中 base model 在標準情境下之平均 MAE 分別為溫度 0.0474、濕度 0.1765 與照度 2.0835，明顯低於 IDW baseline 的 0.1723、0.4633 與 75.0516。加入 Fourier low-pass denoising 的 hybrid residual correction 在預設 6/2 held-out split 中可將 field MAE 降至溫度 0.0023、濕度 0.0041 與照度 0.1675；8-fold leave-one-scenario-out 平均則為 0.0017、0.0055 與 0.1581。"
         ),
         paragraph("關鍵字：空間數位孿生、稀疏感測、非連網家電、室內環境建模、溫度、濕度、照度、角落感測器。"),
         page_break(),
@@ -116,7 +116,7 @@ def build_blocks() -> List[Block]:
             "This thesis proposes a sparse-sensing spatial digital twin for a single room. The final design is a reduced-order bulk-plus-local field model with parameterized appliance influence functions, active-device power calibration, and trilinear residual correction from eight corner sensors. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, ranks candidate control actions according to target-zone comfort improvement, and extends the base estimator with an optional hybrid residual neural correction layer instead of replacing the base model with an end-to-end black-box predictor."
         ),
         paragraph(
-            "The prototype is implemented in Python and exposed through a local service layer, including an MCP interface and a rotatable web demo, enabling interactive scenario queries, point-level estimation, baseline comparison, appliance-impact learning, and a 48-case window simulation matrix across time of day, weather, and season. A lightweight one-bounce diffuse reflection approximation is further added to the illuminance path so that floors, walls, ceilings, and active furniture surfaces can contribute indirect fill light without requiring full optical rendering. Across the canonical scenarios, the base model achieves average MAE of 0.0474 for temperature, 0.1764 for humidity, and 2.1288 for illuminance, while the hybrid residual layer with Fourier low-pass denoising on temperature and humidity residual traces further reduces held-out field MAE to 0.0026, 0.0040, and 0.1752, respectively. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
+            "The prototype is implemented in Python and exposed through a local service layer, including an MCP interface and a rotatable web demo, enabling interactive scenario queries, point-level estimation, baseline comparison, appliance-impact learning, and a 48-case window simulation matrix across time of day, weather, and season. A lightweight one-bounce diffuse reflection approximation is further added to the illuminance path so that floors, walls, ceilings, and active furniture surfaces can contribute indirect fill light without requiring full optical rendering. Across the canonical scenarios, the base model achieves average MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance, compared with 0.1723, 0.4633, and 75.0516 for IDW. The hybrid residual layer with Fourier low-pass denoising on temperature and humidity residual traces further reduces default held-out field MAE to 0.0023, 0.0041, and 0.1675, while leave-one-scenario-out evaluation averages 0.0017, 0.0055, and 0.1581, respectively. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
         ),
         paragraph("Keywords: spatial digital twin, sparse sensing, non-networked appliances, indoor environment modeling, temperature, humidity, illuminance, corner sensors."),
         page_break(),
@@ -161,12 +161,13 @@ def build_blocks() -> List[Block]:
         paragraph("  5.1 標準情境設定…… 13"),
         paragraph("  5.2 場重建誤差…… 13"),
         paragraph("  5.3 IDW Baseline 比較…… 14"),
-        paragraph("  5.4 非連網裝置影響學習…… 14"),
-        paragraph("  5.5 窗戶時段、天氣、季節矩陣與直接輸入…… 14"),
-        paragraph("  5.6 Hybrid Residual Neural Network 結果…… 14"),
-        paragraph("  5.7 公開資料集 Task-Aligned Benchmark 結果…… 15"),
-        paragraph("  5.8 研究過程與實作挑戰…… 18"),
-        paragraph("  5.9 可旋轉 3D 展示…… 18"),
+        paragraph("  5.4 消融分析與可重現性補強…… 14"),
+        paragraph("  5.5 非連網裝置影響學習…… 14"),
+        paragraph("  5.6 窗戶時段、天氣、季節矩陣與直接輸入…… 14"),
+        paragraph("  5.7 Hybrid Residual Neural Network 結果…… 15"),
+        paragraph("  5.8 公開資料集 Task-Aligned Benchmark 結果…… 16"),
+        paragraph("  5.9 研究過程與實作挑戰…… 18"),
+        paragraph("  5.10 可旋轉 3D 展示…… 18"),
         paragraph("第六章 結論與未來工作…… 19"),
         paragraph("  6.1 結論…… 19"),
         paragraph("  6.2 研究限制…… 19"),
@@ -183,9 +184,11 @@ def build_blocks() -> List[Block]:
         paragraph("表 4-1 核心模組一覽…… 11"),
         paragraph("表 5-1 標準情境結果摘要…… 13"),
         paragraph("表 5-2 IDW 與本研究 field MAE 比較…… 14"),
-        paragraph("表 5-3 窗戶矩陣情境節選…… 15"),
-        paragraph("表 5-4 SML2010 Benchmark 結果…… 16"),
-        paragraph("表 5-5 CU-BEMS Benchmark 結果…… 17"),
+        paragraph("表 5-3 消融實驗平均 field MAE…… 14"),
+        paragraph("表 5-4 Hybrid residual robustness checks…… 15"),
+        paragraph("表 5-5 窗戶矩陣情境節選…… 15"),
+        paragraph("表 5-6 SML2010 Benchmark 結果…… 16"),
+        paragraph("表 5-7 CU-BEMS Benchmark 結果…… 17"),
         page_break(),
         heading("圖目錄", 1),
         paragraph("圖 3-1 系統整體分層架構…… 7"),
@@ -196,9 +199,10 @@ def build_blocks() -> List[Block]:
         paragraph("圖 5-2 三裝置同時作用溫度場 3D 點雲（all_active）…… 13"),
         paragraph("圖 5-3 僅冷氣作用溫度場 3D 點雲（ac_only）…… 14"),
         paragraph("圖 5-4 僅燈具作用照度場 3D 點雲（light_only）…… 14"),
-        paragraph("圖 5-5 三裝置全開溫度場 3D 點雲（5.9 節）…… 18"),
-        paragraph("圖 5-6 僅開窗溫度場 3D 點雲（window_only）…… 18"),
-        paragraph("圖 5-7 僅燈具照度場 3D 點雲（light_only，5.9 節）…… 18"),
+        paragraph("圖 5-5 IDW、Base 與 LOO Hybrid field MAE 比較…… 15"),
+        paragraph("圖 5-6 三裝置全開溫度場 3D 點雲（5.10 節）…… 18"),
+        paragraph("圖 5-7 僅開窗溫度場 3D 點雲（window_only）…… 18"),
+        paragraph("圖 5-8 僅燈具照度場 3D 點雲（light_only，5.10 節）…… 18"),
         page_break(),
         raw_latex(r"\clearpage\pagenumbering{arabic}"),
         heading("第一章 緒論", 1),
@@ -547,10 +551,10 @@ def build_blocks() -> List[Block]:
         ),
         math(r"\text{MAE} = \frac{1}{n}\sum_{i=1}^{n}\left|\hat{y}_i - y_i\right|"),
         paragraph(
-            "8 組標準情境中，平均溫度 MAE 為 0.0474，平均濕度 MAE 為 0.1764，平均照度 MAE 為 2.1288。照度 MAE 仍高於溫度與濕度，主要原因是照度場受燈具位置、窗戶日照、遮蔽與方向性影響較大，且數值尺度遠高於溫度與濕度。相較於前一版只使用 direct source + obstruction 的照度路徑，加入 single-bounce diffuse reflection 後，平均照度 MAE 由 2.1616 降至 2.1288，最大照度 MAE 亦由 2.7090 降至 2.6633。"
+            "8 組標準情境中，平均溫度 MAE 為 0.0474，平均濕度 MAE 為 0.1765，平均照度 MAE 為 2.0835；各因子的最大 MAE 分別為 0.0481、0.1770 與 2.5774。照度 MAE 仍高於溫度與濕度，主要原因是照度場受燈具位置、窗戶日照、遮蔽與方向性影響較大，且數值尺度遠高於溫度與濕度。"
         ),
         paragraph(
-            "這表示新增的反射公式確實補足了牆面、地板、天花板與家具造成的間接回填亮度，使非直射區域不再被系統性低估。另一方面，溫度與濕度指標幾乎沒有變化，也說明這組公式主要作用在預期的 illuminance 路徑，而沒有不必要地擾動其他兩個環境因素。"
+            "這表示新增的反射公式補足了牆面、地板、天花板與家具造成的間接回填亮度，使非直射區域不再被系統性低估。另一方面，溫度與濕度指標維持在小幅誤差範圍內，也說明照度反射項主要作用在預期的 illuminance 路徑，而沒有不必要地擾動其他兩個環境因素。"
         ),
         image(
             "outputs/figures/all_active_temperature_3d.svg",
@@ -582,13 +586,13 @@ def build_blocks() -> List[Block]:
                 ["idle",        "照度",  "1.7625", "1.3210", "−33.4% ▲"],
                 ["ac\\_only",   "溫度",  "0.0481", "0.2536", "81.0%"],
                 ["ac\\_only",   "照度",  "1.7625", "1.3210", "−33.4% ▲"],
-                ["window\\_only","照度", "2.3024", "58.7291","96.1%"],
-                ["light\\_only", "溫度", "0.0470", "0.1306", "64.0%"],
-                ["light\\_only", "照度", "2.6633", "129.9798","97.9%"],
-                ["window\\_light","照度","1.9913","167.9708","98.8%"],
-                ["ac\\_light",  "照度",  "2.5770", "121.8574","97.9%"],
-                ["all\\_active","溫度",  "0.0477", "0.1883", "74.7%"],
-                ["all\\_active","照度",  "1.9957", "147.2720","98.6%"],
+                ["window\\_only","照度", "2.1121", "59.2620","96.4%"],
+                ["light\\_only", "溫度", "0.0470", "0.1232", "61.9%"],
+                ["light\\_only", "照度", "2.5774", "112.2559","97.7%"],
+                ["window\\_light","照度","2.0276","151.2615","98.7%"],
+                ["ac\\_light",  "照度",  "2.5008", "105.2485","97.6%"],
+                ["all\\_active","溫度",  "0.0479", "0.1896", "74.7%"],
+                ["all\\_active","照度",  "2.0399", "131.6092","98.5%"],
             ],
         ),
         paragraph(
@@ -600,11 +604,32 @@ def build_blocks() -> List[Block]:
         paragraph(
             "值得注意的是，本研究目前的照度估計完全依賴物理模型推算（設備位置、功率、反射係數），並未使用任何實測照度感測器回饋。若系統部署時，角落感測器本身即具備照度量測能力（例如採用光照感測元件的多合一環境感測器），則可將實測角落照度值引入 trilinear residual correction，使模型的照度殘差直接對齊真實量測，從根本上消除物理假設帶來的系統性偏差。換言之，本研究現有的照度誤差並非方法的根本限制，而是感測器配置選擇的結果，一旦取得真實光照量測資料，即可透過既有的 residual correction 管線加以修正，實現更高精度的照度場重建。"
         ),
-        heading("5.4 非連網裝置影響學習", 2),
+        heading("5.4 消融分析與可重現性補強", 2),
+        paragraph(
+            "為回應 IEEE conference 審稿時可能關注的 overfitting 與 synthetic leakage 問題，本研究新增 submission readiness 實驗。所有消融實驗均使用相同的 6.0 m × 4.0 m × 3.0 m 房間、8 顆角落感測器、16×12×6 網格、8 組標準情境、18 分鐘 settling interval，以及固定的 deterministic truth adjustment。合成觀測只由 truth sensor prediction 加上固定 index-based perturbation 產生：temperature 加上 0.08((i mod 4) − 1.5)，humidity 加上 0.3((i mod 4) − 1.5)，illuminance 加上 3.0((i mod 4) − 1.5)。此設計使每次實驗可完全重現，也避免把 nominal estimator 的輸出直接當作訓練標籤。"
+        ),
+        paragraph(
+            "表 5-3 顯示各消融版本在 8 組標準情境上的平均 field MAE。raw nominal 表示不使用角落感測回饋；no reflection 移除照度 single-bounce diffuse reflection；no calibration 移除 active-device power calibration；no trilinear 保留 power calibration 但不套用 trilinear residual correction；full base 則為目前主模型。結果顯示，移除設備感測回饋或反射近似會明顯增加照度誤差；no trilinear 在本組 synthetic dense-field MAE 上反而較低，表示 trilinear correction 更應被解讀為角落感測一致性修正，而非保證所有 synthetic dense field 指標皆單調下降的步驟。"
+        ),
+        table(
+            ["Variant", "Temperature", "Humidity", "Illuminance"],
+            [
+                ["IDW baseline", "0.1723", "0.4633", "75.0516"],
+                ["raw nominal", "0.1312", "0.0842", "4.4267"],
+                ["no reflection", "0.0471", "0.1761", "3.6792"],
+                ["no calibration", "0.0493", "0.1772", "3.7532"],
+                ["no trilinear", "0.0448", "0.0278", "1.3586"],
+                ["full base", "0.0474", "0.1765", "2.0835"],
+            ],
+        ),
+        paragraph(
+            "因此，本研究在後續 hybrid residual 評估中不只報告單一 6/2 held-out split，也加入 leave-one-scenario-out cross-validation、train/test sample count 與 no-Fourier 對照，以降低僅憑單一切分得到過度漂亮結果的風險。可重現腳本包含 scripts/run_demo.py、scripts/run_hybrid_residual_experiment.py 與 scripts/run_submission_readiness_experiments.py。"
+        ),
+        heading("5.5 非連網裝置影響學習", 2),
         paragraph(
             "在 ac_only 情境中，模型學得冷氣對 temperature 的係數為負，對 humidity 的係數亦為負，對 illuminance 則接近零，符合冷氣降溫與弱除濕的模型假設。在 light_only 情境中，照明主要提升 illuminance，並帶來少量正向熱效應。這些結果顯示，即使裝置本身不回報狀態，仍可由環境感測變化估計其影響方向與相對強度。"
         ),
-        heading("5.5 窗戶時段、天氣、季節矩陣與直接輸入", 2),
+        heading("5.6 窗戶時段、天氣、季節矩陣與直接輸入", 2),
         paragraph(
             "本研究新增 48 組窗戶矩陣情境，組合 4 個時段、3 種天氣與 4 個季節。此矩陣可作為外部環境變數敏感度分析，用於說明窗戶在不同外部條件下對靠窗區與中心區的溫度、濕度與照度影響。"
         ),
@@ -619,18 +644,34 @@ def build_blocks() -> List[Block]:
                 ["window_spring_cloudy_morning", "21.5", "70.0", "5005.0", "93.2172"],
             ],
         ),
-        heading("5.6 Hybrid Residual Neural Network 結果", 2),
+        heading("5.7 Hybrid Residual Neural Network 結果", 2),
         paragraph(
-            "在目前預設的 held-out 測試設定下，hybrid residual neural network 以 6 個情境作為訓練資料，並以 light\_only 與 all\_active 作為測試情境（與 5.2 節的 8 組全集平均為不同子集）。若對 temperature 與 humidity residual trace 啟用 Fourier low-pass denoising，並保留 illuminance 原始 residual，則 hybrid residual correction 套用於主模型輸出後，field MAE 可由 temperature 0.0474、humidity 0.1764、illuminance 2.3295，分別降至 0.0026、0.0040 與 0.1752。對應改善比例約為溫度 94.51%、濕度 97.73% 與照度 92.48%。"
+            "在目前預設的 held-out 測試設定下，hybrid residual neural network 以 6 個情境作為訓練資料，並以 light\\_only 與 all\\_active 作為測試情境（與 5.2 節的 8 組全集平均為不同子集）。此切分包含 576 個訓練樣本與 192 個測試樣本。若對 temperature 與 humidity residual trace 啟用 Fourier low-pass denoising，並保留 illuminance 原始 residual，則 hybrid residual correction 套用於主模型輸出後，field MAE 可由 temperature 0.0474、humidity 0.1765、illuminance 2.3087，分別降至 0.0023、0.0041 與 0.1675。對應改善比例約為溫度 95.15%、濕度 97.68% 與照度 92.74%。"
         ),
         paragraph(
-            "若與加入反射近似前的 direct-only 照度路徑相比，held-out illuminance 的主模型 MAE 由 2.3727 降至 2.3295，而 hybrid 後的 illuminance MAE 由 0.2357 進一步降至 0.1752。這表示較乾淨的 base optical approximation 可先降低結構性照度偏差，再讓 residual network 更集中地學習剩餘誤差；而頻域低通則較適合作為慢變 thermal / humidity residual 的前處理，而非對所有環境因子一體適用。不過此結果仍建立於模擬資料與既定情境分割下，未來仍需以真實量測資料重新訓練與驗證。"
+            "為檢查 Fourier denoising 是否造成主要降幅，本研究另外關閉 Fourier low-pass denoising 重跑相同切分；結果為 temperature 0.0022、humidity 0.0045、illuminance 0.1675。此結果顯示，頻域低通主要對 humidity 有小幅穩定效果，而照度改善主要來自 residual model 對結構性偏差的學習，不是由頻域處理造成。進一步的 leave-one-scenario-out 設定中，每一 fold 以 7 個情境訓練、1 個情境測試，平均每 fold 為 672 個訓練樣本與 96 個測試樣本；8-fold 平均 hybrid field MAE 為 temperature 0.0017、humidity 0.0055、illuminance 0.1581，對應改善比例為 96.41%、96.88% 與 92.41%。"
         ),
-        heading("5.7 公開資料集 Task-Aligned Benchmark 結果", 2),
+        paragraph(
+            "表 5-4 彙整預設切分、no-Fourier 對照與 LOO cross-validation。圖 5-5 則將 IDW、base model 與 LOO hybrid 的平均 field MAE 以 log-scale 顯示，避免照度量級過大而掩蓋溫度與濕度差異。"
+        ),
+        table(
+            ["設定", "Train/Test samples", "Base MAE (T/H/L)", "Hybrid MAE (T/H/L)"],
+            [
+                ["default 6/2 held-out", "576 / 192", "0.0474 / 0.1765 / 2.3087", "0.0023 / 0.0041 / 0.1675"],
+                ["no-Fourier held-out", "576 / 192", "0.0474 / 0.1765 / 2.3087", "0.0022 / 0.0045 / 0.1675"],
+                ["leave-one-scenario-out avg.", "672 / 96 per fold", "0.0474 / 0.1765 / 2.0835", "0.0017 / 0.0055 / 0.1581"],
+            ],
+        ),
+        image(
+            "docs/papers/thesis/assets/field_mae_comparison.png",
+            "圖 5-5 IDW、base model 與 LOO hybrid residual correction 的平均 field MAE 比較。圖中使用 log-scale y-axis，數值為 8 組標準情境平均。",
+            asset_name="field_mae_comparison",
+        ),
+        heading("5.8 公開資料集 Task-Aligned Benchmark 結果", 2),
         paragraph(
             "為驗證模型在非合成資料上的外部可比性，本研究以 SML2010 與 CU-BEMS 兩個公開資料集執行 task-aligned benchmark，並以 MAE、RMSE 與 Pearson Correlation 三項指標進行評估。MAE 衡量平均絕對誤差，RMSE 對尖峰偏差更敏感，Correlation 則反映模型是否能正確追蹤時序趨勢，三者共同提供較完整的評估視角。預測目標為下一個 15 分鐘或 60 分鐘時步的感測值，比較對象為 persistence（以上一時步值作預測）與 linear regression 兩個 baseline。"
         ),
-        paragraph("表 5-4 列出 SML2010 benchmark 各任務三項指標的完整對比。"),
+        paragraph("表 5-6 列出 SML2010 benchmark 各任務三項指標的完整對比。"),
         table(
             ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
             [
@@ -663,7 +704,7 @@ def build_blocks() -> List[Block]:
                 ["S3 複合照度", "60min", "dining_illuminance", "Corr", "0.000", "0.715", "0.472"],
             ],
         ),
-        paragraph("表 5-5 列出 CU-BEMS benchmark 各任務三項指標的完整對比。"),
+        paragraph("表 5-7 列出 CU-BEMS benchmark 各任務三項指標的完整對比。"),
         table(
             ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
             [
@@ -687,7 +728,7 @@ def build_blocks() -> List[Block]:
                 ["C2 照度",   "60min", "illuminance", "Corr", "0.864", "0.866", "0.792"],
             ],
         ),
-        heading("5.7.1 優勢分析", 3),
+        heading("5.8.1 優勢分析", 3),
         paragraph(
             "第一項優勢是複合任務的趨勢追蹤能力。在 S3 與 C3 等複合任務中，persistence 的 Correlation 值全為 0.000，原因是這些任務包含裝置切換或外部條件突變，使前一時步值完全失去預測能力。相較之下，本研究模型在 S3 15min dining_temperature 的 Correlation 達 0.950，S3 15min dining_humidity 達 0.612，S3 60min dining_temperature 達 0.937，均為三者最高。這說明物理結構與設備影響函數提供的先驗資訊，在環境條件快速變化時比純時序延續有更強的趨勢預測能力。"
         ),
@@ -697,7 +738,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "第三項優勢是複合任務的 RMSE 表現。以 S3 60min dining_illuminance 為例，本研究的 RMSE 為 19.344，低於 persistence 的 21.931 與 linear regression 的 22.763。RMSE 對離群誤差的放大效應更敏感，這表示本研究模型在極端照度事件的重建上較其他方法更為穩定。"
         ),
-        heading("5.7.2 劣勢分析", 3),
+        heading("5.8.2 劣勢分析", 3),
         paragraph(
             "最明顯的劣勢出現在短視窗純照度任務。SML2010 S1 15min dining_illuminance 的 MAE 為 5.346，高於 persistence 的 3.418 與 linear regression 的 4.023；Correlation 為 0.957，略低於另外兩者的 0.963 與 0.966。CU-BEMS C2 15min illuminance 的差距更大，MAE 7.700 對比 persistence 1.363，RMSE 11.938 對比 persistence 6.344。主要原因是短視窗照度的最佳預測策略接近 persistence（照度在 15 分鐘內變化緩慢），而本研究在對應時段的日照估計引入了額外誤差，反而不如直接沿用上一時步值。"
         ),
@@ -713,37 +754,37 @@ def build_blocks() -> List[Block]:
         paragraph(
             "需要特別說明的是，task-aligned benchmark 採用的是「下一時步預測」框架（15min 或 60min 視窗），而本研究的核心使用情境並非短視窗自回歸預測，而是在設備達到準穩態後的空間場估計。實際應用中，使用者先啟動冷氣或開窗，系統再估計若干分鐘後整個房間的三因子空間分布，並據此輸出控制動作推薦。此類穩態導向估計不依賴前一時步值作為主要訊號，而是依賴設備配置、外部環境條件與物理影響函數。因此，persistence 在短視窗下的優勢屬於不同任務假設的產物，並不代表本研究模型在其實際設計目標上的劣勢。本研究進行 task-aligned benchmark 的目的，是為了在共同可比的框架下提供外部資料集的相對定位，而非宣稱本研究的主要評估對象是次步預測誤差。"
         ),
-        heading("5.8 研究過程與實作挑戰", 2),
+        heading("5.9 研究過程與實作挑戰", 2),
         paragraph(
             "本研究在實作過程中有三個直接影響最終模型設計的問題。第一，初期若僅使用 local field 疊加設備作用，會出現冷氣附近快速降溫、房間遠端卻幾乎維持原溫的不合理結果，因此後續必須加入 bulk state 描述全室平均狀態的時間收斂。第二，若只以 8 顆角落感測器直接監督整個 3D 場，則黑盒神經網路雖可能把角落點擬合得很好，但對室內中央、窗邊與家具後方的場仍缺乏足夠監督，因此本研究把神經網路限制在 residual correction 層，而不是直接取代主模型。第三，公開資料集與本研究情境在幾何、裝置標記與感測器拓樸上通常不一致，因此必須採用 task-aligned benchmark，不能直接把所有實驗都搬到同一公開資料集上比較。"
         ),
         paragraph(
             "這些困難也說明本研究的設計取捨不是任意拼接，而是由實作過程逐步收斂而來：bulk + local field 負責處理全室與局部差異，single-bounce diffuse reflection 負責補足 direct lighting 對間接回填亮度的低估，trilinear correction 負責利用有限角落感測器修正低階偏差，least-squares impact learning 負責從設備前後差異學習非連網裝置影響，hybrid residual neural network 則只處理主模型尚未吸收的系統性誤差。"
         ),
-        heading("5.9 可旋轉 3D 展示", 2),
+        heading("5.10 可旋轉 3D 展示", 2),
         paragraph(
-            "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。圖 5-5 至 5-7 為靜態輸出之三因子場 3D 點雲，展示三種代表情境：三裝置全開、單獨窗戶、單獨燈具。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
+            "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。圖 5-6 至 5-8 為靜態輸出之三因子場 3D 點雲，展示三種代表情境：三裝置全開、單獨窗戶、單獨燈具。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
         ),
         image(
             "outputs/figures/all_active_temperature_3d.svg",
-            "圖 5-5 三裝置同時作用（all\\_active）溫度場 3D 點雲。顏色由藍綠至橙紅對映 26.02–27.16 °C 範圍；設備位置用帶邊框的標記表示。",
-            asset_name="fig_5_5_all_active_temp_3d",
+            "圖 5-6 三裝置同時作用（all\\_active）溫度場 3D 點雲。顏色由藍綠至橙紅對映 26.02–27.16 °C 範圍；設備位置用帶邊框的標記表示。",
+            asset_name="fig_5_6_all_active_temp_3d",
         ),
         image(
             "outputs/figures/window_only_temperature_3d.svg",
-            "圖 5-6 僅開窗（window\\_only）溫度場 3D 點雲。靠窗區域溫度最高，造成區域溫度梯度。可與 all\\_active 情境對比，觀察冷氣介入後對窗邊高溫的抑制效果。",
-            asset_name="fig_5_6_window_only_temp_3d",
+            "圖 5-7 僅開窗（window\\_only）溫度場 3D 點雲。靠窗區域溫度最高，造成區域溫度梯度。可與 all\\_active 情境對比，觀察冷氣介入後對窗邊高溫的抑制效果。",
+            asset_name="fig_5_7_window_only_temp_3d",
         ),
         image(
             "outputs/figures/light_only_illuminance_3d.svg",
-            "圖 5-7 僅燈具作用（light\\_only）照度場 3D 點雲。燈具正下方照度最高，遠端補有少量的 single-bounce diffuse 回填；此情境也是 5.6 節 held-out 測試集之一。",
-            asset_name="fig_5_7_light_only_illum_3d",
+            "圖 5-8 僅燈具作用（light\\_only）照度場 3D 點雲。燈具正下方照度最高，遠端補有少量的 single-bounce diffuse 回填；此情境也是 5.7 節 held-out 測試集之一。",
+            asset_name="fig_5_8_light_only_illum_3d",
         ),
         page_break(),
         heading("第六章 結論與未來工作", 1),
         heading("6.1 結論", 2),
         paragraph(
-            "本研究建立一個面向非連網家電環境影響學習的單房間三因子空間數位孿生原型，針對 temperature、humidity 與 illuminance 的空間變化進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準、single-bounce diffuse reflection 與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型與照度反射近似後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計；進一步加入只作用於 temperature / humidity residual trace 的 Fourier low-pass denoising 與 hybrid residual neural correction 後，held-out 情境的場重建誤差可再顯著下降。"
+            "本研究建立一個面向非連網家電環境影響學習的單房間三因子空間數位孿生原型，針對 temperature、humidity 與 illuminance 的空間變化進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準、single-bounce diffuse reflection 與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型與照度反射近似後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計；新增的消融實驗也說明反射、校準與 trilinear correction 在不同指標上扮演不同角色。進一步加入只作用於 temperature / humidity residual trace 的 Fourier low-pass denoising 與 hybrid residual neural correction 後，預設 held-out 與 leave-one-scenario-out 情境的場重建誤差皆可再顯著下降。"
         ),
         paragraph(
             "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並用於更準確的控制動作推薦。"
@@ -812,7 +853,7 @@ def build_blocks() -> List[Block]:
         ),
         page_break(),
         heading("附錄 A：原型執行方式", 1),
-        code("python3 scripts/run_demo.py\npython3 scripts/run_window_matrix.py\npython3 scripts/run_hybrid_residual_experiment.py\npython3 scripts/run_web_demo.py\npython3 scripts/run_mcp_server.py"),
+        code("python3 scripts/run_demo.py\npython3 scripts/run_window_matrix.py\npython3 scripts/run_hybrid_residual_experiment.py\npython3 scripts/run_submission_readiness_experiments.py\npython3 scripts/run_web_demo.py\npython3 scripts/run_mcp_server.py"),
         heading("附錄 B：Web Demo 操作", 1),
         bullets(
             [

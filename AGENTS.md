@@ -2,6 +2,17 @@
 
 This repository contains one research project expressed in multiple synchronized artifacts. Any AI assistant editing this repository must treat the following outputs as one coupled deliverable, not as independent documents.
 
+## Current Submission Target
+
+As of 2026-04-21, the primary target venue for the English IEEE-style manuscript is:
+
+- Primary target: IEEE Digital Twin 2026, colocated with IEEE Smart World Congress 2026.
+- Backup target: IEEE DTPI 2026, the IEEE International Conference on Digital Twins and Parallel Intelligence.
+
+Future edits to the IEEE manuscript should first optimize for the primary target's scope, page limit, formatting rules, and submission deadline. If the primary target becomes infeasible, use IEEE DTPI 2026 as the fallback venue and adjust the manuscript framing accordingly.
+
+This venue note records the current submission strategy only. It does not relax the synchronization rules below, and it does not imply that the IEEE manuscript is already submission-ready.
+
 ## Mandatory Synchronization Scope
 
 Whenever the thesis topic, method, experiment setup, metrics, architecture, figures, chapter structure, or conclusions change, the assistant must update all of the following together:
