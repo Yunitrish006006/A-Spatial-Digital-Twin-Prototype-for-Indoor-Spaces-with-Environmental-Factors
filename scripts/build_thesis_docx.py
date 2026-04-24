@@ -1256,8 +1256,8 @@ def core_props_xml() -> str:
     return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <dc:title>單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型</dc:title>
-  <dc:creator>Yun-Yu Lin</dc:creator>
-  <cp:lastModifiedBy>Yun-Yu Lin</cp:lastModifiedBy>
+  <dc:creator>Yun-You Lin</dc:creator>
+  <cp:lastModifiedBy>Yun-You Lin</cp:lastModifiedBy>
   <dcterms:created xsi:type="dcterms:W3CDTF">{now}</dcterms:created>
   <dcterms:modified xsi:type="dcterms:W3CDTF">{now}</dcterms:modified>
 </cp:coreProperties>

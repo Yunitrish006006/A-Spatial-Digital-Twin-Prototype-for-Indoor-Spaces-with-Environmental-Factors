@@ -215,6 +215,36 @@ INDEX_HTML = """<!doctype html>
       padding-top: 20px;
       border-top: 1px solid rgba(223, 209, 184, 0.8);
     }
+    .quick-start {
+      border: 1px solid rgba(33, 89, 65, 0.3);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      display: grid;
+      gap: 10px;
+    }
+    .quick-start h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+    }
+    .quick-start p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    .quick-start-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .quick-start-grid button {
+      margin-top: 0;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+    }
     .sidebar-form-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -433,7 +463,7 @@ INDEX_HTML = """<!doctype html>
     }
     .volume-canvas {
       width: 100%;
-      height: 540px;
+      height: max(560px, calc(72vh - 140px));
       display: block;
       border: 1px solid var(--line);
       border-radius: 20px;
@@ -452,6 +482,36 @@ INDEX_HTML = """<!doctype html>
       font-size: 0.82rem;
     }
     .status { color: var(--muted); margin-top: 12px; line-height: 1.5; }
+    .hero-zone-bar {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+    details.analytics-section {
+      background: rgba(255, 250, 240, 0.88);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 18px 50px rgba(68, 48, 19, 0.08);
+    }
+    details.analytics-section > summary {
+      padding: 18px 20px;
+      cursor: pointer;
+      font: 700 clamp(1.1rem, 1.8vw, 1.45rem)/1.1 Georgia, "Times New Roman", serif;
+      letter-spacing: -0.025em;
+      list-style: none;
+      user-select: none;
+    }
+    details.analytics-section > summary::-webkit-details-marker { display: none; }
+    details.analytics-section > summary::before {
+      content: "\25B8  ";
+      color: var(--clay);
+    }
+    details.analytics-section[open] > summary::before {
+      content: "\25BE  ";
+    }
+    details.analytics-section > .section-body {
+      padding: 0 20px 20px;
+    }
     @media (max-width: 920px) {
       main { grid-template-columns: 1fr; }
       aside {
@@ -460,6 +520,7 @@ INDEX_HTML = """<!doctype html>
         overflow: visible;
       }
       .sidebar-form-grid { grid-template-columns: 1fr; }
+      .quick-start-grid { grid-template-columns: 1fr; }
       .cards, .heatmaps, .timeline-grid { grid-template-columns: 1fr; }
       .volume-toolbar { display: block; }
       .volume-toolbar button { width: 100%; margin-top: 14px; }
@@ -477,7 +538,22 @@ INDEX_HTML = """<!doctype html>
   <main>
     <aside class="panel">
       <div class="sidebar-section">
+        <label>Quick Start</label>
+        <div class="quick-start">
+          <h3>Recommended Flow</h3>
+          <p>1) Apply a preset bundle, 2) run full simulation, 3) optionally switch to Direct Window mode.</p>
+          <div class="quick-start-grid">
+            <button id="quickPresetRunButton" onclick="quickApplyPresetAndRun()">Apply Cooling Boost + Run</button>
+            <button class="secondary" id="quickRunButton" onclick="quickRunCurrent()">Run Current Settings</button>
+            <button class="secondary" id="quickWindowButton" onclick="quickRunWindowMode()">Open Direct Window Mode</button>
+            <button class="secondary" id="quickResetButton" onclick="quickResetWorkspace()">Reset Workspace</button>
+          </div>
+          <p class="status" id="quickStartStatus">Use quick actions to run common workflows in one click.</p>
+        </div>
+      </div>
+      <div class="sidebar-section">
         <label>Devices</label>
+        <p class="status">Step 1. Tune built-in devices first, then run simulation.</p>
         <div class="device-controls" id="deviceControls"></div>
       </div>
       <div class="sidebar-section">
@@ -561,6 +637,7 @@ INDEX_HTML = """<!doctype html>
       </div>
       <div class="sidebar-section">
         <label>Window Controls</label>
+        <p class="status">Step 2 (optional). Configure outdoor condition and run direct window simulation.</p>
         <p class="status">Season, weather, and time presets derive outdoor humidity and sunlight. Manual input here only overrides outdoor temperature and window opening.</p>
         <div class="control-group">
           <label>Outdoor Season</label>
@@ -586,6 +663,7 @@ INDEX_HTML = """<!doctype html>
       </div>
       <div class="sidebar-section">
         <label>Furniture Blocking</label>
+        <p class="status">Step 2 (optional). Add or toggle blockers to evaluate airflow/daylight shielding effects.</p>
         <p class="status">Toggle simplified furniture blockers to attenuate airflow, daylight, and window exchange along their paths. Custom furniture snaps to a 0.1 m grid and avoids overlapping active blockers.</p>
         <div class="device-controls" id="furnitureControls"></div>
         <div class="control-group">
@@ -614,6 +692,7 @@ INDEX_HTML = """<!doctype html>
       </div>
       <div class="sidebar-section">
         <label>Scenario Controls</label>
+        <p class="status">Step 3. Run simulation after each adjustment to refresh all panels.</p>
         <button onclick="loadScenario()">Run Simulation</button>
         <button class="secondary" onclick="resetDeviceControls()">Clear Devices</button>
       </div>
@@ -629,33 +708,6 @@ INDEX_HTML = """<!doctype html>
       <p class="status" id="status">Loading scenarios...</p>
     </aside>
     <div class="content">
-      <section class="panel">
-        <h2>Target Zone Estimate</h2>
-        <p class="status" id="estimatorStatus">Estimator status will appear here.</p>
-        <div class="cards" id="zoneCards"></div>
-      </section>
-      <section class="panel">
-        <h2>Time Evolution</h2>
-        <p class="status">Shows how the target zone changes from startup toward steady state under the current device and window settings.</p>
-        <div class="timeline-grid" id="timelineCharts"></div>
-      </section>
-      <section class="panel">
-        <h2>Direct Window Input</h2>
-        <p class="status">Use the fixed left sidebar to edit outdoor window conditions, then read the resulting zone estimates here.</p>
-        <div id="windowDirectResult"></div>
-      </section>
-      <section class="panel">
-        <h2>Recommendation Ranking</h2>
-        <div id="recommendations"></div>
-      </section>
-      <section class="panel">
-        <h2>IDW Baseline Comparison</h2>
-        <div id="baseline"></div>
-      </section>
-      <section class="panel">
-        <h2>Learned Non-Networked Appliance Impact</h2>
-        <div id="impacts"></div>
-      </section>
       <section class="panel">
         <h2>Rotatable 3D Field Preview</h2>
         <p class="status">Drag to rotate, wheel or pinch-pad scroll to zoom. Colored markers show appliances and translucent boxes show active furniture blockers. Drag a custom furniture box to reposition it on the floor plane, then release to recompute the field.</p>
@@ -684,16 +736,56 @@ INDEX_HTML = """<!doctype html>
         </div>
         <canvas class="volume-canvas" id="volumeCanvas" width="960" height="540"></canvas>
         <p class="status" id="volumeStatus">Loading 3D volume...</p>
+        <div class="hero-zone-bar">
+          <p class="status" id="estimatorStatus">Estimator status will appear here.</p>
+          <div class="cards" id="zoneCards"></div>
+        </div>
       </section>
-      <section class="panel">
-        <h2>3D SVG Snapshots</h2>
-        <p class="status">Static 3D sampled-field exports with appliance position markers. Run <code>python3 scripts/run_demo.py</code> after model changes to refresh SVG outputs.</p>
-        <div class="heatmaps" id="heatmaps"></div>
-      </section>
-      <section class="panel">
-        <h2>Point Sample</h2>
-        <pre id="sample">{}</pre>
-      </section>
+      <details class="analytics-section panel">
+        <summary>Time Evolution</summary>
+        <div class="section-body">
+          <p class="status">Shows how the target zone changes from startup toward steady state under the current device and window settings.</p>
+          <div class="timeline-grid" id="timelineCharts"></div>
+        </div>
+      </details>
+      <details class="analytics-section panel">
+        <summary>Direct Window Input</summary>
+        <div class="section-body">
+          <p class="status">Use the fixed left sidebar to edit outdoor window conditions, then read the resulting zone estimates here.</p>
+          <div id="windowDirectResult"></div>
+        </div>
+      </details>
+      <details class="analytics-section panel">
+        <summary>Recommendation Ranking</summary>
+        <div class="section-body">
+          <div id="recommendations"></div>
+        </div>
+      </details>
+      <details class="analytics-section panel">
+        <summary>IDW Baseline Comparison</summary>
+        <div class="section-body">
+          <div id="baseline"></div>
+        </div>
+      </details>
+      <details class="analytics-section panel">
+        <summary>Learned Non-Networked Appliance Impact</summary>
+        <div class="section-body">
+          <div id="impacts"></div>
+        </div>
+      </details>
+      <details class="analytics-section panel">
+        <summary>3D SVG Snapshots</summary>
+        <div class="section-body">
+          <p class="status">Static 3D sampled-field exports with appliance position markers. Run <code>python3 scripts/run_demo.py</code> after model changes to refresh SVG outputs.</p>
+          <div class="heatmaps" id="heatmaps"></div>
+        </div>
+      </details>
+      <details class="analytics-section panel">
+        <summary>Point Sample</summary>
+        <div class="section-body">
+          <pre id="sample">{}</pre>
+        </div>
+      </details>
     </div>
   </main>
   <script>
@@ -846,6 +938,7 @@ INDEX_HTML = """<!doctype html>
       syncAcControlsFromScenario(activeScenario);
       setupWindowPresetControls();
       await loadScenario();
+      setQuickStartStatus("Ready. Start with 'Apply Cooling Boost + Run' or adjust controls manually.");
       loadDirectWindow(false).catch(error => {
         document.getElementById("windowDirectResult").innerHTML = `<p class="status">${error.message}</p>`;
       });
@@ -934,9 +1027,40 @@ INDEX_HTML = """<!doctype html>
       syncCustomFurnitureList();
     }
 
+    function setQuickStartStatus(message) {
+      const node = document.getElementById("quickStartStatus");
+      if (node) {
+        node.textContent = message;
+      }
+    }
+
+    async function quickApplyPresetAndRun() {
+      setQuickStartStatus("Applying Cooling Boost preset and running simulation...");
+      await applyPresetBundle(0);
+      setQuickStartStatus("Cooling Boost preset applied. Results refreshed.");
+    }
+
+    async function quickRunCurrent() {
+      setQuickStartStatus("Running simulation using current controls...");
+      await loadScenario();
+      setQuickStartStatus("Current settings simulation loaded.");
+    }
+
+    async function quickRunWindowMode() {
+      setQuickStartStatus("Switching to Direct Window dashboard...");
+      await loadDirectWindow(true);
+      setQuickStartStatus("Direct Window dashboard loaded.");
+    }
+
+    async function quickResetWorkspace() {
+      setQuickStartStatus("Resetting devices and custom objects to defaults...");
+      await resetDeviceControls(true);
+      setQuickStartStatus("Workspace reset complete.");
+    }
+
     async function loadScenario() {
       activeContext = { kind: "scenario", name: activeScenario };
-      document.getElementById("status").textContent = "Running checkbox-defined simulation...";
+      document.getElementById("status").textContent = "Running simulation with current controls...";
       const query = scenarioQuery();
       const [scenario, ranking, baseline, impacts, volume, timeline] = await Promise.all([
         getJSON(`/api/scenario?${query}`),
@@ -954,7 +1078,7 @@ INDEX_HTML = """<!doctype html>
       renderTimeline(timeline);
       renderHeatmapsForScenario(activeScenario);
       await samplePoint();
-      document.getElementById("status").textContent = "Loaded checkbox-defined simulation.";
+      document.getElementById("status").textContent = "Simulation loaded.";
     }
 
     async function refreshActiveContext() {
@@ -1660,12 +1784,16 @@ INDEX_HTML = """<!doctype html>
       return new Promise(resolve => window.setTimeout(resolve, ms));
     }
 
-    function resetDeviceControls() {
+    async function resetDeviceControls(skipRefresh = false) {
       defaultDeviceItems = defaultDeviceBaselineItems.map(item => JSON.parse(JSON.stringify(item)));
       customDeviceItems = [];
+      customFurnitureItems = [];
       renderDefaultDeviceList();
       syncCustomDeviceList();
-      loadScenario();
+      syncCustomFurnitureList();
+      if (!skipRefresh) {
+        await loadScenario();
+      }
     }
 
     function scenarioQuery() {
