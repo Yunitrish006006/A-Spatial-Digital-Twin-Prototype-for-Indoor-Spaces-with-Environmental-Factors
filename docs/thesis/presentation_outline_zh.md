@@ -31,9 +31,8 @@
 - Web demo
 
 ## Slide 8: 驗證流程與比較原則
-- truth-adjusted simulation
-- IDW baseline 比較
-- synthetic ablation
+- synthetic full-field、real sparse calibration、public task-aligned、intervention validation 分層
+- IDW baseline 比較與 synthetic ablation
 - no-Fourier 與 LOO cross-validation
 - 48 組窗戶矩陣
 - bedroom_01 7 天真實快照
@@ -50,10 +49,12 @@
 - default held-out、no-Fourier、LOO MAE
 - train/test sample count
 - 研究定位不是黑盒替代
+- LOO 結果限標準情境 family
 
 ## Slide 11: 研究貢獻與資料策略
 - 三因子、有限感測器、非連網裝置、服務化
 - canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets
+- 明確列出每種資料支援的 claim boundary
 
 ## Slide 12: 結論與未來工作
-- 長期真實資料、更多因子、multi-zone、task-aligned benchmark、推薦動作介入驗證、閉環控制
+- 長期真實資料、dense real-room ground truth、更多因子、multi-zone、推薦動作介入驗證、閉環控制

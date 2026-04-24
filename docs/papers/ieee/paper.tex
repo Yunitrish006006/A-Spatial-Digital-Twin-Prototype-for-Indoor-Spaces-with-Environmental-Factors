@@ -6,6 +6,8 @@
 \usepackage{graphicx}
 \usepackage{url}
 
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
 \title{A Sparse-Sensing Spatial Digital Twin for Learning Environmental Impacts of Non-Networked Appliances in a Single Room}
 
 \author{
@@ -33,7 +35,7 @@ Changhua, Taiwan}
 \maketitle
 
 \begin{abstract}
-Practical room-scale digital twins must often operate with sparse sensors and non-networked appliances that expose no telemetry. This paper presents a single-room spatial digital twin that estimates temperature, humidity, and illuminance fields from eight corner sensors while modeling conventional air conditioners, manual windows, and ordinary lights. The proposed design combines an appliance-aware bulk-plus-local field model, lightweight one-bounce diffuse illuminance reflection, active-device power calibration, trilinear residual correction, least-squares appliance-impact learning, and an optional hybrid residual neural layer. Across eight canonical scenarios, the base estimator achieves average field MAE of 0.0474/0.1765/2.0835 for temperature, humidity, and illuminance, compared with 0.1723/0.4633/75.0516 for IDW. A leave-one-scenario-out hybrid residual evaluation further reduces MAE to 0.0017/0.0055/0.1581. On a preliminary seven-day bedroom snapshot dataset, calibration reduces held-out pillow-point MAE from 0.8967/4.1286/358.6392 to 0.1676/0.3939/21.3753. These results indicate that sparse corner sensing can support an interpretable and trainable indoor twin when physical structure, calibration, and residual learning are assigned complementary roles.
+Practical room-scale digital twins must often operate with sparse sensors and non-networked appliances that expose no telemetry. This paper presents a single-room spatial digital twin that estimates temperature, humidity, and illuminance fields from eight corner sensors while modeling conventional air conditioners, manual windows, and ordinary lights. The proposed design combines an appliance-aware bulk-plus-local field model, lightweight one-bounce diffuse illuminance reflection, active-device power calibration, trilinear residual correction, least-squares appliance-impact learning, and an optional hybrid residual neural layer. Across eight canonical scenarios, the base estimator achieves average field MAE of 0.0474/0.1765/2.0835 for temperature, humidity, and illuminance, compared with 0.1723/0.4633/75.0516 for IDW. A leave-one-scenario-out hybrid residual evaluation further reduces MAE to 0.0017/0.0055/0.1581. On a preliminary seven-day bedroom snapshot dataset, calibration reduces held-out pillow-point MAE from 0.8967/4.1286/358.6392 to 0.1676/0.3939/21.3753. The evaluation separates controlled full-field evidence, public task-aligned comparisons, and real sparse-calibration checks. These results indicate that sparse corner sensing can support an interpretable and trainable indoor twin when physical structure, calibration, and residual learning are assigned complementary roles.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -43,9 +45,9 @@ spatial digital twin, sparse sensing, indoor environment modeling, non-networked
 \section{Introduction}
 Smart homes and smart buildings require indoor environmental awareness for comfort assessment, energy management, and device control. A practical system should estimate conditions at relevant regions such as a room center, window-side zone, or bed location, not only at installed sensors. This is difficult because dense sensing is intrusive, while ordinary rooms also contain conventional appliances that do not report state, power, or operating parameters.
 
-This work asks whether a single-room digital twin can estimate three-factor spatial fields, learn the effect of non-networked appliances, and expose the resulting functions through interactive tool interfaces under an eight-corner sensing layout. Pure interpolation ignores appliance geometry and directionality, while a purely local field model misses whole-room settling after air-conditioner activation. We therefore use a reduced-order appliance-aware model as the primary estimator, sensor residuals for calibration, and neural learning only for structured residual correction rather than for an end-to-end black-box field predictor.
+This work targets a common but under-instrumented digital-twin setting: the room contains influential physical assets, but those assets are not necessarily connected to a building management system. The twin must therefore infer appliance state effects from sparse environmental observations, support what-if queries, and keep its claim boundary clear. Pure interpolation ignores appliance geometry and directionality, while a purely local field model misses whole-room settling after air-conditioner activation. We therefore use a reduced-order appliance-aware model as the primary estimator, sensor residuals for calibration, and neural learning only for structured residual correction rather than for an end-to-end black-box field predictor.
 
-The contributions are: (i) a three-factor room digital twin with bulk-plus-local appliance influence functions and one-bounce diffuse illuminance reflection; (ii) a sparse-sensor calibration pipeline combining active-device power fitting, trilinear residual correction, and before/after impact learning; (iii) a hybrid residual pathway that preserves the reduced-order estimator while refining systematic error; and (iv) an implementation evaluated on synthetic scenarios, ablations, leave-one-scenario-out residual learning, window-condition cases, public task-aligned datasets, and preliminary real-bedroom snapshots.
+The contributions are: (i) a three-factor room digital twin with bulk-plus-local appliance influence functions and one-bounce diffuse illuminance reflection; (ii) a sparse-sensor calibration pipeline combining active-device power fitting, trilinear residual correction, and before/after impact learning; (iii) a hybrid residual pathway that preserves the reduced-order estimator while refining systematic error; and (iv) an implementation and validation hierarchy covering synthetic full-field scenarios, ablations, leave-one-scenario-out residual learning, window-condition cases, public task-aligned datasets, and preliminary real-bedroom snapshots.
 
 \section{Related Work}
 Digital twins provide computational representations of physical systems and are increasingly used in manufacturing, infrastructure, and smart buildings \cite{tao2019digitaltwin,fuller2020digitaltwin}. Building-oriented reviews show strong attention to BIM/BMS connectivity and system architecture, but sparse-sensor spatial estimation in ordinary rooms remains less explored \cite{cespedes2024bdtreview}. For control-oriented indoor modeling, reduced-order and grey-box approaches remain attractive because they are interpretable and tractable compared with CFD \cite{bacher2011heatdynamics,hietaharju2018dynamicmodel,gokhale2022pinnthermal}. Zonal and hybrid indoor models preserve dominant spatial non-uniformity at lower cost \cite{teshome2004zonalreview,megri2022doma,huljak2025hybrid}, while data-assimilation studies show that finite observations can reconstruct indoor temperature and humidity fields and that sensor placement matters \cite{qian2025dafield,chen2007zonalnetwork}. The present work combines these strands by coupling sparse sensing with appliance-aware influence bases and residual calibration. IDW \cite{shepard1968two} is used as a geometry-free interpolation baseline. The service interface is secondary to the modeling contribution, but the same estimator is exposed through local APIs, a web demo, and an MCP-compatible tool layer \cite{mcp2025}.
@@ -106,6 +108,28 @@ The prototype is implemented as a zero-dependency Python package with modules fo
 The service layer is intentionally kept separate from the estimator. A command-line script, the MCP endpoint, and the browser demo call the same scenario and sampling functions, so evaluation results are not produced by a separate code path from the interactive prototype. The browser interface supports metric switching, appliance toggling, indoor baseline editing, season-weather-time presets, outdoor boundary overrides, point sampling, target-zone summaries, impact-learning output, and estimator switching between the base and hybrid residual fields when a saved checkpoint is available.
 
 All synthetic full-field experiments use the canonical room and $16\times12\times6$ grid, giving 1152 spatial samples per field. Scenarios are evaluated after an 18-minute settling interval with outdoor temperature $33.0^\circ$C, relative humidity $74.0\%$, and sunlight 32000 lux. The eight canonical scenarios are idle, AC only, window only, light only, AC+window, window+light, AC+light, and all active. Dense synthetic truth is generated by deterministic appliance power adjustments and sensor observations are synthesized from truth sensor predictions with fixed index-based perturbations: temperature adds $0.08((i\bmod4)-1.5)$, humidity adds $0.3((i\bmod4)-1.5)$, and illuminance adds $3.0((i\bmod4)-1.5)$. The main reproduction scripts are \texttt{run\_demo.py}, \texttt{run\_hybrid\_residual\_experiment.py}, \texttt{run\_submission\_readiness\_experiments.py}, \texttt{run\_bedroom\_weekly\_simulation.py}, and \texttt{run\_public\_dataset\_model\_comparison.py}.
+
+Because no single dataset covers room geometry, dense 3-D ground truth, appliance state, and real sparse observations at once, the evaluation uses the layered claim boundary in Table~\ref{tab:claim_scope}. Synthetic scenarios are used for full-field and ablation claims; real bedroom snapshots are used for sparse-calibration plausibility; public datasets are used only for compatible time-series or zone-level subtasks. This separation is important because good performance on one layer does not automatically validate the others.
+
+\begin{table}[t]
+\caption{Validation Scope and Claim Boundary}
+\label{tab:claim_scope}
+\centering
+\scriptsize
+\begin{tabular}{|P{0.23\linewidth}|P{0.24\linewidth}|P{0.23\linewidth}|}
+\hline
+Evidence layer & Supports & Boundary\\
+\hline
+Synthetic full-field scenarios, ablations, and LOO residual tests & 3-D field reconstruction and component contribution under controlled truth & Simulated room and deterministic perturbations\\
+\hline
+48-case window matrix & Sensitivity to outdoor temperature, humidity, sunlight, and opening ratio & Boundary-condition study, not measured weather deployment\\
+\hline
+Seven-day bedroom snapshots & Sparse calibration improves a held-out pillow point & One reference point; no dense real 3-D ground truth\\
+\hline
+SML2010 and CU-BEMS task-aligned benchmarks & External positioning on compatible time-series or zone-level prediction tasks & Not direct validation of the full spatial twin\\
+\hline
+\end{tabular}
+\end{table}
 
 \section{Evaluation}
 \subsection{Synthetic Field Reconstruction}
@@ -202,7 +226,7 @@ S2 15min hum. & MAE  & \textbf{0.20} & 0.21 & 0.83\\
 \section{Discussion and Conclusion}
 The results suggest that appliance-aware reduced-order modeling is more informative than geometry-free interpolation under sparse sensing. The architecture was not selected only for theoretical elegance: early local-only formulations underestimated whole-room AC settling, while IDW ignored source geometry and directionality. The bulk-plus-local split, sensor residual correction, and residual neural layer address these observed failures while keeping the system lightweight.
 
-The evidence should be interpreted at the correct level. Synthetic scenarios provide controlled full-field ground truth and ablations; public datasets provide task-aligned external positioning; the bedroom snapshots show that real sparse observations can improve a held-out pillow reference point. They do not yet constitute a dense room-scale ground-truth campaign, and action rankings remain counterfactual recommendations until before/after interventions are collected. Future work will focus on longer ESP32 deployment, measured intervention validation, larger real datasets, humidity scale alignment, broader service deployment, and eventually closed-loop control.
+The evidence should be interpreted at the correct level. Synthetic scenarios provide controlled full-field ground truth and ablations; public datasets provide task-aligned external positioning; the bedroom snapshots show that real sparse observations can improve a held-out pillow reference point. The hybrid residual results also show structured residual learnability within the defined scenario family, not unrestricted generalization to arbitrary buildings. The current evidence does not yet constitute a dense room-scale ground-truth campaign, and action rankings remain counterfactual recommendations until before/after interventions are collected. Future work will focus on longer ESP32 deployment, measured intervention validation, larger real datasets, humidity scale alignment, broader service deployment, and eventually closed-loop control.
 
 \section*{Acknowledgment}
 The authors thank the Department of Computer Science and Information Engineering, National Changhua University of Education, for supporting the thesis prototype development.

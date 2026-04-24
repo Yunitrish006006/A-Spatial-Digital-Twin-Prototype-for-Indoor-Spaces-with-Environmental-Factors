@@ -85,7 +85,7 @@ def column_spec(column_count: int) -> str:
         return r"|p{0.88\textwidth}|"
     if column_count == 2:
         return r"|p{0.24\textwidth}|p{0.62\textwidth}|"
-    width = 0.82 / column_count
+    width = 0.78 / column_count
     return "|" + "|".join(rf"p{{{width:.3f}\textwidth}}" for _ in range(column_count)) + "|"
 
 

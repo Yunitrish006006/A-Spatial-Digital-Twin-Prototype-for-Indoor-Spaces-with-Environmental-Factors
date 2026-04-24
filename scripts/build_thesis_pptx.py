@@ -401,15 +401,12 @@ def build_presentation() -> Presentation:
         5.25,
         5.2,
         [
-            "以標準 scenario 建立 truth-adjusted simulation",
-            "由 truth 結果合成 8 顆角落觀測值",
-            "比較 nominal、corrected estimate 與 IDW baseline",
-            "新增 no-reflection / no-calibration / no-trilinear 消融",
-            "hybrid residual 加入 no-Fourier 與 LOO cross-validation",
+            "synthetic full-field：8 組標準情境、truth-adjusted sensors、IDW 與消融",
+            "hybrid residual：no-Fourier 對照與 LOO cross-validation",
+            f"window matrix：{window_summary.get('count', 0)} 組外部邊界條件敏感度",
             f"真實 bedroom_01 快照：{bedroom_summary['snapshot_count']} 筆，檢查 pillow 位置",
-            "推薦排序屬於校正模型反事實模擬",
-            "推薦有效性需用 before/after 介入實驗量測 actual improvement",
-            f"窗戶矩陣總共 {window_summary.get('count', 0)} 組情境",
+            "public datasets：只作 task-aligned benchmark，不當 full-field 基準",
+            "推薦排序：目前是 counterfactual simulation；有效性需介入實驗",
         ],
         level0_size=17,
     )
@@ -477,9 +474,10 @@ def build_presentation() -> Presentation:
         1.5,
         [
             "hybrid residual 是第二層修正器，不取代主模型",
+            "LOO 結果證明標準情境 family 內殘差可學習，不代表任意房間泛化",
             "另以 bedroom_01 真實快照檢查 sparse calibration 對 pillow 點的改善",
         ],
-        level0_size=17,
+        level0_size=15,
     )
     add_footer(slide, 10)
 
@@ -496,11 +494,12 @@ def build_presentation() -> Presentation:
             "提出以單房間、8 顆角落感測器為前提的三因子空間數位孿生原型",
             "以 bulk + local field、power calibration 與 trilinear correction 建立可解釋估測流程",
             "以 least-squares 學習非連網裝置影響，並用 hybrid residual 做第二層修正",
+            "明確拆分 synthetic full-field、real sparse calibration、public task-aligned 與 intervention validation",
             "完整 3D 場比較以 canonical synthetic benchmark 為主",
             f"真實臥室快照校正後 pillow MAE: {bedroom_aggregate['estimated_pillow_mae']}",
             "公開資料集則採 task-aligned benchmark：CU-BEMS / SML2010 / ASHRAE 各比相容子任務",
         ],
-        level0_size=20,
+        level0_size=18,
     )
     add_footer(slide, 11)
 
@@ -518,6 +517,7 @@ def build_presentation() -> Presentation:
             "有限角落感測器下仍可用分層式模型重建單房間三因子分布",
             "非連網裝置可透過環境變化進行影響學習與校正",
             "bedroom_01 7 天快照顯示校正後可改善未參與 fitting 的 pillow 點",
+            "各資料來源支援的 claim boundary 已拆開說明",
             "模型已能輸出區域估計、反事實推薦排序與 AI 可查詢工具",
         ],
     )
@@ -532,7 +532,7 @@ def build_presentation() -> Presentation:
             "擴大 ESP32 長期真實資料",
             "擴充 CO2 / PM2.5 等因子",
             "改進 multi-zone / partition 模型",
-            "建立 task-aligned 公開資料集 benchmark",
+            "補足 dense real-room ground truth",
             "執行推薦動作 before/after 介入驗證",
             "研究遠端 MCP 與閉環控制",
         ],
@@ -917,11 +917,12 @@ def build_presentation_30min() -> Presentation:
             "標準情境共 8 組",
             f"窗戶矩陣共 {window_summary.get('count', 0)} 組",
             "比較 corrected estimate 與 IDW baseline",
+            "證據層級拆分 synthetic full-field、real sparse calibration、public task-aligned",
             f"真實 bedroom_01 快照共 {bedroom_summary['snapshot_count']} 筆",
             "公開資料集僅作 task-aligned benchmark，不直接當 full-field 基準",
             "推薦排序為 counterfactual simulation；實際效果需 before/after intervention",
         ],
-        level0_size=17,
+        level0_size=16,
     )
     add_footer(slide, 13)
 
@@ -1055,9 +1056,10 @@ def build_presentation_30min() -> Presentation:
         [
             "no-Fourier 對照顯示照度改善不是頻域處理造成",
             "LOO 降低單一 held-out split 過度樂觀的風險",
+            "LOO 結果仍限標準情境 family，不等同任意房間泛化",
             "真實臥室快照已驗證 calibration，推薦有效性仍需介入實驗",
         ],
-        level0_size=16,
+        level0_size=15,
     )
     add_footer(slide, 17)
 
@@ -1076,6 +1078,7 @@ def build_presentation_30min() -> Presentation:
             "可估場、可校正、可學習、可推薦",
             "bedroom_01 快照顯示校正後 pillow 點 MAE 明顯下降",
             "資料比較需依任務層級切分",
+            "hybrid residual 泛化仍需更多房間與 dense ground truth",
             "MCP 與 Web 展示已完成",
         ],
     )
@@ -1088,6 +1091,7 @@ def build_presentation_30min() -> Presentation:
         "限制",
         [
             "已有小型真實臥室快照，但仍缺長期 dense field",
+            "LOO hybrid 目前只支持標準情境 family 內殘差可學習",
             "不是 CFD 等級模型",
             "公開資料集缺乏 full-field ground truth",
             "推薦動作尚未完成真實介入式因果驗證",
@@ -1122,11 +1126,11 @@ def build_outline() -> str:
         ("數學模型", ["bulk + local field", "trilinear correction", "裝置與家具模組化"]),
         ("感測器校正與影響學習", ["power calibration", "least-squares impact learning"]),
         ("系統實作與介面", ["MCP tools", "Gemma bridge", "Web demo"]),
-        ("驗證流程與比較原則", ["truth-adjusted simulation", "IDW baseline 比較", "synthetic ablation", "no-Fourier 與 LOO cross-validation", "48 組窗戶矩陣", "bedroom_01 7 天真實快照", "推薦動作 before/after 介入驗證方法"]),
+        ("驗證流程與比較原則", ["synthetic full-field、real sparse calibration、public task-aligned、intervention validation 分層", "IDW baseline 比較與 synthetic ablation", "no-Fourier 與 LOO cross-validation", "48 組窗戶矩陣", "bedroom_01 7 天真實快照", "推薦動作 before/after 介入驗證方法"]),
         ("主要結果", ["平均 field MAE", "IDW / Base / LOO Hybrid 誤差比較", "真實臥室 pillow MAE 比較", "推薦排序目前為 counterfactual simulation", "3D 視覺化案例"]),
-        ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO MAE", "train/test sample count", "研究定位不是黑盒替代"]),
-        ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets"]),
-        ("結論與未來工作", ["長期真實資料、更多因子、multi-zone、task-aligned benchmark、推薦動作介入驗證、閉環控制"]),
+        ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO MAE", "train/test sample count", "研究定位不是黑盒替代", "LOO 結果限標準情境 family"]),
+        ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets", "明確列出每種資料支援的 claim boundary"]),
+        ("結論與未來工作", ["長期真實資料、dense real-room ground truth、更多因子、multi-zone、推薦動作介入驗證、閉環控制"]),
     ]
     lines = ["# 論文報告投影片大綱", ""]
     for index, (title, bullets) in enumerate(slides, start=1):
@@ -1150,12 +1154,12 @@ def build_outline_30min() -> str:
         ("數學模型", ["bulk + local field + correction", "早期純插值與 local-only 模型失敗後的調整"]),
         ("感測器校正與裝置影響學習", ["power calibration 與 least squares"]),
         ("系統實作與介面", ["MCP、Gemma/Ollama、Web Demo"]),
-        ("驗證設計", ["truth-adjusted simulation、IDW、synthetic ablation、window matrix", "bedroom_01 7 天真實快照與 pillow 位置比較", "推薦動作 before/after intervention protocol", "no-Fourier 與 LOO cross-validation", "public datasets 僅作 task-aligned benchmark"]),
+        ("驗證設計", ["truth-adjusted simulation、IDW、synthetic ablation、window matrix", "證據層級：synthetic full-field、real sparse calibration、public task-aligned、intervention validation", "bedroom_01 7 天真實快照與 pillow 位置比較", "推薦動作 before/after intervention protocol", "no-Fourier 與 LOO cross-validation", "public datasets 僅作 task-aligned benchmark"]),
         ("情境設計與輸入模式", ["8 組 scenario、48 組窗戶矩陣、direct input、timeline"]),
         ("主要量化結果", ["平均 MAE、IDW/Base/LOO Hybrid 誤差圖", "真實臥室 raw vs corrected pillow MAE", "推薦有效性以 actual comfort-penalty reduction 驗證"]),
         ("3D 視覺化結果", ["溫度與照度熱區案例"]),
-        ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO robustness checks", "train/test sample count 與 synthetic benchmark 限制", "真實快照作為 sparse calibration 驗證"]),
-        ("結論、限制與未來工作", ["目前完成度、真實快照限制、推薦動作尚需介入驗證、task-aligned benchmark 與後續方向"]),
+        ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO robustness checks", "train/test sample count 與 synthetic benchmark 限制", "LOO 結果限標準情境 family", "真實快照作為 sparse calibration 驗證"]),
+        ("結論、限制與未來工作", ["目前完成度、真實快照限制、hybrid 泛化限制、推薦動作尚需介入驗證、task-aligned benchmark 與後續方向"]),
     ]
     lines = ["# 論文報告投影片大綱（30 分鐘版）", ""]
     for index, (title, bullets) in enumerate(slides, start=1):

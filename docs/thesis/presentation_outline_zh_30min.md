@@ -41,6 +41,7 @@
 
 ## Slide 13: 驗證設計
 - truth-adjusted simulation、IDW、synthetic ablation、window matrix
+- 證據層級：synthetic full-field、real sparse calibration、public task-aligned、intervention validation
 - bedroom_01 7 天真實快照與 pillow 位置比較
 - 推薦動作 before/after intervention protocol
 - no-Fourier 與 LOO cross-validation
@@ -60,7 +61,8 @@
 ## Slide 17: Hybrid Residual 結果
 - default held-out、no-Fourier、LOO robustness checks
 - train/test sample count 與 synthetic benchmark 限制
+- LOO 結果限標準情境 family
 - 真實快照作為 sparse calibration 驗證
 
 ## Slide 18: 結論、限制與未來工作
-- 目前完成度、真實快照限制、推薦動作尚需介入驗證、task-aligned benchmark 與後續方向
+- 目前完成度、真實快照限制、hybrid 泛化限制、推薦動作尚需介入驗證、task-aligned benchmark 與後續方向
