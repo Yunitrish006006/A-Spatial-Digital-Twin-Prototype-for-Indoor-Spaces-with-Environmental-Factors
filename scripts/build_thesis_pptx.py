@@ -33,6 +33,7 @@ ACCENT_COLOR = RGBColor(0, 83, 130)
 MUTED_COLOR = RGBColor(70, 80, 92)
 CARD_FILL = RGBColor(255, 255, 255)
 CARD_LINE = RGBColor(124, 143, 165)
+FORMULA_FONT = "Cambria Math"
 
 
 def read_json(path: Path) -> dict:
@@ -121,6 +122,34 @@ def add_footer(slide, page: int) -> None:
     run.font.color.rgb = MUTED_COLOR
 
 
+def add_styled_run(
+    paragraph,
+    text: str,
+    size: int,
+    color: RGBColor,
+    bold: bool = False,
+    font_name: str = "PingFang TC",
+) -> None:
+    run = paragraph.add_run()
+    run.text = text
+    run.font.name = font_name
+    run.font.size = Pt(size)
+    run.font.bold = bold
+    run.font.color.rgb = color
+
+
+def metric_triplet(values: dict, decimals: int = 4) -> str:
+    return (
+        f"T={values['temperature']:.{decimals}f}, "
+        f"H={values['humidity']:.{decimals}f}, "
+        f"L={values['illuminance']:.{decimals}f}"
+    )
+
+
+def is_formula_line(text: str) -> bool:
+    return text.startswith(("Fᵥ", "Bᵥ", "Iⱼ", "Cᵥ", "+ Σ"))
+
+
 def add_bullets(slide, left: float, top: float, width: float, height: float, items: Sequence[str], level0_size: int = 18) -> None:
     box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
     frame = box.text_frame
@@ -128,12 +157,12 @@ def add_bullets(slide, left: float, top: float, width: float, height: float, ite
     frame.word_wrap = True
     for index, item in enumerate(items):
         p = frame.paragraphs[0] if index == 0 else frame.add_paragraph()
-        p.text = item
         p.level = 0
         p.space_after = Pt(8)
         p.font.name = "PingFang TC"
         p.font.size = Pt(level0_size)
         p.font.color.rgb = TEXT_COLOR
+        add_styled_run(p, item, level0_size, TEXT_COLOR)
 
 
 def add_card(slide, left: float, top: float, width: float, height: float, title: str, body_lines: Sequence[str]) -> None:
@@ -146,19 +175,26 @@ def add_card(slide, left: float, top: float, width: float, height: float, title:
     frame.clear()
     frame.vertical_anchor = MSO_ANCHOR.TOP
     p = frame.paragraphs[0]
-    p.text = title
     p.font.name = "PingFang TC"
     p.font.size = Pt(17)
     p.font.bold = True
     p.font.color.rgb = ACCENT_COLOR
     p.space_after = Pt(8)
+    add_styled_run(p, title, 17, ACCENT_COLOR, bold=True)
     for line in body_lines:
         para = frame.add_paragraph()
-        para.text = line
-        para.font.name = "PingFang TC"
-        para.font.size = Pt(13)
+        is_formula = is_formula_line(line)
+        para.font.name = FORMULA_FONT if is_formula else "PingFang TC"
+        para.font.size = Pt(15 if is_formula else 13)
         para.font.color.rgb = TEXT_COLOR
         para.space_after = Pt(4)
+        add_styled_run(
+            para,
+            line,
+            15 if is_formula else 13,
+            TEXT_COLOR,
+            font_name=FORMULA_FONT if is_formula else "PingFang TC",
+        )
 
 
 def add_picture(slide, source: Path, left: float, top: float, width: float, height: float) -> None:
@@ -301,11 +337,11 @@ def build_presentation() -> Presentation:
         4.8,
         "核心表示式",
         [
-            "F_v(x,y,z,t) = B_v^bulk(t) + B_v^local(x,y,z,t)",
-            "                 + Σ I_j,v^local(x,y,z,t) + C_v(x,y,z)",
+            "Fᵥ(x,y,z,t) = Bᵥᵇᵘˡᵏ(t) + Bᵥˡᵒᶜᵃˡ(x,y,z,t)",
+            "+ Σ Iⱼ,ᵥˡᵒᶜᵃˡ(x,y,z,t) + Cᵥ(x,y,z)",
             "bulk：全室平均狀態",
             "local：設備附近與局部空間差異",
-            "C_v：由角落感測器殘差擬合的 trilinear 校正場",
+            "Cᵥ：由角落感測器殘差擬合的 trilinear 校正場",
         ],
     )
     add_card(
@@ -459,9 +495,9 @@ def build_presentation() -> Presentation:
         "Held-out + LOO",
         [
             f"Default samples: {default_hybrid['dataset']['train_samples']} / {default_hybrid['dataset']['test_samples']}",
-            f"Default hybrid MAE: {default_hybrid['hybrid_test_field_mae']}",
-            f"No-Fourier hybrid MAE: {no_fourier['hybrid_test_field_mae']}",
-            f"LOO avg hybrid MAE: {loo['average_hybrid_field_mae']}",
+            f"Default hybrid MAE: {metric_triplet(default_hybrid['hybrid_test_field_mae'])}",
+            f"No-Fourier hybrid MAE: {metric_triplet(no_fourier['hybrid_test_field_mae'])}",
+            f"LOO avg hybrid MAE: {metric_triplet(loo['average_hybrid_field_mae'])}",
             f"LOO reduction: T {loo['average_field_mae_reduction_percent']['temperature']:.2f}%, H {loo['average_field_mae_reduction_percent']['humidity']:.2f}%, L {loo['average_field_mae_reduction_percent']['illuminance']:.2f}%",
         ],
     )
@@ -496,7 +532,7 @@ def build_presentation() -> Presentation:
             "以 least-squares 學習非連網裝置影響，並用 hybrid residual 做第二層修正",
             "明確拆分 synthetic full-field、real sparse calibration、public task-aligned 與 intervention validation",
             "完整 3D 場比較以 canonical synthetic benchmark 為主",
-            f"真實臥室快照校正後 pillow MAE: {bedroom_aggregate['estimated_pillow_mae']}",
+            f"真實臥室快照校正後 pillow MAE: {metric_triplet(bedroom_aggregate['estimated_pillow_mae'])}",
             "公開資料集則採 task-aligned benchmark：CU-BEMS / SML2010 / ASHRAE 各比相容子任務",
         ],
         level0_size=18,
@@ -815,11 +851,11 @@ def build_presentation_30min() -> Presentation:
         5.0,
         "核心形式",
         [
-            "F_v = B_v^bulk + B_v^local + Σ I_j,v^local + C_v",
-            "B_v^bulk：全室平均狀態",
-            "B_v^local：背景分層與空間差異",
-            "I_j,v^local：設備局部影響函數",
-            "C_v：感測器殘差校正場",
+            "Fᵥ = Bᵥᵇᵘˡᵏ + Bᵥˡᵒᶜᵃˡ + Σ Iⱼ,ᵥˡᵒᶜᵃˡ + Cᵥ",
+            "Bᵥᵇᵘˡᵏ：全室平均狀態",
+            "Bᵥˡᵒᶜᵃˡ：背景分層與空間差異",
+            "Iⱼ,ᵥˡᵒᶜᵃˡ：設備局部影響函數",
+            "Cᵥ：感測器殘差校正場",
         ],
     )
     add_card(
@@ -1008,10 +1044,10 @@ def build_presentation_30min() -> Presentation:
         4.75,
         7.7,
         1.35,
-        "範例推薦結果",
+        "真實臥室校正檢查",
         [
-            f"真實臥室 raw pillow MAE: {bedroom_aggregate['raw_pillow_mae']}",
-            f"校正後 pillow MAE: {bedroom_aggregate['estimated_pillow_mae']}",
+            f"Raw pillow MAE: {metric_triplet(bedroom_aggregate['raw_pillow_mae'])}",
+            f"Corrected pillow MAE: {metric_triplet(bedroom_aggregate['estimated_pillow_mae'])}",
             "推薦動作以實測 penalty 下降作為後續驗證指標",
         ],
     )
@@ -1040,10 +1076,10 @@ def build_presentation_30min() -> Presentation:
         "Robustness checks",
         [
             f"Default samples: {default_hybrid['dataset']['train_samples']} / {default_hybrid['dataset']['test_samples']}",
-            f"Default MAE: {default_hybrid['hybrid_test_field_mae']}",
-            f"No-Fourier MAE: {no_fourier['hybrid_test_field_mae']}",
-            f"LOO avg MAE: {loo['average_hybrid_field_mae']}",
-            f"LOO reduction: {loo['average_field_mae_reduction_percent']}",
+            f"Default MAE: {metric_triplet(default_hybrid['hybrid_test_field_mae'])}",
+            f"No-Fourier MAE: {metric_triplet(no_fourier['hybrid_test_field_mae'])}",
+            f"LOO avg MAE: {metric_triplet(loo['average_hybrid_field_mae'])}",
+            f"LOO reduction: T {loo['average_field_mae_reduction_percent']['temperature']:.2f}%, H {loo['average_field_mae_reduction_percent']['humidity']:.2f}%, L {loo['average_field_mae_reduction_percent']['illuminance']:.2f}%",
         ],
     )
     add_picture(slide, FIGURES / "submission" / "field_mae_comparison.png", 6.15, 1.35, 6.1, 3.0)
