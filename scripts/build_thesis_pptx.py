@@ -18,9 +18,12 @@ PAPERS = OUTPUTS / "papers"
 DATA = OUTPUTS / "data"
 FIGURES = OUTPUTS / "figures"
 ARCHITECTURE = FIGURES / "architecture"
+THESIS_PAPERS = ROOT / "docs" / "papers" / "thesis"
 PRESENTATION_PATH = PAPERS / "thesis_presentation_zh.pptx"
+STORED_PRESENTATION_PATH = THESIS_PAPERS / "thesis_presentation_zh.pptx"
 OUTLINE_PATH = ROOT / "docs" / "thesis" / "presentation_outline_zh.md"
 LONG_PRESENTATION_PATH = PAPERS / "thesis_presentation_zh_30min.pptx"
+STORED_LONG_PRESENTATION_PATH = THESIS_PAPERS / "thesis_presentation_zh_30min.pptx"
 LONG_OUTLINE_PATH = ROOT / "docs" / "thesis" / "presentation_outline_zh_30min.md"
 
 BACKGROUND_COLOR = RGBColor(238, 242, 247)
@@ -1207,14 +1210,19 @@ def build_outline_30min() -> str:
 
 def main() -> None:
     PAPERS.mkdir(parents=True, exist_ok=True)
+    THESIS_PAPERS.mkdir(parents=True, exist_ok=True)
     prs = build_presentation()
     prs.save(PRESENTATION_PATH)
+    prs.save(STORED_PRESENTATION_PATH)
     prs_long = build_presentation_30min()
     prs_long.save(LONG_PRESENTATION_PATH)
+    prs_long.save(STORED_LONG_PRESENTATION_PATH)
     OUTLINE_PATH.write_text(build_outline(), encoding="utf-8")
     LONG_OUTLINE_PATH.write_text(build_outline_30min(), encoding="utf-8")
     print(f"Wrote {PRESENTATION_PATH}")
+    print(f"Wrote {STORED_PRESENTATION_PATH}")
     print(f"Wrote {LONG_PRESENTATION_PATH}")
+    print(f"Wrote {STORED_LONG_PRESENTATION_PATH}")
     print(f"Wrote {OUTLINE_PATH}")
     print(f"Wrote {LONG_OUTLINE_PATH}")
 
