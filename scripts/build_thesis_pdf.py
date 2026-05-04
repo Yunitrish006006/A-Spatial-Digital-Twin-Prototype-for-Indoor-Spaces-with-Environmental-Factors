@@ -166,9 +166,9 @@ def render_document(blocks: List[Block]) -> str:
 \setmainfont{{Times New Roman}}
 \setsansfont{{Arial}}
 \setmonofont{{Menlo}}
-\setCJKmainfont[BoldFont=BiauKaiTC]{{BiauKaiTC}}
+\setCJKmainfont[BoldFont={{Heiti TC}}]{{Songti TC}}
 \setCJKsansfont{{Heiti TC}}
-\setCJKmonofont{{PingFang TC}}
+\setCJKmonofont{{Heiti TC}}
 \XeTeXlinebreaklocale "zh"
 \XeTeXlinebreakskip = 0pt plus 1pt
 \hypersetup{{hidelinks}}

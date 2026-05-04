@@ -3,7 +3,7 @@ import json
 import mimetypes
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Any, Dict, List, Tuple
 from urllib.parse import parse_qs, urlparse
 
 from digital_twin.core.service import (
@@ -34,6 +34,7 @@ from digital_twin.core.scenarios import (
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS = ROOT / "outputs"
 OUTPUTS_FIGURES = OUTPUTS / "figures"
+PUBLIC_BENCHMARKS = OUTPUTS / "data" / "public_benchmarks"
 DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
 FURNITURE_OVERRIDE_NAMES = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = ("cool", "dry", "heat", "fan")
@@ -482,6 +483,69 @@ INDEX_HTML = """<!doctype html>
       font-size: 0.82rem;
     }
     .status { color: var(--muted); margin-top: 12px; line-height: 1.5; }
+    .term-help {
+      position: relative;
+      border-bottom: 1px dotted var(--blue);
+      color: inherit;
+      cursor: help;
+    }
+    .term-help:focus {
+      outline: 2px solid rgba(43, 92, 124, 0.38);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    .term-help::after {
+      content: attr(data-definition);
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 8px);
+      z-index: 30;
+      width: min(320px, 78vw);
+      padding: 10px 12px;
+      border: 1px solid rgba(43, 92, 124, 0.28);
+      border-radius: 12px;
+      background: #fffdf7;
+      color: var(--ink);
+      box-shadow: 0 14px 32px rgba(28, 33, 29, 0.16);
+      font: 0.78rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-transform: none;
+      letter-spacing: 0;
+      white-space: normal;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.12s ease, visibility 0.12s ease;
+    }
+    .term-help:hover::after,
+    .term-help:focus::after {
+      opacity: 1;
+      visibility: visible;
+    }
+    .glossary-list {
+      display: grid;
+      gap: 9px;
+      max-height: 280px;
+      overflow: auto;
+      margin-top: 12px;
+      padding-right: 4px;
+    }
+    .glossary-item {
+      border: 1px solid rgba(43, 92, 124, 0.18);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.68);
+    }
+    .glossary-item strong {
+      display: block;
+      font: 800 0.82rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .glossary-item span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
     .hero-zone-bar {
       margin-top: 16px;
       padding-top: 14px;
@@ -550,6 +614,11 @@ INDEX_HTML = """<!doctype html>
           </div>
           <p class="status" id="quickStartStatus">Use quick actions to run common workflows in one click.</p>
         </div>
+      </div>
+      <div class="sidebar-section">
+        <label>Term Glossary</label>
+        <p class="status">Hover or tap underlined terms anywhere in the demo to see the short explanation used for presentation delivery.</p>
+        <div class="glossary-list" id="termGlossary"></div>
       </div>
       <div class="sidebar-section">
         <label>Devices</label>
@@ -774,6 +843,13 @@ INDEX_HTML = """<!doctype html>
         </div>
       </details>
       <details class="analytics-section panel">
+        <summary>Public Dataset Comparison</summary>
+        <div class="section-body">
+          <p class="status">Shows how SML2010 and CU-BEMS are mapped into task-aligned benchmark comparisons. These public datasets do not provide full 3D field MAE, so this panel reports shared observable tasks only.</p>
+          <div id="publicBenchmark"></div>
+        </div>
+      </details>
+      <details class="analytics-section panel">
         <summary>3D SVG Snapshots</summary>
         <div class="section-body">
           <p class="status">Static 3D sampled-field exports with appliance position markers. Run <code>python3 scripts/run_demo.py</code> after model changes to refresh SVG outputs.</p>
@@ -795,6 +871,87 @@ INDEX_HTML = """<!doctype html>
     const deviceColors = { ac: "#2b5c7c", window: "#2f855a", light: "#c58b2d" };
     const furnitureColors = { cabinet: "#7a4a2c", sofa: "#87546a", table: "#8d7a2f" };
     const customDeviceKindLabels = { ac: "AC", window: "Window", light: "Light" };
+    const TERM_DEFINITIONS = {
+      "Sparse-Sensing": "稀疏感測：用少量感測器取得關鍵觀測，再透過模型估計整個房間的空間場。",
+      "Sparse-Sensing Digital Twin": "稀疏感測數位雙生：以少量感測資料驅動的室內環境模型，可查詢不同位置與區域狀態。",
+      "Spatial Digital Twin": "空間數位雙生：不只估計單一點，而是估計房間內溫度、濕度與照度的 3D 分布。",
+      "Digital Twin": "數位雙生：對實體空間或設備建立可計算的虛擬模型，用於估測、模擬與決策支援。",
+      "non-networked appliance": "非連網家電：本身不主動回報狀態或功率的設備，例如一般冷氣、手動窗戶與普通燈具。",
+      "appliance impact": "家電影響：設備啟動後對溫度、濕度或照度造成的可量化改變。",
+      "corner sensor": "角落感測器：放在房間地面與天花板四角的感測節點，用於支撐三線性校正。",
+      "field": "場：某個環境量在房間所有空間位置上的分布，例如溫度場、濕度場或照度場。",
+      "3D field": "3D 場：在 x、y、z 三個座標方向上都有估計值的空間分布。",
+      "Temperature": "溫度：室內熱環境指標，單位為攝氏度。",
+      "Humidity": "濕度：相對濕度，表示空氣中水氣含量相對於飽和狀態的比例。",
+      "Illuminance": "照度：單位面積接收到的光通量，單位為 lux 或 lx。",
+      "RH": "Relative Humidity，相對濕度；本系統以百分比表示。",
+      "lx": "lux，照度單位，用來描述光線照在某一位置的強度。",
+      "IDW": "Inverse Distance Weighting，反距離加權插值；只依距離加權感測器值，不包含家電物理影響。",
+      "baseline": "基準模型或基準值：用來比較本研究模型是否真的改善的參考方法或初始狀態。",
+      "MAE": "Mean Absolute Error，平均絕對誤差；數值越小代表估計越接近真值或參考值。",
+      "RMSE": "Root Mean Squared Error，均方根誤差；比 MAE 更會放大較大的錯誤。",
+      "Correlation": "相關係數：衡量模型是否能跟上時間序列趨勢，不只看絕對誤差大小。",
+      "LOO": "Leave-One-Scenario-Out；每次留一個情境測試，其餘情境訓練，用來檢查泛化穩定性。",
+      "Hybrid Residual Correction": "混合殘差校正：先用可解釋物理模型估計，再用神經網路補上系統性殘差。",
+      "Hybrid Residual": "混合殘差模型：保留物理模型主體，只學習 base estimator 尚未吸收的誤差。",
+      "residual": "殘差：觀測值或真值減去模型預測值後剩下的誤差。",
+      "physics model": "物理模型：根據設備位置、方向、距離衰減與時間反應建立的可解釋估計器。",
+      "estimator": "估計器：把房間、設備與環境輸入轉換為溫濕照度估計值的模型。",
+      "bulk": "整室項：描述冷氣或窗戶作用後，全房間平均狀態隨時間收斂的部分。",
+      "local": "局部項：描述設備附近、窗邊或燈具下方的空間梯度與局部變化。",
+      "bulk + local field": "整室加局部場：同時描述全室平均收斂與設備周邊局部梯度的場模型。",
+      "trilinear correction": "三線性校正：利用 8 個角落感測點擬合 8 個係數，修正低頻偏移與空間梯度。",
+      "power calibration": "功率校正：用感測器殘差重新估計啟用設備的影響尺度，避免名目功率與實際效果不一致。",
+      "least squares": "最小平方法：選擇一組係數，使預測差距的平方和最小。",
+      "Fourier": "傅立葉方法：把殘差序列轉到頻率域，用於低通濾波與去除短時高頻擾動。",
+      "response time": "反應時間：設備啟動後，環境影響逐漸接近穩態所需的時間尺度。",
+      "distance attenuation": "距離衰減：離設備越遠，設備影響通常越弱的模型假設。",
+      "directional gain": "方向增益：設備影響會受到出風方向、窗戶朝向或光照方向影響。",
+      "one-bounce diffuse reflection": "單次漫反射：以輕量近似估計牆面、地板或家具反射光造成的間接照度。",
+      "checkpoint": "檢查點：已訓練模型參數的保存檔，demo 可載入後套用 hybrid residual correction。",
+      "MCP": "Model Context Protocol；此專案把同一套 estimator 包成 AI client 可呼叫的工具介面。",
+      "CLI": "Command-Line Interface，命令列介面；用腳本直接呼叫同一套服務函式。",
+      "API": "Application Programming Interface；讓不同介面以一致方式呼叫模型能力。",
+      "Web demo": "瀏覽器展示介面；用來互動調整設備、窗戶條件與觀看 3D 場估計。",
+      "Direct Window Input": "直接窗戶輸入模式：不用固定情境分類，直接輸入外氣溫度、濕度、日照與開窗比例。",
+      "window matrix": "窗戶矩陣：把季節、天氣、時段與開窗比例組合成多組邊界條件測試。",
+      "synthetic full-field": "合成完整場：用受控模擬產生每個 3D 格點的參考值，適合計算 full-field MAE。",
+      "ablation": "消融實驗：移除某個模型元件，觀察誤差變化，以判斷該元件的貢獻。",
+      "scenario": "情境：一組固定設備狀態、外部條件與時間設定，例如 AC only 或 all active。",
+      "target zone": "目標區域：使用者真正關心的區域平均值，例如靠窗區、中心區或門側區。",
+      "comfort penalty": "舒適度懲罰：把溫度、濕度與照度偏離目標範圍的程度加權成單一分數。",
+      "counterfactual simulation": "反事實模擬：假設採取某個動作後重新估計結果，用於排序建議，不等於已做實體介入驗證。",
+      "Recommendation Ranking": "推薦排序：依模型預測的舒適度改善幅度排列候選動作。",
+      "task-aligned benchmark": "任務對齊比較：公開資料集缺少相同 3D 房間真值時，只比較可對齊的時間序列或區域任務。",
+      "SML2010": "公開室內環境資料集；本研究用於相容的時間序列預測比較。",
+      "CU-BEMS": "公開建築能源與感測資料集；本研究用於相容的區域或時間序列任務比較。",
+      "Public Dataset Comparison": "公開資料集比較：把外部資料轉成共同可觀測任務，與 persistence、linear regression 及本研究映射模型做同目標比較。",
+      "shared observable tasks": "共同可觀測任務：所有方法都能輸入與輸出同一種目標的比較任務，例如 zone-level 溫度或兩點照度。",
+      "persistence": "持續性基準：直接用上一個時間點的值當作下一個時間點預測。",
+      "linear regression": "線性迴歸：以輸入特徵的線性組合預測目標，是常見的簡單 baseline。",
+      "chronological split": "時間序切分：依時間先後切成訓練與測試，避免用未來資料預測過去。",
+      "70/30": "70/30 切分：前 70% 時間序列用於訓練，後 30% 用於測試。",
+      "structured prior": "結構化先驗：先用物理模型產生有幾何與設備意義的特徵，再交給簡單讀出模型比較。",
+      "linear readout head": "線性讀出頭：在固定模型特徵上再訓練一個小型線性模型，讓輸出對齊公開資料集 target。",
+      "pseudo geometry": "偽幾何：為了對齊程式介面建立的簡化房間座標，不宣稱等於公開資料集真實空間配置。",
+      "head-to-head comparison": "一對一比較：相同資料切分、相同 target、相同指標下直接比較不同方法。",
+      "boundary-response": "邊界響應：外氣、日照、雨風或通風條件改變後，室內點位如何變化的任務。",
+      "device-response": "裝置響應：AC、lighting 等設備功率或啟閉變化後，zone-level 環境量如何變化的任務。",
+      "full 3D field MAE": "完整 3D 場誤差：每個房間格點都有真值時才能計算；公開資料集通常沒有這種 dense ground truth。",
+      "ESP32": "常見低成本 IoT 微控制器，可用於未來長期實測感測部署。",
+      "quasi-steady state": "準穩態：系統變化已趨緩、接近穩定但不必完全靜止的狀態。",
+      "3D volume": "3D 體資料：包含多個 x-y-z 格點的溫濕照度估計結果。",
+      "grid sample": "格點樣本：把房間切成固定解析度後，每個格點上的估計值。",
+      "Opening": "開窗比例：窗戶開啟程度，0 表示關閉，1 表示全開。",
+      "Surface W": "表面寬度：牆面設備或窗戶在牆面上的水平尺寸。",
+      "Surface H": "表面高度：牆面設備或窗戶在牆面上的垂直尺寸。",
+      "Radius": "影響半徑：設備影響函數主要作用的空間尺度。",
+      "Power": "影響尺度：此 demo 中代表設備作用強度的可調參數，不等同於真實電功率。",
+      "Furniture Blocking": "家具遮擋：用簡化阻擋體削弱氣流、窗戶交換或光線路徑。",
+      "Block": "遮擋強度：家具啟用時，對路徑影響的衰減比例。",
+      "Point Sample": "點查詢：輸入 x、y、z 座標，取得該位置的三因子估計值。",
+      "Time Evolution": "時間演化：展示設備啟動後，目標區域如何隨時間接近準穩態。"
+    };
     const PRESET_BUNDLES = [
       {
         name: "Cooling Boost",
@@ -912,6 +1069,77 @@ INDEX_HTML = """<!doctype html>
     let customDeviceItems = [];
     let customDeviceCounter = 1;
 
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function escapeRegExp(value) {
+      const slash = String.fromCharCode(92);
+      const special = new Set([".", "*", "+", "?", "^", "$", "{", "}", "(", ")", "|", "[", "]", slash]);
+      return Array.from(value).map(character => special.has(character) ? slash + character : character).join("");
+    }
+
+    function renderTermGlossary() {
+      const container = document.getElementById("termGlossary");
+      if (!container) return;
+      container.innerHTML = Object.entries(TERM_DEFINITIONS)
+        .map(([term, definition]) => `
+          <div class="glossary-item">
+            <strong>${escapeHtml(term)}</strong>
+            <span>${escapeHtml(definition)}</span>
+          </div>
+        `)
+        .join("");
+    }
+
+    function applyTermExplanations(root = document.body) {
+      if (!root) return;
+      const terms = Object.keys(TERM_DEFINITIONS).sort((a, b) => b.length - a.length);
+      const pattern = new RegExp(`(^|[^A-Za-z0-9_])(${terms.map(escapeRegExp).join("|")})(?=[^A-Za-z0-9_]|$)`, "gi");
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          if (parent.closest("script, style, pre, code, svg, canvas, input, textarea, select, .term-help, .glossary-list")) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          pattern.lastIndex = 0;
+          return pattern.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      });
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(node => {
+        const original = node.nodeValue;
+        pattern.lastIndex = 0;
+        const html = escapeHtml(original).replace(pattern, (match, prefix, term) => {
+          const canonical = terms.find(candidate => candidate.toLowerCase() === term.toLowerCase()) || term;
+          const definition = TERM_DEFINITIONS[canonical];
+          if (!definition) return escapeHtml(match);
+          return `${escapeHtml(prefix)}<span class="term-help" tabindex="0" role="note" data-definition="${escapeHtml(definition)}">${escapeHtml(term)}</span>`;
+        });
+        const template = document.createElement("template");
+        template.innerHTML = html;
+        node.replaceWith(template.content);
+      });
+    }
+
+    function startTermExplanationObserver() {
+      renderTermGlossary();
+      applyTermExplanations(document.body);
+      const observer = new MutationObserver(mutations => {
+        if (mutations.some(mutation => Array.from(mutation.addedNodes).some(node => !node.closest?.(".term-help")))) {
+          window.requestAnimationFrame(() => applyTermExplanations(document.body));
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     async function getJSON(url) {
       const response = await fetch(url);
       if (!response.ok) throw new Error(await response.text());
@@ -938,6 +1166,9 @@ INDEX_HTML = """<!doctype html>
       syncAcControlsFromScenario(activeScenario);
       setupWindowPresetControls();
       await loadScenario();
+      loadPublicBenchmarks().catch(error => {
+        document.getElementById("publicBenchmark").innerHTML = `<p class="status">${error.message}</p>`;
+      });
       setQuickStartStatus("Ready. Start with 'Apply Cooling Boost + Run' or adjust controls manually.");
       loadDirectWindow(false).catch(error => {
         document.getElementById("windowDirectResult").innerHTML = `<p class="status">${error.message}</p>`;
@@ -2084,6 +2315,91 @@ INDEX_HTML = """<!doctype html>
       );
     }
 
+    async function loadPublicBenchmarks() {
+      const data = await getJSON("/api/public_benchmarks");
+      renderPublicBenchmarks(data);
+    }
+
+    function renderPublicBenchmarks(data) {
+      const container = document.getElementById("publicBenchmark");
+      if (!data.datasets?.length) {
+        container.innerHTML = `<p class="status">No public benchmark output JSON files were found under outputs/data/public_benchmarks.</p>`;
+        return;
+      }
+      container.innerHTML = `
+        <div class="cards">
+          ${data.datasets.map(dataset => `
+            <div class="card">
+              <div class="metric">${dataset.dataset}</div>
+              <div class="value">${dataset.summary.total_targets}</div>
+              <div class="status">targets compared, ${dataset.summary.model_best_count} best MAE by the mapped model.</div>
+            </div>
+          `).join("")}
+          <div class="card">
+            <div class="metric">Claim Boundary</div>
+            <div class="value">No full-field</div>
+            <div class="status">Public datasets are point/zone-level checks; canonical synthetic scenarios remain the full 3D field benchmark.</div>
+          </div>
+        </div>
+        <p class="status">${data.claim_boundary}</p>
+        <h3>Execution Flow</h3>
+        ${table(["Step", "What happens", "Command / Output"], data.pipeline.map((step, index) => [
+          index + 1,
+          `${step.title}<br><span class="status">${step.description}</span>`,
+          `<code>${step.command}</code>`
+        ]))}
+        ${data.datasets.map(renderPublicBenchmarkDataset).join("")}
+      `;
+    }
+
+    function renderPublicBenchmarkDataset(dataset) {
+      const rows = dataset.rows.map(row => [
+        `${row.task_id}<br><span class="status">${taskLabel(row.task_id)}</span>`,
+        `${row.horizon_minutes} min`,
+        row.target,
+        fmtMaybe(row.model_mae),
+        fmtMaybe(row.linear_regression_mae),
+        fmtMaybe(row.persistence_mae),
+        methodLabel(row.best_method),
+        row.result_label
+      ]);
+      return `
+        <h3>${dataset.dataset}: ${dataset.benchmark_mode}</h3>
+        <p class="status">${dataset.execution_note}</p>
+        <p class="status">Data scale: ${dataset.count_summary}. Unsupported claims: ${dataset.unsupported.length ? dataset.unsupported.join(", ") : "none listed"}.</p>
+        <p class="status">Mapping notes: ${dataset.mapping_notes.join(" ")}</p>
+        ${table(
+          ["Task", "Horizon", "Target", "Our MAE", "LinReg MAE", "Persist MAE", "Best MAE", "Interpretation"],
+          rows
+        )}
+      `;
+    }
+
+    function taskLabel(taskId) {
+      const labels = {
+        C1: "AC / thermal-humidity response",
+        C2: "Lighting response",
+        C3: "Event delta response",
+        S1: "Daylight boundary response",
+        S2: "Thermal-humidity boundary response",
+        S3: "Facade event delta response"
+      };
+      return labels[taskId] || "Public benchmark task";
+    }
+
+    function methodLabel(method) {
+      const labels = {
+        hybrid_digital_twin_readout: "Our mapped model",
+        linear_regression: "Linear regression",
+        persistence: "Persistence"
+      };
+      return labels[method] || method || "n/a";
+    }
+
+    function fmtMaybe(value) {
+      return Number.isFinite(Number(value)) ? fmt(value) : "n/a";
+    }
+
     function renderHeatmapsForScenario(name) {
       document.getElementById("heatmaps").innerHTML = metrics.map(metric => `
         <img src="/outputs/figures/${name}_${metric}_3d.svg" alt="${name} ${metric} 3D heatmap">
@@ -2759,6 +3075,7 @@ INDEX_HTML = """<!doctype html>
       return `<table><thead><tr>${headers.map(item => `<th>${item}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     }
 
+    startTermExplanationObserver();
     setupVolumeControls();
     loadScenarios().catch(error => {
       document.getElementById("status").textContent = error.message;
@@ -2769,6 +3086,205 @@ INDEX_HTML = """<!doctype html>
 """
 
 INDEX_HTML = INDEX_HTML.replace("__WINDOW_PRESET_DATA__", WINDOW_PRESET_DATA)
+
+
+def load_public_benchmark_dashboard() -> Dict[str, Any]:
+    datasets = []
+    for filename in ("sml2010_hybrid_twin_comparison.json", "cu_bems_hybrid_twin_comparison.json"):
+        path = PUBLIC_BENCHMARKS / filename
+        if path.exists():
+            datasets.append(_summarize_public_benchmark_file(path))
+
+    return {
+        "claim_boundary": (
+            "Public benchmark comparison is task-aligned: it compares SML2010 and CU-BEMS on shared "
+            "point-level or zone-level targets. It must not be read as full 3D field validation."
+        ),
+        "pipeline": [
+            {
+                "title": "Normalize raw public files",
+                "description": "Raw CU-BEMS/SML2010 files are converted into repo templates: sensor time series, device events, outdoor conditions, auxiliary features, and metadata.",
+                "command": "python3 scripts/normalize_public_benchmark_data.py --dataset all",
+            },
+            {
+                "title": "Build baseline benchmark",
+                "description": "Persistence and linear regression are evaluated on the same task definitions, horizons, targets, and chronological split.",
+                "command": "python3 scripts/run_public_dataset_benchmark.py --dataset all --horizons 15,60",
+            },
+            {
+                "title": "Map this model into public tasks",
+                "description": "The digital twin plus hybrid residual checkpoint is used as a structured prior, then a small linear readout head is fitted on the same 70/30 chronological split.",
+                "command": "python3 scripts/run_public_dataset_model_comparison.py --dataset all --horizons 15,60",
+            },
+            {
+                "title": "Report head-to-head metrics",
+                "description": "For every shared target, the demo reports MAE/RMSE/correlation for the mapped model, persistence, and linear regression.",
+                "command": "outputs/data/public_benchmarks/*_hybrid_twin_comparison.json",
+            },
+        ],
+        "datasets": datasets,
+    }
+
+
+def _summarize_public_benchmark_file(path: Path) -> Dict[str, Any]:
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    model_name = str(summary.get("mapped_model_name", "hybrid_digital_twin_readout"))
+    rows = _public_benchmark_rows(summary, model_name)
+    total_targets = len(rows)
+    model_best_count = sum(1 for row in rows if row["best_method"] == model_name)
+    model_beats_linear_count = sum(
+        1 for row in rows if _is_better(row.get("model_mae"), row.get("linear_regression_mae"))
+    )
+    model_beats_persistence_count = sum(
+        1 for row in rows if _is_better(row.get("model_mae"), row.get("persistence_mae"))
+    )
+    metadata = summary.get("metadata", {}) if isinstance(summary.get("metadata"), dict) else {}
+    unsupported = metadata.get("unsupported", [])
+    mapping_notes = summary.get("mapping_notes", [])
+
+    return {
+        "dataset": summary.get("dataset", path.stem),
+        "benchmark_mode": summary.get("benchmark_mode", ""),
+        "created_at": summary.get("created_at", ""),
+        "input_dir": summary.get("input_dir", ""),
+        "count_summary": _public_benchmark_count_summary(summary),
+        "unsupported": unsupported if isinstance(unsupported, list) else [],
+        "mapping_notes": mapping_notes if isinstance(mapping_notes, list) else [],
+        "execution_note": _public_benchmark_execution_note(summary),
+        "summary": {
+            "total_targets": total_targets,
+            "model_best_count": model_best_count,
+            "model_beats_linear_count": model_beats_linear_count,
+            "model_beats_persistence_count": model_beats_persistence_count,
+        },
+        "rows": rows,
+    }
+
+
+def _public_benchmark_rows(summary: Dict[str, Any], model_name: str) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for task in summary.get("tasks", []):
+        if not isinstance(task, dict) or task.get("status") not in (None, "ok"):
+            continue
+        targets = task.get("targets", {})
+        if not isinstance(targets, dict):
+            continue
+        for target_name, metrics_by_method in targets.items():
+            if not isinstance(metrics_by_method, dict):
+                continue
+            model_metrics = _method_metrics(metrics_by_method, model_name)
+            linear_metrics = _method_metrics(metrics_by_method, "linear_regression")
+            persistence_metrics = _method_metrics(metrics_by_method, "persistence")
+            method_mae = {
+                model_name: model_metrics.get("mae"),
+                "linear_regression": linear_metrics.get("mae"),
+                "persistence": persistence_metrics.get("mae"),
+            }
+            best_method = _best_public_method(method_mae)
+            rows.append(
+                {
+                    "task_id": task.get("task_id", ""),
+                    "horizon_minutes": task.get("horizon_minutes", ""),
+                    "target": target_name,
+                    "sample_count": task.get("sample_count", 0),
+                    "train_samples": task.get("train_samples", 0),
+                    "test_samples": task.get("test_samples", 0),
+                    "model_method": model_name,
+                    "model_mae": model_metrics.get("mae"),
+                    "model_rmse": model_metrics.get("rmse"),
+                    "model_correlation": model_metrics.get("correlation"),
+                    "linear_regression_mae": linear_metrics.get("mae"),
+                    "persistence_mae": persistence_metrics.get("mae"),
+                    "best_method": best_method,
+                    "result_label": _public_result_label(
+                        model_name=model_name,
+                        best_method=best_method,
+                        model_mae=model_metrics.get("mae"),
+                        linear_mae=linear_metrics.get("mae"),
+                        persistence_mae=persistence_metrics.get("mae"),
+                    ),
+                }
+            )
+    return rows
+
+
+def _method_metrics(metrics_by_method: Dict[str, Any], method_name: str) -> Dict[str, Any]:
+    metrics = metrics_by_method.get(method_name, {})
+    return metrics if isinstance(metrics, dict) else {}
+
+
+def _best_public_method(method_mae: Dict[str, Any]) -> str:
+    candidates = []
+    for method, mae in method_mae.items():
+        try:
+            candidates.append((float(mae), method))
+        except (TypeError, ValueError):
+            continue
+    if not candidates:
+        return ""
+    return min(candidates)[1]
+
+
+def _public_result_label(
+    model_name: str,
+    best_method: str,
+    model_mae: Any,
+    linear_mae: Any,
+    persistence_mae: Any,
+) -> str:
+    beats_linear = _is_better(model_mae, linear_mae)
+    beats_persistence = _is_better(model_mae, persistence_mae)
+    if best_method == model_name:
+        return "本研究模型最佳"
+    if beats_linear and not beats_persistence:
+        return "勝過 linear regression，但輸給 persistence"
+    if beats_persistence and not beats_linear:
+        return "勝過 persistence，但輸給 linear regression"
+    if beats_linear and beats_persistence:
+        return "同時勝過兩個 baseline"
+    return "兩個 baseline 較佳"
+
+
+def _is_better(left: Any, right: Any) -> bool:
+    try:
+        return float(left) < float(right)
+    except (TypeError, ValueError):
+        return False
+
+
+def _public_benchmark_count_summary(summary: Dict[str, Any]) -> str:
+    counts = summary.get("counts", {})
+    if not isinstance(counts, dict):
+        return "counts unavailable"
+    dataset = str(summary.get("dataset", "")).lower()
+    if "sml" in dataset:
+        return (
+            f"{counts.get('records', 0)} records, {counts.get('sensor_rows', 0)} sensor rows, "
+            f"{counts.get('outdoor_rows', 0)} outdoor rows"
+        )
+    if "cu-bems" in dataset or "cu_bems" in dataset:
+        return (
+            f"{counts.get('zones', 0)} zones, {counts.get('sensor_rows', 0)} sensor rows, "
+            f"{counts.get('device_rows', 0)} device rows"
+        )
+    return ", ".join(f"{key}={value}" for key, value in counts.items())
+
+
+def _public_benchmark_execution_note(summary: Dict[str, Any]) -> str:
+    dataset = str(summary.get("dataset", ""))
+    mode = str(summary.get("benchmark_mode", ""))
+    if dataset == "SML2010":
+        return (
+            "SML2010 is executed as a two-point boundary-response benchmark. Dining-room and room sensors "
+            "become two pseudo points; outdoor temperature, humidity, facade sunlight, rain, wind, and "
+            "enthalpic motor features provide boundary/context inputs."
+        )
+    if dataset == "CU-BEMS":
+        return (
+            "CU-BEMS is executed as a single-zone device-response benchmark. Each floor-zone becomes a "
+            "pseudo zone; AC and lighting power are mapped into bounded device activations for shared targets."
+        )
+    return f"Executed as {mode}."
 
 
 class DemoRequestHandler(BaseHTTPRequestHandler):
@@ -2802,6 +3318,9 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/window_matrix":
                 self._send_json(evaluate_window_matrix())
+                return
+            if parsed.path == "/api/public_benchmarks":
+                self._send_json(load_public_benchmark_dashboard())
                 return
             if parsed.path == "/api/window_direct":
                 query = parse_qs(parsed.query)

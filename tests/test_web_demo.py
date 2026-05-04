@@ -9,6 +9,7 @@ if root_str not in sys.path:
 
 from digital_twin.web.web_demo import (
     INDEX_HTML,
+    load_public_benchmark_dashboard,
     _query_bool,
     _query_custom_devices,
     _query_custom_furniture,
@@ -94,10 +95,34 @@ class WebDemoTests(unittest.TestCase):
         self.assertIn("Up / Down Swing", INDEX_HTML)
         self.assertNotIn("<select", INDEX_HTML)
         self.assertIn("Sparse-Sensing Single-Room Spatial Digital Twin", INDEX_HTML)
+        self.assertIn("Term Glossary", INDEX_HTML)
+        self.assertIn("TERM_DEFINITIONS", INDEX_HTML)
+        self.assertIn("applyTermExplanations", INDEX_HTML)
+        self.assertIn("Hybrid Residual Correction", INDEX_HTML)
+        self.assertIn("Mean Absolute Error", INDEX_HTML)
+        self.assertIn("Public Dataset Comparison", INDEX_HTML)
+        self.assertIn("/api/public_benchmarks", INDEX_HTML)
+        self.assertIn("loadPublicBenchmarks", INDEX_HTML)
+        self.assertIn("chronological split", INDEX_HTML)
 
     def test_query_name_defaults_to_idle(self) -> None:
         self.assertEqual(_query_name(""), "idle")
         self.assertEqual(_query_name("name=light_only"), "light_only")
+
+    def test_public_benchmark_dashboard_contains_mapped_comparisons(self) -> None:
+        dashboard = load_public_benchmark_dashboard()
+        self.assertIn("claim_boundary", dashboard)
+        self.assertIn("pipeline", dashboard)
+        self.assertGreaterEqual(len(dashboard["datasets"]), 1)
+        datasets = {item["dataset"] for item in dashboard["datasets"]}
+        self.assertTrue({"SML2010", "CU-BEMS"} & datasets)
+        for dataset in dashboard["datasets"]:
+            self.assertIn("rows", dataset)
+            self.assertGreater(len(dataset["rows"]), 0)
+            row = dataset["rows"][0]
+            self.assertIn("model_mae", row)
+            self.assertIn("linear_regression_mae", row)
+            self.assertIn("persistence_mae", row)
 
     def test_query_float_defaults_on_invalid_input(self) -> None:
         self.assertEqual(_query_float({"x": ["2.5"]}, "x", 3.0), 2.5)

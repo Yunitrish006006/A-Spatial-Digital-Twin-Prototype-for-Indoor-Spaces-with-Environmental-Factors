@@ -4,12 +4,15 @@ This repository contains one research project expressed in multiple synchronized
 
 ## Current Submission Target
 
-As of 2026-04-21, the primary target venue for the English IEEE-style manuscript is:
+As of 2026-05-01, the active submission target for the English IEEE-style manuscript is IoTaIS 2026, the 2026 IEEE International Conference on Internet of Things and Intelligence Systems.
 
-- Primary target: IEEE Digital Twin 2026, colocated with IEEE Smart World Congress 2026.
-- Backup target: IEEE DTPI 2026, the IEEE International Conference on Digital Twins and Parallel Intelligence.
+- Active target: IoTaIS 2026.
+- Submission system: EDAS, `https://edas.info/N34817`.
+- Full paper deadline: June 15, 2026.
+- Current format target: IEEE A4 conference paper, 6-7 pages for full papers.
+- Former targets no longer active: IEEE Digital Twin 2026 and IEEE DTPI 2026.
 
-Future edits to the IEEE manuscript should first optimize for the primary target's scope, page limit, formatting rules, and submission deadline. If the primary target becomes infeasible, use IEEE DTPI 2026 as the fallback venue and adjust the manuscript framing accordingly.
+Future edits to the IEEE manuscript should optimize for IoTaIS 2026's Internet of Things and intelligence systems scope. Frame the work around sparse IoT sensing, indoor spatial intelligence, non-networked appliance impact learning, and decision-support services. Keep the MCP interface as a secondary service layer rather than the paper's headline novelty.
 
 This venue note records the current submission strategy only. It does not relax the synchronization rules below, and it does not imply that the IEEE manuscript is already submission-ready.
 
