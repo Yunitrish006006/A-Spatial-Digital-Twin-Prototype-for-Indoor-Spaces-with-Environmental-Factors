@@ -154,6 +154,10 @@ def build_blocks() -> List[Block]:
         paragraph("  3.1 系統架構…… 7"),
         paragraph("  3.2 房間、區域與感測器設定…… 7"),
         paragraph("  3.3 三因子場模型…… 8"),
+        paragraph("    3.3.1 共用符號與 Indoor Baseline…… 8"),
+        paragraph("    3.3.2 溫度場模型…… 8"),
+        paragraph("    3.3.3 濕度場模型…… 8"),
+        paragraph("    3.3.4 照度場模型…… 9"),
         paragraph("  3.4 設備影響函數…… 8"),
         paragraph("  3.5 感測器校正模型…… 9"),
         paragraph("    3.5.1 8 點場推估的可證明範圍…… 9"),
@@ -401,6 +405,7 @@ def build_blocks() -> List[Block]:
             "為避免把不同物理性質的環境量硬套到同一個公式，本研究將估測流程拆成兩層。第一層是依變數而異的 nominal model $N_v(\\mathbf{p},t)$，負責描述該變數的主要物理趨勢；第二層是由 8 顆角落感測器提供的 residual correction $C_v(\\mathbf{p},t)$，負責吸收低階空間偏差。因此任一環境因素 $v\\in\\{T,H,L\\}$ 的最終估計值皆寫成："
         ),
         math(r"\hat{F}_v(\mathbf{p},t)=N_v(\mathbf{p},t)+C_v(\mathbf{p},t)"),
+        heading("3.3.1 共用符號與 Indoor Baseline", 3),
         paragraph(
             "其中 $T$ 代表 temperature，$H$ 代表 relative humidity，$L$ 代表 illuminance。$C_v$ 的三線性形式在 3.5 節定義；本節先定義三個不同的 nominal model。為了讓公式可讀，本研究先定義共用的幾何與裝置符號。令查詢點為 $\\mathbf{p}=(x,y,z)$，房間高度為 $H_r$，則正規化垂直位置為："
         ),
@@ -446,6 +451,7 @@ def build_blocks() -> List[Block]:
                 ["$C_v(\\mathbf{p},t)$", "由 8 顆角落感測器 residual 形成的三線性校正場"],
             ],
         ),
+        heading("3.3.2 溫度場模型", 3),
         paragraph("溫度場的 nominal model 採用熱交換與熱源近似，先分成 indoor baseline、全室平均響應、局部空間響應與垂直分層四個部分："),
         math(
             r"\begin{aligned}"
@@ -482,6 +488,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "其中 $s_m$ 由冷氣模式決定，冷房或除濕時為負，加熱時為正，送風模式不產生全室熱量變化；$d_T$ 代表冷氣設定溫度與室內基準溫度形成的需求量。此式的重點是：溫度使用熱交換與熱源項，不使用照度的光學項。"
         ),
+        heading("3.3.3 濕度場模型", 3),
         paragraph("濕度場的 nominal model 不直接套用熱場公式，而是使用水氣交換與冷氣除濕近似。其結構同樣分成 indoor baseline、全室平均響應、局部空間響應與垂直濕度梯度："),
         math(
             r"\begin{aligned}"
@@ -499,6 +506,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "其中 $H_0$ 為室內基準相對濕度，$H_{\\mathrm{out}}$ 為室外相對濕度，$d_H$ 為除濕需求量。冷氣項為負值，表示除濕；窗戶項由 $(H_{\\mathrm{out}}-H_0)$ 決定正負，表示外氣較濕時提高室內濕度，外氣較乾時降低室內濕度。此處並未主張完整求解水氣質量守恆或 psychrometric model，而是使用控制導向的低階近似，再交由角落感測器 residual 校正吸收模型偏差。"
         ),
+        heading("3.3.4 照度場模型", 3),
         paragraph("照度場的 nominal model 採用光源、日照、遮蔽與反射近似，不使用溫濕度的全室混合項："),
         math(
             r"N_L(\mathbf{p},t)=\max\{0,L_0+L_{\mathrm{win}}^{\mathrm{dir}}(\mathbf{p},t)+L_{\mathrm{light}}^{\mathrm{dir}}(\mathbf{p},t)+L_{\mathrm{win}}^{\mathrm{amb}}(\mathbf{p},t)+I^{\mathrm{refl}}(\mathbf{p},t)\}"
