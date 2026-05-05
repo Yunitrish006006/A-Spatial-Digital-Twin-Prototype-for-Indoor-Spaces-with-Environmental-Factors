@@ -173,16 +173,16 @@ def build_blocks() -> List[Block]:
         paragraph("  4.4 Web Demo 與展示輔助介面…… 12"),
         paragraph("第五章 模擬案例與結果分析…… 13"),
         paragraph("  5.1 標準情境設定…… 13"),
-        paragraph("  5.2 場重建誤差…… 13"),
-        paragraph("  5.3 IDW Baseline 比較…… 14"),
-        paragraph("  5.4 消融分析與可重現性補強…… 14"),
-        paragraph("  5.5 非連網裝置影響學習…… 14"),
-        paragraph("  5.6 窗戶時段、天氣、季節矩陣與直接輸入…… 14"),
-        paragraph("  5.7 Hybrid Residual Neural Network 結果…… 15"),
-        paragraph("  5.8 真實臥室快照驗證與推薦動作驗證方法…… 16"),
-        paragraph("  5.9 公開資料集執行流程與 Task-Aligned Benchmark 結果…… 17"),
+        paragraph("  5.2 【實驗 E1】標準情境場重建誤差…… 13"),
+        paragraph("  5.3 【實驗 E2】IDW Baseline 比較…… 14"),
+        paragraph("  5.4 【實驗 E3】消融分析與可重現性補強…… 14"),
+        paragraph("  5.5 【實驗 E4】非連網裝置影響學習…… 14"),
+        paragraph("  5.6 【實驗 E5】窗戶時段、天氣、季節矩陣與直接輸入…… 14"),
+        paragraph("  5.7 【實驗 E6】Hybrid Residual Neural Network 結果…… 15"),
+        paragraph("  5.8 【實驗 E7】真實臥室快照驗證與【驗證方案 E8】推薦動作驗證方法…… 16"),
+        paragraph("  5.9 【實驗 E9】公開資料集執行流程與 Task-Aligned Benchmark 結果…… 17"),
         paragraph("  5.10 研究過程與實作挑戰…… 19"),
-        paragraph("  5.11 可旋轉 3D 展示…… 19"),
+        paragraph("  5.11 展示 D1：可旋轉 3D 展示（非量化實驗）…… 19"),
         paragraph("第六章 結論與未來工作…… 19"),
         paragraph("  6.1 結論…… 19"),
         paragraph("  6.2 研究限制…… 19"),
@@ -824,6 +824,26 @@ def build_blocks() -> List[Block]:
         paragraph(
             "為避免將不同資料來源支持的主張混在一起，本章採用分層驗證邏輯。8 組標準情境、消融實驗與 leave-one-scenario-out hybrid residual 測試用於驗證受控條件下的完整 3D 場重建與模型元件貢獻；48 組窗戶矩陣用於檢查外部邊界條件敏感度；bedroom_01 真實快照用於檢查稀疏感測校正是否能改善未參與校正的 pillow 參考點；SML2010 與 CU-BEMS 僅作 public task-aligned benchmark，用於外部資料的相容子任務比較。換言之，synthetic benchmark 回答「完整場是否能在受控真值下重建」，真實快照回答「校正管線是否能吸收真實觀測並改善保留點」，公開資料集回答「模型在相容任務上的外部定位」，推薦介入實驗才回答「建議動作是否真的造成舒適度改善」。"
         ),
+        paragraph(
+            "實驗標記總覽。本章後續以 E1--E9 標記實驗或驗證項目。E1--E6 為 controlled simulation 或 model robustness experiment，E7 為真實臥室 sparse-calibration check，E8 是尚未完成實測的推薦介入驗證方案，E9 為 public task-aligned benchmark。Web demo、MCP 與可旋轉 3D 展示屬於服務介面與展示輔助，不列為獨立量化實驗。"
+        ),
+        table(
+            ["標記", "名稱", "資料來源", "主要比較或輸出", "可支持主張", "限制"],
+            [
+                ["實驗 E1", "標準情境 full-field 重建", "8 組 controlled synthetic scenarios", "Base field MAE、zone MAE、sensor MAE", "受控條件下可重建完整 3D 場", "非真實 dense ground truth"],
+                ["實驗 E2", "IDW baseline 比較", "E1 同一組情境與 8 顆角落感測器", "Base model 與 IDW field MAE", "設備先驗、校準與場模型比純空間插值更適合有設備作用情境", "IDW 只是無設備語意 baseline，不代表所有空間插值上限"],
+                ["實驗 E3", "消融與可重現性", "E1 同一 synthetic setup", "raw、no reflection、no calibration、no trilinear、full base", "說明反射、校準與 trilinear correction 的個別貢獻與限制", "trilinear 目標是感測點一致性，不保證 dense MAE 單調下降"],
+                ["實驗 E4", "非連網裝置影響學習", "controlled before/after synthetic observations", "learned impact coefficients、推薦排序", "可由環境變化學出裝置影響方向與相對強度", "不是實測因果控制"],
+                ["實驗 E5", "窗戶矩陣與 direct input", "48 組 season/weather/time/window cases", "window-zone 與 center-zone estimates", "外部溫濕度、日照與開窗比例會改變估測場", "不是實際天氣部署或長期監測"],
+                ["實驗 E6", "Hybrid residual robustness", "default split、no-Fourier、8-fold leave-one-scenario-out", "hybrid field MAE、train/test samples", "標準情境 family 內 residual 可學習，且不是只依賴單一切分", "不代表任意房間或任意家具配置泛化"],
+                ["實驗 E7", "真實臥室快照 sparse calibration", "bedroom_01，7 天 28 snapshots", "raw vs corrected pillow MAE", "真實稀疏觀測可改善未參與校正的 pillow 參考點", "只有單一 pillow reference，沒有 dense 3D ground truth"],
+                ["驗證方案 E8", "推薦動作 before/after 介入", "尚待實測", "actual improvement、success rate、top-1 regret", "定義未來如何驗證推薦是否真的造成改善", "目前只完成 protocol，不列為已完成結果"],
+                ["實驗 E9", "Public task-aligned benchmark", "SML2010、CU-BEMS", "persistence、linear regression、本研究 mapped readout", "提供外部資料相容子任務上的定位與比較", "不能宣稱 full 3D field、8-corner calibration 或完整非連網裝置學習"],
+            ],
+        ),
+        paragraph(
+            "因此，本文後續提到「實驗」時，E1--E7 與 E9 代表已產生數值輸出的實驗或 benchmark；E8 僅代表推薦控制的實測 protocol；Web demo 與 MCP 則屬展示與服務介面，不直接作為量化實驗證據。"
+        ),
         image(
             "outputs/figures/architecture/驗證與實驗流程圖.svg",
             "圖 5-1 驗證與實驗流程。此圖說明標準情境如何經由 truth adjustment、合成觀測、校正估測、baseline 比較與輸出摘要，形成第五章的實驗結果。",
@@ -840,7 +860,7 @@ def build_blocks() -> List[Block]:
                 ["all_active", "26.39", "66.34", "478.82", "turn_on_ac"],
             ],
         ),
-        heading("5.2 場重建誤差", 2),
+        heading("5.2 【實驗 E1】標準情境場重建誤差", 2),
         paragraph(
             "本研究採用平均絕對誤差（Mean Absolute Error, MAE）作為主要精度指標，定義如下，其中 ŷᵢ 為模型在第 i 個網格點的預測值，yᵢ 為對應的模擬基準值，n 為評估點總數。MAE 直接反映預測值與基準值之間的平均偏差幅度，數值愈低代表場重建愈準確，且因不進行平方放大，對少數離群點較不敏感，適合作為室內場重建的評估基準。"
         ),
@@ -866,7 +886,7 @@ def build_blocks() -> List[Block]:
             "圖 5-4 僅燈具作用（light\\_only）之照度場 3D 點雲視圖。燈具正下方的測點照度最高（黃橙色），底層四角與遠端則由間接反射賦予少量回填亮度，顏色實現正確的照度衰減樣態。",
             asset_name="fig_5_4_light_only_illum_3d",
         ),
-        heading("5.3 IDW Baseline 比較", 2),
+        heading("5.3 【實驗 E2】IDW Baseline 比較", 2),
         paragraph(
             "IDW（Inverse Distance Weighting，反距離加權插值）是最基本的空間插值法：給定 8 顆角落感測器的量測值，對任一查詢點以距離的倒數為權重加權平均。此方法不需要任何關於設備位置或物理模型的知識，僅依賴量測點的空間分布進行推算。本節以 IDW 作為零成本 baseline，驗證本研究模型加入設備影響函數、power scale 校準與 trilinear residual correction 後的實質改善幅度。"
         ),
@@ -899,7 +919,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "值得注意的是，本研究目前的照度估計完全依賴物理模型推算（設備位置、功率、反射係數），並未使用任何實測照度感測器回饋。若系統部署時，角落感測器本身即具備照度量測能力（例如採用光照感測元件的多合一環境感測器），則可將實測角落照度值引入 trilinear residual correction，使模型的照度殘差直接對齊真實量測，從根本上消除物理假設帶來的系統性偏差。換言之，本研究現有的照度誤差並非方法的根本限制，而是感測器配置選擇的結果，一旦取得真實光照量測資料，即可透過既有的 residual correction 管線加以修正，實現更高精度的照度場重建。"
         ),
-        heading("5.4 消融分析與可重現性補強", 2),
+        heading("5.4 【實驗 E3】消融分析與可重現性補強", 2),
         paragraph(
             "為回應 IEEE conference 審稿時可能關注的 overfitting 與 synthetic leakage 問題，本研究新增 submission readiness 實驗。所有消融實驗均使用相同的 6.0 m × 4.0 m × 3.0 m 房間、8 顆角落感測器、16×12×6 網格、8 組標準情境、18 分鐘 settling interval，以及固定的 deterministic truth adjustment。合成觀測只由 truth sensor prediction 加上固定 index-based perturbation 產生：temperature 加上 0.08((i mod 4) − 1.5)，humidity 加上 0.3((i mod 4) − 1.5)，illuminance 加上 3.0((i mod 4) − 1.5)。此設計使每次實驗可完全重現，也避免把 nominal estimator 的輸出直接當作訓練標籤。"
         ),
@@ -920,11 +940,11 @@ def build_blocks() -> List[Block]:
         paragraph(
             "因此，本研究在後續 hybrid residual 評估中不只報告單一 6/2 held-out split，也加入 leave-one-scenario-out cross-validation、train/test sample count 與 no-Fourier 對照，以降低僅憑單一切分得到過度漂亮結果的風險。可重現腳本包含 scripts/run_demo.py、scripts/run_hybrid_residual_experiment.py 與 scripts/run_submission_readiness_experiments.py。"
         ),
-        heading("5.5 非連網裝置影響學習", 2),
+        heading("5.5 【實驗 E4】非連網裝置影響學習", 2),
         paragraph(
             "在 ac_only 情境中，模型學得冷氣對 temperature 的係數為負，對 humidity 的係數亦為負，對 illuminance 則接近零，符合冷氣降溫與弱除濕的模型假設。在 light_only 情境中，照明主要提升 illuminance，並帶來少量正向熱效應。這些結果顯示，即使裝置本身不回報狀態，仍可由環境感測變化估計其影響方向與相對強度。"
         ),
-        heading("5.6 窗戶時段、天氣、季節矩陣與直接輸入", 2),
+        heading("5.6 【實驗 E5】窗戶時段、天氣、季節矩陣與直接輸入", 2),
         paragraph(
             "本研究新增 48 組窗戶矩陣情境，組合 4 個時段、3 種天氣與 4 個季節。此矩陣可作為外部環境變數敏感度分析，用於說明窗戶在不同外部條件下對靠窗區與中心區的溫度、濕度與照度影響。"
         ),
@@ -940,7 +960,7 @@ def build_blocks() -> List[Block]:
                 ["window_spring_cloudy_morning", "21.5", "70.0", "5005.0", "93.2172"],
             ],
         ),
-        heading("5.7 Hybrid Residual Neural Network 結果", 2),
+        heading("5.7 【實驗 E6】Hybrid Residual Neural Network 結果", 2),
         paragraph(
             "在目前預設的 held-out 測試設定下，hybrid residual neural network 以 6 個情境作為訓練資料，並以 light\\_only 與 all\\_active 作為測試情境（與 5.2 節的 8 組全集平均為不同子集）。此切分包含 576 個訓練樣本與 192 個測試樣本。若對 temperature 與 humidity residual trace 啟用 Fourier low-pass denoising，並保留 illuminance 原始 residual，則 hybrid residual correction 套用於主模型輸出後，field MAE 可由 temperature 0.0474、humidity 0.1765、illuminance 2.3087，分別降至 0.0023、0.0041 與 0.1675。對應改善比例約為溫度 95.15%、濕度 97.68% 與照度 92.74%。"
         ),
@@ -963,7 +983,7 @@ def build_blocks() -> List[Block]:
             "圖 5-5 IDW、base model 與 LOO hybrid residual correction 的平均 field MAE 比較。圖中使用 log-scale y-axis，數值為 8 組標準情境平均。",
             asset_name="field_mae_comparison",
         ),
-        heading("5.8 真實臥室快照驗證", 2),
+        heading("5.8 【實驗 E7】真實臥室快照驗證", 2),
         paragraph(
             "除 canonical synthetic benchmark 與 public task-aligned benchmark 外，本研究也將使用者提供的 bedroom_01 真實房間快照資料納入初步驗證。該房間尺寸為 4.0 m × 4.6 m × 3.2 m，包含壁掛式冷氣、東南向窗戶、主燈、桌燈、床、書桌與收納櫃。資料涵蓋 2026-04-14 至 2026-04-20 共 7 天，每天包含 09:00、15:00、22:00 與 02:00 四個快照，共 28 筆時間點。每筆快照提供 8 顆角落感測器的 temperature、humidity、illuminance 觀測、裝置 activation、外部邊界條件，以及 pillow 位置的參考觀測值。"
         ),
@@ -987,7 +1007,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "此資料仍屬小型初步驗證：它提供真實 sparse observations 與單一 pillow reference point，但沒有完整 dense spatial ground truth。因此，本研究仍以 synthetic benchmark 報告 full-field MAE，以真實臥室快照驗證 calibration pipeline 的實用性，兩者分別回答不同層級的問題。此限制也意味著 hybrid residual 在標準情境 family 內的漂亮降幅，應被解讀為結構性殘差可學習性的證據，而不是對任意房間、任意家具配置或任意天氣序列的無條件泛化保證。"
         ),
-        heading("5.8.1 推薦動作實際介入驗證方法", 3),
+        heading("5.8.1 【驗證方案 E8】推薦動作實際介入驗證方法", 3),
         paragraph(
             "上述 bedroom_01 一週資料能驗證的是模型是否可利用真實稀疏感測資料改善非感測點估計；它尚未直接驗證推薦動作是否具有因果改善效果。為此，本研究將推薦動作驗證定義為介入式 before/after 實驗：先量測介入前 8 顆角落感測器與目標參考點，使用校正後模型輸出候選動作排序，實際執行排名第一的動作，等待固定 settling interval（建議先採 18 至 30 分鐘），再量測介入後狀態。若介入後實測 comfort penalty 下降，且改善方向與模型預測一致，才可視為該次推薦有效。"
         ),
@@ -1007,7 +1027,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "因此，本研究目前可主張的範圍是：校正後模型能在真實臥室快照中改善 pillow 參考點估計，並能根據 comfort penalty 對候選動作輸出反事實排序；推薦動作的實際有效性則應由上述介入實驗補足。此寫法可避免將估測準確度與控制因果效果混為一談。"
         ),
-        heading("5.9 公開資料集執行流程與 Task-Aligned Benchmark 結果", 2),
+        heading("5.9 【實驗 E9】公開資料集執行流程與 Task-Aligned Benchmark 結果", 2),
         paragraph(
             "為驗證模型在非合成資料上的外部可比性，本研究以 SML2010 與 CU-BEMS 兩個公開資料集執行 task-aligned benchmark，並以 MAE、RMSE 與 Pearson Correlation 三項指標進行評估。MAE 衡量平均絕對誤差，RMSE 對尖峰偏差更敏感，Correlation 則反映模型是否能正確追蹤時序趨勢，三者共同提供較完整的評估視角。預測目標為下一個 15 分鐘或 60 分鐘時步的感測值，比較對象為 persistence（以上一時步值作預測）與 linear regression 兩個 baseline。"
         ),
@@ -1128,7 +1148,7 @@ def build_blocks() -> List[Block]:
         paragraph(
             "這些困難也說明本研究的設計取捨不是任意拼接，而是由實作過程逐步收斂而來：變數專屬 nominal model 負責處理溫度、濕度與照度各自的主要物理趨勢，single-bounce diffuse reflection 負責補足 direct lighting 對間接回填亮度的低估，trilinear correction 負責利用有限角落感測器修正低階偏差，least-squares impact learning 負責從設備前後差異學習非連網裝置影響，hybrid residual neural network 則只處理主模型尚未吸收的系統性誤差。"
         ),
-        heading("5.11 可旋轉 3D 展示", 2),
+        heading("5.11 展示 D1：可旋轉 3D 展示（非量化實驗）", 2),
         paragraph(
             "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。圖 5-6 至 5-8 為靜態輸出之三因子場 3D 點雲，展示三種代表情境：三裝置全開、單獨窗戶、單獨燈具。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
         ),

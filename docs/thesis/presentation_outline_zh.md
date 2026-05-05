@@ -32,12 +32,12 @@
 - Web demo
 
 ## Slide 8: 驗證流程與比較原則
-- synthetic full-field、real sparse calibration、public task-aligned、intervention validation 分層
-- IDW baseline 比較與 synthetic ablation
-- no-Fourier 與 LOO cross-validation
-- 48 組窗戶矩陣
-- bedroom_01 7 天真實快照
-- 推薦動作 before/after 介入驗證方法
+- E1-E3：synthetic full-field、IDW baseline、ablation
+- E4：非連網裝置影響學習與推薦排序
+- E5：48 組窗戶矩陣與 direct input
+- E6：hybrid residual no-Fourier 與 LOO cross-validation
+- E7：bedroom_01 7 天真實快照與 pillow hold-out
+- E8 protocol、E9 public task-aligned benchmark；demo 不是量化實驗
 
 ## Slide 9: 主要結果
 - 平均 field MAE

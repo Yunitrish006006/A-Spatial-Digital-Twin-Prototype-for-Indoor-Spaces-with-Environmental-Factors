@@ -41,12 +41,12 @@
 - MCP、Gemma/Ollama、Web Demo
 
 ## Slide 13: 驗證設計
-- truth-adjusted simulation、IDW、synthetic ablation、window matrix
-- 證據層級：synthetic full-field、real sparse calibration、public task-aligned、intervention validation
-- bedroom_01 7 天真實快照與 pillow 位置比較
-- 推薦動作 before/after intervention protocol
-- no-Fourier 與 LOO cross-validation
-- public datasets 僅作 task-aligned benchmark
+- E1-E3：truth-adjusted simulation、IDW、synthetic ablation
+- E4-E6：裝置影響學習、window matrix、hybrid no-Fourier/LOO
+- E7：bedroom_01 7 天真實快照與 pillow 位置比較
+- E8：推薦動作 before/after intervention protocol
+- E9：public datasets 僅作 task-aligned benchmark
+- Web demo 與 3D 展示是呈現層，不列為量化實驗
 
 ## Slide 14: 情境設計與輸入模式
 - 8 組 scenario、48 組窗戶矩陣、direct input、timeline
@@ -55,6 +55,7 @@
 - 平均 MAE、IDW/Base/LOO Hybrid 誤差圖
 - 真實臥室 raw vs corrected pillow MAE
 - 推薦有效性以 actual comfort-penalty reduction 驗證
+- 實驗 E1-E7 與 E9 已有數值輸出；E8 僅為介入 protocol
 
 ## Slide 16: 3D 視覺化結果
 - 溫度與照度熱區案例
