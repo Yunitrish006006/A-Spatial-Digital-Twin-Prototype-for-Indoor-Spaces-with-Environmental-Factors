@@ -198,12 +198,7 @@ def render_block(block: Block) -> str:
 
 
 def stable_extra_blocks() -> List[Block]:
-    """Method-oriented additions requested by the user.
-
-    These are inserted after the first-chapter motivation/problem area so the
-    full thesis explicitly states what the research solves and where the
-    originality is.
-    """
+    """Method-oriented additions requested by the user."""
     return [
         {"type": "heading", "text": "1.3.1 本研究解決之核心問題", "level": 3},
         {
@@ -244,31 +239,51 @@ def stable_extra_blocks() -> List[Block]:
 
 
 def insert_extras(blocks: List[Block]) -> List[Block]:
-    # Insert after heading 1.5 if present, otherwise after the first chapter heading area.
+    """Insert stable_extra_blocks without dropping any original thesis blocks.
+
+    Previous implementation stopped when it reached 第二章, which truncated the
+    rest of the thesis. This version iterates through all blocks and inserts the
+    additions exactly once before the 第二章 heading, after the first-chapter
+    contribution section has appeared. If that anchor is not found, it falls
+    back to inserting after 第一章 緒論.
+    """
+    extras = stable_extra_blocks()
     output: List[Block] = []
+    seen_contribution_heading = False
     inserted = False
+
+    for block in blocks:
+        if (
+            not inserted
+            and seen_contribution_heading
+            and block.get("type") == "heading"
+            and str(block.get("text", "")).startswith("第二章")
+        ):
+            output.extend(extras)
+            inserted = True
+
+        output.append(block)
+
+        if block.get("type") == "heading" and str(block.get("text")) == "1.5 預期貢獻":
+            seen_contribution_heading = True
+
+    if inserted:
+        return output
+
+    # Fallback: insert after 第一章 緒論 heading without truncating anything.
+    output = []
     for block in blocks:
         output.append(block)
-        if not inserted and block.get("type") == "heading" and str(block.get("text")) == "1.5 預期貢獻":
+        if (
+            not inserted
+            and block.get("type") == "heading"
+            and str(block.get("text")) == "第一章 緒論"
+        ):
+            output.extend(extras)
             inserted = True
-        elif inserted and block.get("type") == "heading" and str(block.get("text", "")).startswith("第二章"):
-            output[-1:-1] = stable_extra_blocks()
-            inserted = False
-            break
-    if inserted:
-        output.extend(stable_extra_blocks())
-    if len(output) < len(blocks):
-        # append the remainder after break
-        consumed = len(output) - len(stable_extra_blocks()) if inserted is False else len(output)
-        # Fallback is intentionally conservative; if this path is not exact,
-        # the document remains complete because we do not drop original blocks below.
-    if not any(b.get("text") == "1.3.1 本研究解決之核心問題" for b in output):
-        # If the heuristic failed, place extras after the first page break following the first chapter heading.
-        output = blocks[:]
-        for i, block in enumerate(output):
-            if block.get("type") == "heading" and str(block.get("text")) == "第一章 緒論":
-                output[i + 1:i + 1] = stable_extra_blocks()
-                break
+
+    if not inserted:
+        output = extras + list(blocks)
     return output
 
 
