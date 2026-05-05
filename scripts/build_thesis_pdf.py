@@ -82,21 +82,36 @@ def render_code(text: str) -> str:
 
 def column_spec(column_count: int) -> str:
     if column_count <= 1:
-        return r"|p{0.88\textwidth}|"
+        return r"|>{\raggedright\arraybackslash}p{0.88\textwidth}|"
     if column_count == 2:
-        return r"|p{0.24\textwidth}|p{0.62\textwidth}|"
+        # Symbol-definition tables need a wider first column so inline math does not wrap badly.
+        return r"|>{\raggedright\arraybackslash}p{0.33\textwidth}|>{\raggedright\arraybackslash}p{0.53\textwidth}|"
     width = 0.78 / column_count
-    return "|" + "|".join(rf"p{{{width:.3f}\textwidth}}" for _ in range(column_count)) + "|"
+    return "|" + "|".join(rf">{{\raggedright\arraybackslash}}p{{{width:.3f}\textwidth}}" for _ in range(column_count)) + "|"
 
 
 def render_table(headers: List[object], rows: List[List[object]]) -> str:
+    """Render a PDF-friendly LaTeX table.
+
+    Table cells may contain inline math such as ``$T_0$`` or
+    ``$C_v(\mathbf{p},t)$``. These segments must not be escaped, otherwise
+    the generated PDF shows the raw dollar signs and backslashes. Non-math
+    text is still escaped normally.
+    """
     spec = column_spec(len(headers))
-    lines = [r"\begin{table}[htbp]", r"\centering", r"\footnotesize", rf"\begin{{tabular}}{{{spec}}}", r"\hline"]
-    lines.append(" & ".join(rf"\textbf{{{latex_escape(header)}}}" for header in headers) + r" \\")
+    lines = [
+        r"\begin{table}[htbp]",
+        r"\centering",
+        r"\footnotesize",
+        r"\renewcommand{\arraystretch}{1.25}",
+        rf"\begin{{tabular}}{{{spec}}}",
+        r"\hline",
+    ]
+    lines.append(" & ".join(rf"\textbf{{{latex_escape_with_math(header)}}}" for header in headers) + r" \\")
     lines.append(r"\hline")
     for row in rows:
         padded = list(row) + [""] * (len(headers) - len(row))
-        lines.append(" & ".join(latex_escape(cell) for cell in padded[: len(headers)]) + r" \\")
+        lines.append(" & ".join(latex_escape_with_math(cell) for cell in padded[: len(headers)]) + r" \\")
         lines.append(r"\hline")
     lines.extend([r"\end{tabular}", r"\end{table}"])
     return "\n".join(lines) + "\n"
