@@ -231,7 +231,16 @@ def build_latex(parts: Iterable[Section]) -> str:
 \geometry{left=3cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
 \setstretch{1.35}
 \setmainfont{Times New Roman}
-\setCJKmainfont{Noto Serif CJK TC}
+\setsansfont{Arial}
+\setmonofont{Menlo}
+% macOS built-in Traditional Chinese fonts. Avoid Noto CJK here because many
+% local MacTeX installations do not have it registered, which can produce
+% garbled Chinese glyphs or missing-glyph boxes in the PDF.
+\setCJKmainfont[AutoFakeBold=2.5, AutoFakeSlant=0.15]{Songti TC}
+\setCJKsansfont[AutoFakeBold=2.5]{Heiti TC}
+\setCJKmonofont{Heiti TC}
+\XeTeXlinebreaklocale "zh"
+\XeTeXlinebreakskip = 0pt plus 1pt
 \hypersetup{colorlinks=true, linkcolor=black, urlcolor=blue}
 \begin{document}
 \begin{titlepage}
