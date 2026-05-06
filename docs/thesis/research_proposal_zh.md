@@ -74,10 +74,11 @@ F_v(x, y, z, t) = B_v(x, y, z) + Σ I_j,v(x, y, z, t) + C_v(x, y, z)
 
 為支援 AI agent 存取，本研究將核心模型封裝為可工具化的本地服務介面，其中一種實作為 MCP tools：
 
-- `list_scenarios`：列出內建模擬情境。
-- `run_scenario`：執行指定情境並回傳重建誤差與目標區域估計。
-- `rank_actions`：依舒適度改善分數排序候選設備動作。
-- `sample_point`：估計指定座標的溫度、濕度與照度。
+- `initialize_environment`：初始化環境、設備、家具與室內 baseline。
+- `sample_point`：估計指定座標在特定時間或穩定態下的溫度、濕度與照度。
+- `learn_impacts`：建立非連網設備 before/after 觀測紀錄，並在資料足夠時學習影響係數。
+- `run_window_direct`：直接輸入外部溫度、濕度、日照與開窗比例。
+- `rank_actions`：依指定座標與目標值排序目前註冊設備的候選操作。
 
 ## 預期貢獻
 

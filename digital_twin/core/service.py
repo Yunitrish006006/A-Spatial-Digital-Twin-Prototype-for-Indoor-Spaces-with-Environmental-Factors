@@ -11,7 +11,7 @@ from digital_twin.core.demo import (
     learn_active_device_impacts,
     synthesize_sensor_observations,
 )
-from digital_twin.core.entities import Device, Furniture, Vector3
+from digital_twin.core.entities import Action, ActionEffect, ComfortTarget, Device, Furniture, Vector3
 from digital_twin.core.math_utils import clamp
 from digital_twin.core.scenarios import (
     SEASON_PROFILES,
@@ -68,6 +68,10 @@ def evaluate_scenario(
     extra_furniture: Optional[List[Dict[str, object]]] = None,
     extra_devices: Optional[List[Dict[str, object]]] = None,
     device_specs: Optional[List[Dict[str, object]]] = None,
+    outdoor_temperature: Optional[float] = None,
+    outdoor_humidity: Optional[float] = None,
+    sunlight_illuminance: Optional[float] = None,
+    daylight_factor: Optional[float] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -81,6 +85,10 @@ def evaluate_scenario(
         extra_furniture,
         extra_devices,
         device_specs,
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        daylight_factor=daylight_factor,
     )
     return _evaluate_scenario_object(scenario, use_hybrid_residual=use_hybrid_residual)
 
@@ -517,6 +525,10 @@ def rank_scenario_actions(
     extra_furniture: Optional[List[Dict[str, object]]] = None,
     extra_devices: Optional[List[Dict[str, object]]] = None,
     device_specs: Optional[List[Dict[str, object]]] = None,
+    outdoor_temperature: Optional[float] = None,
+    outdoor_humidity: Optional[float] = None,
+    sunlight_illuminance: Optional[float] = None,
+    daylight_factor: Optional[float] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -530,8 +542,75 @@ def rank_scenario_actions(
         extra_furniture,
         extra_devices,
         device_specs,
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        daylight_factor=daylight_factor,
     )
     return _rank_scenario_object_actions(scenario, use_hybrid_residual=use_hybrid_residual)
+
+
+def rank_scenario_point_actions(
+    scenario_name: str,
+    x: float,
+    y: float,
+    z: float,
+    target_temperature: Optional[float] = None,
+    target_humidity: Optional[float] = None,
+    target_illuminance: Optional[float] = None,
+    temperature_tolerance: Optional[float] = None,
+    humidity_tolerance: Optional[float] = None,
+    illuminance_tolerance: Optional[float] = None,
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
+    use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
+    outdoor_temperature: Optional[float] = None,
+    outdoor_humidity: Optional[float] = None,
+    sunlight_illuminance: Optional[float] = None,
+    daylight_factor: Optional[float] = None,
+) -> Dict:
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        furniture_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+        extra_furniture,
+        extra_devices,
+        device_specs,
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        daylight_factor=daylight_factor,
+    )
+    target = _comfort_target_with_overrides(
+        scenario.comfort_target,
+        temperature=target_temperature,
+        humidity=target_humidity,
+        illuminance=target_illuminance,
+        temperature_tolerance=temperature_tolerance,
+        humidity_tolerance=humidity_tolerance,
+        illuminance_tolerance=illuminance_tolerance,
+    )
+    return _rank_scenario_object_point_actions(
+        scenario,
+        x=x,
+        y=y,
+        z=z,
+        target=target,
+        use_hybrid_residual=use_hybrid_residual,
+    )
 
 
 def sample_scenario_point(
@@ -550,6 +629,10 @@ def sample_scenario_point(
     extra_furniture: Optional[List[Dict[str, object]]] = None,
     extra_devices: Optional[List[Dict[str, object]]] = None,
     device_specs: Optional[List[Dict[str, object]]] = None,
+    outdoor_temperature: Optional[float] = None,
+    outdoor_humidity: Optional[float] = None,
+    sunlight_illuminance: Optional[float] = None,
+    daylight_factor: Optional[float] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -563,6 +646,10 @@ def sample_scenario_point(
         extra_furniture,
         extra_devices,
         device_specs,
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        daylight_factor=daylight_factor,
     )
     return _sample_scenario_object_point(scenario, x, y, z, use_hybrid_residual=use_hybrid_residual)
 
@@ -610,6 +697,10 @@ def learn_scenario_impacts(
     extra_furniture: Optional[List[Dict[str, object]]] = None,
     extra_devices: Optional[List[Dict[str, object]]] = None,
     device_specs: Optional[List[Dict[str, object]]] = None,
+    outdoor_temperature: Optional[float] = None,
+    outdoor_humidity: Optional[float] = None,
+    sunlight_illuminance: Optional[float] = None,
+    daylight_factor: Optional[float] = None,
 ) -> Dict:
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
@@ -623,8 +714,57 @@ def learn_scenario_impacts(
         extra_furniture,
         extra_devices,
         device_specs,
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        daylight_factor=daylight_factor,
     )
     return _learn_scenario_object_impacts(scenario, use_hybrid_residual=use_hybrid_residual)
+
+
+def learn_scenario_impacts_from_observations(
+    scenario_name: str,
+    before_observations: Dict[str, Dict[str, float]],
+    after_observations: Dict[str, Dict[str, float]],
+    device_overrides: Optional[Dict[str, float]] = None,
+    device_metadata_overrides: Optional[Dict[str, Dict[str, object]]] = None,
+    furniture_overrides: Optional[Dict[str, float]] = None,
+    indoor_temperature: Optional[float] = None,
+    indoor_humidity: Optional[float] = None,
+    base_illuminance: Optional[float] = None,
+    elapsed_minutes: Optional[float] = None,
+    use_hybrid_residual: bool = False,
+    extra_furniture: Optional[List[Dict[str, object]]] = None,
+    extra_devices: Optional[List[Dict[str, object]]] = None,
+    device_specs: Optional[List[Dict[str, object]]] = None,
+    outdoor_temperature: Optional[float] = None,
+    outdoor_humidity: Optional[float] = None,
+    sunlight_illuminance: Optional[float] = None,
+    daylight_factor: Optional[float] = None,
+) -> Dict:
+    scenario = _scenario_with_overrides(
+        _find_scenario(scenario_name),
+        device_overrides,
+        device_metadata_overrides,
+        furniture_overrides,
+        indoor_temperature,
+        indoor_humidity,
+        base_illuminance,
+        elapsed_minutes,
+        extra_furniture,
+        extra_devices,
+        device_specs,
+        outdoor_temperature=outdoor_temperature,
+        outdoor_humidity=outdoor_humidity,
+        sunlight_illuminance=sunlight_illuminance,
+        daylight_factor=daylight_factor,
+    )
+    return _learn_scenario_object_impacts_from_observations(
+        scenario,
+        before_observations=before_observations,
+        after_observations=after_observations,
+        use_hybrid_residual=use_hybrid_residual,
+    )
 
 
 def _get_scenario_object_volume(scenario: Scenario, use_hybrid_residual: bool = False) -> Dict:
@@ -721,6 +861,89 @@ def _rank_scenario_object_actions(scenario: Scenario, use_hybrid_residual: bool 
         "scenario": scenario.name,
         "estimator": bundle["estimator"],
         "target_zone": scenario.target_zone_name,
+        "recommendations": recommendations,
+    }
+
+
+def _rank_scenario_object_point_actions(
+    scenario: Scenario,
+    x: float,
+    y: float,
+    z: float,
+    target: ComfortTarget,
+    use_hybrid_residual: bool = False,
+) -> Dict:
+    model = DigitalTwinModel()
+    point = Vector3(x=x, y=y, z=z)
+    _validate_point(scenario, point)
+    bundle = _build_estimation_bundle(scenario, use_hybrid_residual=use_hybrid_residual)
+    estimated_result = bundle["estimated_result"]
+    corrections = estimated_result.corrections
+    calibrated_devices = estimated_result.calibrated_devices or scenario.devices
+    hybrid_model = bundle["hybrid_model"]
+
+    current_values = model.sample_point(
+        point=point,
+        room=scenario.room,
+        environment=scenario.environment,
+        devices=calibrated_devices,
+        furniture=scenario.furniture,
+        elapsed_minutes=scenario.elapsed_minutes,
+        corrections=corrections,
+    )
+    if hybrid_model is not None:
+        current_values = _apply_hybrid_point_correction(
+            model=model,
+            scenario=scenario,
+            devices=calibrated_devices,
+            point=point,
+            values=current_values,
+            hybrid_model=hybrid_model,
+        )
+    current_penalty = _score_zone_values(current_values, target)
+
+    recommendations = []
+    for action in _registered_device_actions(calibrated_devices, target):
+        candidate_devices = apply_action(calibrated_devices, action)
+        candidate_values = model.sample_point(
+            point=point,
+            room=scenario.room,
+            environment=scenario.environment,
+            devices=candidate_devices,
+            furniture=scenario.furniture,
+            elapsed_minutes=scenario.elapsed_minutes,
+            corrections=corrections,
+        )
+        if hybrid_model is not None:
+            candidate_values = _apply_hybrid_point_correction(
+                model=model,
+                scenario=replace(scenario, devices=candidate_devices),
+                devices=candidate_devices,
+                point=point,
+                values=candidate_values,
+                hybrid_model=hybrid_model,
+            )
+        candidate_penalty = _score_zone_values(candidate_values, target)
+        recommendations.append(
+            {
+                "name": action.name,
+                "description": action.description,
+                "improvement": round(current_penalty - candidate_penalty, 4),
+                "resulting_penalty": round(candidate_penalty, 4),
+                "resulting_values": _round_metric_dict(candidate_values),
+                "effects": [_action_effect_dict(effect) for effect in action.effects],
+            }
+        )
+
+    recommendations.sort(key=lambda item: item["improvement"], reverse=True)
+    return {
+        "scenario": scenario.name,
+        "estimator": bundle["estimator"],
+        "point": _vector_to_dict(point),
+        "target": _comfort_target_dict(target),
+        "current_values": _round_metric_dict(current_values),
+        "current_penalty": round(current_penalty, 4),
+        "registered_devices": [_device_dict(device, include_power=True) for device in calibrated_devices],
         "recommendations": recommendations,
     }
 
@@ -823,6 +1046,200 @@ def _learn_scenario_object_impacts(scenario: Scenario, use_hybrid_residual: bool
             after_observations=observed_sensors,
             elapsed_minutes=scenario.elapsed_minutes,
         ),
+    }
+
+
+def _learn_scenario_object_impacts_from_observations(
+    scenario: Scenario,
+    before_observations: Dict[str, Dict[str, float]],
+    after_observations: Dict[str, Dict[str, float]],
+    use_hybrid_residual: bool = False,
+) -> Dict:
+    model = DigitalTwinModel()
+    return {
+        "scenario": scenario.name,
+        "description": "Learn active non-networked appliance impact coefficients from user-supplied before/after sensor observations.",
+        "estimator": _hybrid_estimator_status(use_hybrid_residual, _load_hybrid_residual_model() if use_hybrid_residual else None),
+        "observation_source": "user_supplied",
+        "active_devices": [
+            _device_dict(device, include_power=True)
+            for device in scenario.devices
+            if device.activation > 0.0
+        ],
+        "learned_device_impacts": learn_active_device_impacts(
+            model=model,
+            room=scenario.room,
+            scenario_devices=scenario.devices,
+            furniture=scenario.furniture,
+            sensors=scenario.sensors,
+            before_observations=before_observations,
+            after_observations=after_observations,
+            elapsed_minutes=scenario.elapsed_minutes,
+        ),
+    }
+
+
+def _apply_hybrid_point_correction(
+    model: DigitalTwinModel,
+    scenario: Scenario,
+    devices: List[Device],
+    point: Vector3,
+    values: Dict[str, float],
+    hybrid_model: HybridResidualModel,
+) -> Dict[str, float]:
+    features = build_point_features(
+        model=model,
+        scenario=scenario,
+        devices=devices,
+        point=point,
+        estimated_values=values,
+    )
+    residuals = hybrid_model.predict(features)
+    return {
+        "temperature": values["temperature"] + residuals["temperature"],
+        "humidity": clamp(values["humidity"] + residuals["humidity"], 0.0, 100.0),
+        "illuminance": max(0.0, values["illuminance"] + residuals["illuminance"]),
+    }
+
+
+def _registered_device_actions(devices: List[Device], target: ComfortTarget) -> List[Action]:
+    actions: List[Action] = []
+    for device in devices:
+        if device.kind == "ac":
+            actions.extend(
+                [
+                    Action(
+                        name=f"{device.name}_cool",
+                        description=f"開啟 {device.name} 冷房至 {target.temperature:.1f}°C",
+                        effects=[
+                            ActionEffect(
+                                device_name=device.name,
+                                activation=0.85,
+                                metadata_updates={
+                                    "ac_mode": "cool",
+                                    "target_temperature": target.temperature,
+                                },
+                            )
+                        ],
+                    ),
+                    Action(
+                        name=f"{device.name}_dry",
+                        description=f"開啟 {device.name} 除濕並維持 {target.temperature:.1f}°C",
+                        effects=[
+                            ActionEffect(
+                                device_name=device.name,
+                                activation=0.75,
+                                metadata_updates={
+                                    "ac_mode": "dry",
+                                    "target_temperature": target.temperature,
+                                },
+                            )
+                        ],
+                    ),
+                    Action(
+                        name=f"{device.name}_heat",
+                        description=f"開啟 {device.name} 暖房至 {target.temperature:.1f}°C",
+                        effects=[
+                            ActionEffect(
+                                device_name=device.name,
+                                activation=0.85,
+                                metadata_updates={
+                                    "ac_mode": "heat",
+                                    "target_temperature": target.temperature,
+                                },
+                            )
+                        ],
+                    ),
+                    Action(
+                        name=f"{device.name}_off",
+                        description=f"關閉 {device.name}",
+                        effects=[ActionEffect(device_name=device.name, activation=0.0)],
+                    ),
+                ]
+            )
+        elif device.kind == "window":
+            actions.extend(
+                [
+                    Action(
+                        name=f"{device.name}_open",
+                        description=f"開啟 {device.name} 至 70%",
+                        effects=[ActionEffect(device_name=device.name, activation=0.7)],
+                    ),
+                    Action(
+                        name=f"{device.name}_close",
+                        description=f"關閉 {device.name}",
+                        effects=[ActionEffect(device_name=device.name, activation=0.0)],
+                    ),
+                ]
+            )
+        elif device.kind == "light":
+            actions.extend(
+                [
+                    Action(
+                        name=f"{device.name}_on",
+                        description=f"開啟 {device.name} 至 85%",
+                        effects=[ActionEffect(device_name=device.name, activation=0.85)],
+                    ),
+                    Action(
+                        name=f"{device.name}_dim",
+                        description=f"調暗 {device.name} 至 35%",
+                        effects=[ActionEffect(device_name=device.name, activation=0.35)],
+                    ),
+                    Action(
+                        name=f"{device.name}_off",
+                        description=f"關閉 {device.name}",
+                        effects=[ActionEffect(device_name=device.name, activation=0.0)],
+                    ),
+                ]
+            )
+    return actions
+
+
+def _comfort_target_with_overrides(
+    base: ComfortTarget,
+    temperature: Optional[float] = None,
+    humidity: Optional[float] = None,
+    illuminance: Optional[float] = None,
+    temperature_tolerance: Optional[float] = None,
+    humidity_tolerance: Optional[float] = None,
+    illuminance_tolerance: Optional[float] = None,
+) -> ComfortTarget:
+    return ComfortTarget(
+        temperature=base.temperature if temperature is None else float(temperature),
+        temperature_tolerance=max(
+            1e-6,
+            base.temperature_tolerance if temperature_tolerance is None else float(temperature_tolerance),
+        ),
+        humidity=base.humidity if humidity is None else clamp(float(humidity), 0.0, 100.0),
+        humidity_tolerance=max(1e-6, base.humidity_tolerance if humidity_tolerance is None else float(humidity_tolerance)),
+        illuminance=base.illuminance if illuminance is None else max(0.0, float(illuminance)),
+        illuminance_tolerance=max(
+            1e-6,
+            base.illuminance_tolerance if illuminance_tolerance is None else float(illuminance_tolerance),
+        ),
+        temperature_weight=base.temperature_weight,
+        humidity_weight=base.humidity_weight,
+        illuminance_weight=base.illuminance_weight,
+    )
+
+
+def _comfort_target_dict(target: ComfortTarget) -> Dict[str, float]:
+    return {
+        "temperature": round(target.temperature, 4),
+        "temperature_tolerance": round(target.temperature_tolerance, 4),
+        "humidity": round(target.humidity, 4),
+        "humidity_tolerance": round(target.humidity_tolerance, 4),
+        "illuminance": round(target.illuminance, 4),
+        "illuminance_tolerance": round(target.illuminance_tolerance, 4),
+    }
+
+
+def _action_effect_dict(effect: ActionEffect) -> Dict[str, object]:
+    return {
+        "device_name": effect.device_name,
+        "activation": effect.activation,
+        "power_scale": round(effect.power_scale, 4),
+        "metadata_updates": deepcopy(effect.metadata_updates),
     }
 
 
@@ -999,6 +1416,10 @@ def _scenario_with_overrides(
     extra_furniture: Optional[List[Dict[str, object]]] = None,
     extra_devices: Optional[List[Dict[str, object]]] = None,
     device_specs: Optional[List[Dict[str, object]]] = None,
+    outdoor_temperature: Optional[float] = None,
+    outdoor_humidity: Optional[float] = None,
+    sunlight_illuminance: Optional[float] = None,
+    daylight_factor: Optional[float] = None,
 ) -> Scenario:
     if (
         not device_overrides
@@ -1011,6 +1432,10 @@ def _scenario_with_overrides(
         and indoor_humidity is None
         and base_illuminance is None
         and elapsed_minutes is None
+        and outdoor_temperature is None
+        and outdoor_humidity is None
+        and sunlight_illuminance is None
+        and daylight_factor is None
     ):
         return scenario
     updates = {}
@@ -1044,6 +1469,17 @@ def _scenario_with_overrides(
         room_updates["base_illuminance"] = max(0.0, float(base_illuminance))
     if room_updates:
         updates["room"] = replace(scenario.room, **room_updates)
+    environment_updates = {}
+    if outdoor_temperature is not None:
+        environment_updates["outdoor_temperature"] = float(outdoor_temperature)
+    if outdoor_humidity is not None:
+        environment_updates["outdoor_humidity"] = max(0.0, min(100.0, float(outdoor_humidity)))
+    if sunlight_illuminance is not None:
+        environment_updates["sunlight_illuminance"] = max(0.0, float(sunlight_illuminance))
+    if daylight_factor is not None:
+        environment_updates["daylight_factor"] = max(0.0, float(daylight_factor))
+    if environment_updates:
+        updates["environment"] = replace(scenario.environment, **environment_updates)
     if elapsed_minutes is not None:
         updates["elapsed_minutes"] = max(0.0, float(elapsed_minutes))
     return replace(scenario, **updates)

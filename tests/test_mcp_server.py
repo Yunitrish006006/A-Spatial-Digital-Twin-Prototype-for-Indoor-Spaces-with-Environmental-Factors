@@ -27,6 +27,29 @@ from digital_twin.core.service import (
 from digital_twin.mcp.mcp_server import LocalMCPServer
 
 
+SENSOR_NAMES = (
+    "floor_sw",
+    "floor_se",
+    "floor_nw",
+    "floor_ne",
+    "ceiling_sw",
+    "ceiling_se",
+    "ceiling_nw",
+    "ceiling_ne",
+)
+
+
+def _constant_sensor_observations(temperature: float, humidity: float, illuminance: float) -> dict:
+    return {
+        name: {
+            "temperature": temperature,
+            "humidity": humidity,
+            "illuminance": illuminance,
+        }
+        for name in SENSOR_NAMES
+    }
+
+
 class ServiceTests(unittest.TestCase):
     def test_list_scenarios_returns_standard_cases(self) -> None:
         scenarios = list_scenario_metadata()
@@ -368,145 +391,204 @@ class MCPServerTests(unittest.TestCase):
         self.assertEqual(
             names,
             {
-                "list_scenarios",
-                "list_window_scenarios",
-                "run_scenario",
+                "initialize_environment",
                 "rank_actions",
                 "sample_point",
-                "compare_baseline",
                 "learn_impacts",
-                "run_window_matrix",
                 "run_window_direct",
             },
         )
-        run_scenario = next(tool for tool in response["result"]["tools"] if tool["name"] == "run_scenario")
-        self.assertIn("extra_devices", run_scenario["inputSchema"]["properties"])
-        self.assertIn("device_specs", run_scenario["inputSchema"]["properties"])
+        initialize = next(tool for tool in response["result"]["tools"] if tool["name"] == "initialize_environment")
+        self.assertIn("devices", initialize["inputSchema"]["properties"])
+        self.assertIn("furniture", initialize["inputSchema"]["properties"])
 
-    def test_tool_call(self) -> None:
+    def test_initialize_environment_registers_baseline_devices_and_furniture(self) -> None:
         response = self.server.handle_message(
             {
                 "jsonrpc": "2.0",
                 "id": 3,
                 "method": "tools/call",
-                "params": {"name": "rank_actions", "arguments": {"scenario_name": "idle"}},
+                "params": {
+                    "name": "initialize_environment",
+                    "arguments": {
+                        "baseline": {
+                            "indoor_temperature": 28.0,
+                            "indoor_humidity": 64.0,
+                            "base_illuminance": 120.0,
+                        },
+                        "environment": {
+                            "outdoor_temperature": 35.0,
+                            "outdoor_humidity": 82.0,
+                            "sunlight_illuminance": 18000.0,
+                        },
+                        "devices": [
+                            {
+                                "name": "ac_main",
+                                "kind": "ac",
+                                "activation": 0.85,
+                                "metadata": {"ac_mode": "cool", "target_temperature": 22.0},
+                            }
+                        ],
+                        "furniture": [{"name": "cabinet_window", "activation": 1.0}],
+                    },
+                },
             }
         )
-        content = response["result"]["content"][0]["text"]
-        payload = json.loads(content)
-        self.assertEqual(payload["scenario"], "idle")
-        self.assertGreater(len(payload["recommendations"]), 0)
+        payload = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(payload["status"], "INITIALIZED")
+        self.assertEqual(payload["baseline"]["indoor_temperature"], 28.0)
+        self.assertEqual(payload["environment"]["outdoor_temperature"], 35.0)
+        self.assertEqual(payload["furniture_overrides"]["cabinet_window"], 1.0)
+        self.assertEqual(payload["registered_devices"][0]["name"], "ac_main")
 
-    def test_run_scenario_tool_call_accepts_ac_overrides(self) -> None:
-        cool_response = self.server.handle_message(
+    def test_sample_point_uses_elapsed_time_and_steady_state(self) -> None:
+        self.server.handle_message(
             {
                 "jsonrpc": "2.0",
                 "id": 31,
                 "method": "tools/call",
                 "params": {
-                    "name": "run_scenario",
+                    "name": "initialize_environment",
                     "arguments": {
-                        "scenario_name": "idle",
-                        "ac_main": 0.85,
-                        "ac_mode": "cool",
-                        "ac_target_temperature": 20.0,
+                        "devices": [
+                            {
+                                "name": "ac_main",
+                                "kind": "ac",
+                                "activation": 0.85,
+                                "metadata": {"ac_mode": "cool", "target_temperature": 22.0},
+                            }
+                        ],
+                        "steady_state_minutes": 120.0,
                     },
                 },
             }
         )
-        heat_response = self.server.handle_message(
+        early_response = self.server.handle_message(
             {
                 "jsonrpc": "2.0",
                 "id": 32,
                 "method": "tools/call",
                 "params": {
-                    "name": "run_scenario",
-                    "arguments": {
-                        "scenario_name": "idle",
-                        "ac_main": 0.85,
-                        "ac_mode": "heat",
-                        "ac_target_temperature": 33.0,
-                    },
+                    "name": "sample_point",
+                    "arguments": {"x": 5.0, "y": 2.0, "z": 1.5, "elapsed_minutes": 1.0},
                 },
             }
         )
-        cool_payload = json.loads(cool_response["result"]["content"][0]["text"])
-        heat_payload = json.loads(heat_response["result"]["content"][0]["text"])
-        self.assertLess(cool_payload["target_zone_estimated"]["temperature"], heat_payload["target_zone_estimated"]["temperature"])
-
-    def test_run_scenario_tool_call_accepts_furniture_overrides(self) -> None:
-        open_response = self.server.handle_message(
+        steady_response = self.server.handle_message(
             {
                 "jsonrpc": "2.0",
                 "id": 33,
                 "method": "tools/call",
                 "params": {
-                    "name": "run_scenario",
-                    "arguments": {
-                        "scenario_name": "window_only",
-                    },
+                    "name": "sample_point",
+                    "arguments": {"x": 5.0, "y": 2.0, "z": 1.5, "steady_state": True},
                 },
             }
         )
-        blocked_response = self.server.handle_message(
+        early = json.loads(early_response["result"]["content"][0]["text"])
+        steady = json.loads(steady_response["result"]["content"][0]["text"])
+        self.assertEqual(steady["sampling_mode"], "steady_state")
+        self.assertGreater(early["values"]["temperature"], steady["values"]["temperature"])
+
+    def test_rank_actions_tool_call_uses_point_target(self) -> None:
+        self.server.handle_message(
             {
                 "jsonrpc": "2.0",
                 "id": 34,
                 "method": "tools/call",
                 "params": {
-                    "name": "run_scenario",
+                    "name": "initialize_environment",
                     "arguments": {
-                        "scenario_name": "window_only",
-                        "cabinet_window": 1.0,
+                        "devices": [
+                            {"name": "light_main", "kind": "light", "activation": 0.0},
+                            {"name": "ac_main", "kind": "ac", "activation": 0.0},
+                        ]
                     },
                 },
             }
         )
-        open_payload = json.loads(open_response["result"]["content"][0]["text"])
-        blocked_payload = json.loads(blocked_response["result"]["content"][0]["text"])
-        self.assertLess(
-            blocked_payload["target_zone_estimated"]["illuminance"],
-            open_payload["target_zone_estimated"]["illuminance"],
-        )
-
-    def test_compare_baseline_tool_call(self) -> None:
         response = self.server.handle_message(
             {
                 "jsonrpc": "2.0",
-                "id": 4,
+                "id": 35,
                 "method": "tools/call",
-                "params": {"name": "compare_baseline", "arguments": {"scenario_name": "light_only"}},
+                "params": {
+                    "name": "rank_actions",
+                    "arguments": {
+                        "x": 3.0,
+                        "y": 2.0,
+                        "z": 1.3,
+                        "target": {"temperature": 25.0, "humidity": 58.0, "illuminance": 500.0},
+                    },
+                },
             }
         )
         payload = json.loads(response["result"]["content"][0]["text"])
-        self.assertEqual(payload["scenario"], "light_only")
-        self.assertIn("comparison", payload)
+        self.assertEqual(payload["point"], {"x": 3.0, "y": 2.0, "z": 1.3})
+        self.assertIn("current_values", payload)
+        self.assertGreater(len(payload["recommendations"]), 0)
+        self.assertIn("effects", payload["recommendations"][0])
 
-    def test_learn_impacts_tool_call(self) -> None:
+    def test_learn_impacts_start_records_without_fake_coefficients(self) -> None:
         response = self.server.handle_message(
             {
                 "jsonrpc": "2.0",
-                "id": 5,
+                "id": 36,
                 "method": "tools/call",
-                "params": {"name": "learn_impacts", "arguments": {"scenario_name": "ac_only"}},
+                "params": {
+                    "name": "learn_impacts",
+                    "arguments": {
+                        "device_name": "ac_main",
+                        "device_state": {"activation": 0.85, "kind": "ac", "ac_mode": "cool"},
+                        "sample_point": {"x": 5.0, "y": 2.0, "z": 1.5},
+                    },
+                },
             }
         )
         payload = json.loads(response["result"]["content"][0]["text"])
-        self.assertEqual(payload["scenario"], "ac_only")
+        self.assertEqual(payload["status"], "RECORDING")
+        self.assertIn("learning_record_id", payload)
+        self.assertEqual(payload["needs"], ["after_observations"])
+        self.assertNotIn("learned_device_impacts", payload)
+
+    def test_learn_impacts_finish_uses_supplied_before_after_observations(self) -> None:
+        before = _constant_sensor_observations(29.0, 67.0, 90.0)
+        after = _constant_sensor_observations(27.0, 64.0, 90.0)
+        start_response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 37,
+                "method": "tools/call",
+                "params": {
+                    "name": "learn_impacts",
+                    "arguments": {
+                        "device_name": "ac_main",
+                        "device_state": {"activation": 0.85, "kind": "ac", "ac_mode": "cool"},
+                        "before_observations": before,
+                    },
+                },
+            }
+        )
+        record_id = json.loads(start_response["result"]["content"][0]["text"])["learning_record_id"]
+        finish_response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 38,
+                "method": "tools/call",
+                "params": {
+                    "name": "learn_impacts",
+                    "arguments": {
+                        "phase": "finish",
+                        "learning_record_id": record_id,
+                        "after_observations": after,
+                    },
+                },
+            }
+        )
+        payload = json.loads(finish_response["result"]["content"][0]["text"])
+        self.assertEqual(payload["status"], "LEARNED")
+        self.assertEqual(payload["observation_source"], "user_supplied")
         self.assertGreater(len(payload["learned_device_impacts"]), 0)
-
-    def test_run_window_matrix_tool_call(self) -> None:
-        response = self.server.handle_message(
-            {
-                "jsonrpc": "2.0",
-                "id": 6,
-                "method": "tools/call",
-                "params": {"name": "run_window_matrix", "arguments": {}},
-            }
-        )
-        payload = json.loads(response["result"]["content"][0]["text"])
-        self.assertEqual(payload["count"], 48)
-        self.assertEqual(payload["scenarios"][0]["metadata"]["category"], "window_matrix")
 
     def test_run_window_direct_tool_call(self) -> None:
         response = self.server.handle_message(
@@ -521,6 +603,7 @@ class MCPServerTests(unittest.TestCase):
                         "outdoor_humidity": 82.0,
                         "sunlight_illuminance": 18000.0,
                         "opening_ratio": 0.45,
+                        "update_environment": True,
                     },
                 },
             }
@@ -529,40 +612,31 @@ class MCPServerTests(unittest.TestCase):
         self.assertEqual(payload["name"], "window_direct_input")
         self.assertEqual(payload["input"]["opening_ratio"], 0.45)
         self.assertEqual(payload["target_zone"], "window_zone")
+        self.assertTrue(payload["registered_environment_updated"])
 
-    def test_run_scenario_tool_call_accepts_extra_devices(self) -> None:
-        response = self.server.handle_message(
+    def test_window_direct_uses_registered_extra_device(self) -> None:
+        self.server.handle_message(
             {
                 "jsonrpc": "2.0",
                 "id": 8,
                 "method": "tools/call",
                 "params": {
-                    "name": "run_scenario",
+                    "name": "initialize_environment",
                     "arguments": {
-                        "scenario_name": "idle",
-                        "extra_devices": [
+                        "devices": [
                             {
-                                "name": "extra_ac_1",
-                                "kind": "ac",
+                                "name": "extra_light_1",
+                                "kind": "light",
                                 "activation": 1.0,
-                                "power": 1.1,
-                                "influence_radius": 2.8,
-                                "position": {"x": 4.8, "y": 2.0, "z": 2.6},
-                                "metadata": {
-                                    "label": "Extra AC",
-                                    "ac_mode": "cool",
-                                    "target_temperature": 22.0,
-                                },
+                                "power": 1.0,
+                                "position": {"x": 2.8, "y": 2.0, "z": 2.7},
+                                "metadata": {"label": "Task Light", "illuminance_gain": 1200.0},
                             }
                         ],
                     },
                 },
             }
         )
-        payload = json.loads(response["result"]["content"][0]["text"])
-        self.assertLess(payload["target_zone_estimated"]["temperature"], 29.0)
-
-    def test_run_window_direct_tool_call_accepts_extra_devices(self) -> None:
         response = self.server.handle_message(
             {
                 "jsonrpc": "2.0",
@@ -575,16 +649,6 @@ class MCPServerTests(unittest.TestCase):
                         "outdoor_humidity": 70.0,
                         "sunlight_illuminance": 0.0,
                         "opening_ratio": 0.3,
-                        "extra_devices": [
-                            {
-                                "name": "extra_light_1",
-                                "kind": "light",
-                                "activation": 1.0,
-                                "power": 1.0,
-                                "position": {"x": 2.8, "y": 2.0, "z": 2.7},
-                                "metadata": {"label": "Task Light", "illuminance_gain": 1200.0},
-                            }
-                        ],
                     },
                 },
             }

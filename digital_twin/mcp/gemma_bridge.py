@@ -5,17 +5,8 @@ from typing import Any, Callable, Dict, Optional
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from digital_twin.core.service import (
-    compare_scenario_baseline,
-    evaluate_scenario,
-    evaluate_window_direct,
-    evaluate_window_matrix,
-    learn_scenario_impacts,
-    list_scenario_metadata,
-    list_window_scenario_metadata,
-    rank_scenario_actions,
-    sample_scenario_point,
-)
+from digital_twin.core.service import list_scenario_metadata, list_window_scenario_metadata
+from digital_twin.mcp.mcp_server import LocalMCPServer, TOOLS as MCP_TOOLS
 
 
 DEFAULT_MODEL = "gemma4:26b"
@@ -24,6 +15,8 @@ DEVICE_OVERRIDE_KEYS = ("ac_main", "window_main", "light_main")
 FURNITURE_OVERRIDE_KEYS = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = {"cool", "dry", "heat", "fan"}
 AC_SWING_OPTIONS = {"fixed", "swing"}
+MCP_TOOL_NAMES = {tool["name"] for tool in MCP_TOOLS}
+_BRIDGE_SERVER = LocalMCPServer()
 
 
 ToolFunction = Callable[[Dict[str, Any]], Dict[str, Any]]
@@ -97,98 +90,42 @@ def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     return tools[tool_name](arguments)
 
 
+def _execute_mcp_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    response = _BRIDGE_SERVER.handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": arguments},
+        }
+    )
+    if response is None:
+        return {}
+    if "error" in response:
+        raise ValueError(response["error"]["message"])
+    return json.loads(response["result"]["content"][0]["text"])
+
+
 def available_tools() -> Dict[str, ToolFunction]:
-    return {
-        "list_scenarios": lambda _arguments: {"scenarios": list_scenario_metadata()},
-        "list_window_scenarios": lambda _arguments: {"scenarios": list_window_scenario_metadata()},
-        "run_scenario": lambda arguments: evaluate_scenario(
-            _required_string(arguments, "scenario_name"),
-            _device_overrides(arguments),
-            _device_metadata_overrides(arguments),
-            _furniture_overrides(arguments),
-            extra_devices=_extra_devices(arguments),
-            device_specs=_device_specs(arguments),
-        ),
-        "rank_actions": lambda arguments: rank_scenario_actions(
-            _required_string(arguments, "scenario_name"),
-            _device_overrides(arguments),
-            _device_metadata_overrides(arguments),
-            _furniture_overrides(arguments),
-            extra_devices=_extra_devices(arguments),
-            device_specs=_device_specs(arguments),
-        ),
-        "sample_point": lambda arguments: sample_scenario_point(
-            scenario_name=_required_string(arguments, "scenario_name"),
-            x=_required_number(arguments, "x"),
-            y=_required_number(arguments, "y"),
-            z=_required_number(arguments, "z"),
-            device_overrides=_device_overrides(arguments),
-            device_metadata_overrides=_device_metadata_overrides(arguments),
-            furniture_overrides=_furniture_overrides(arguments),
-            extra_devices=_extra_devices(arguments),
-            device_specs=_device_specs(arguments),
-        ),
-        "compare_baseline": lambda arguments: compare_scenario_baseline(
-            _required_string(arguments, "scenario_name"),
-            _device_overrides(arguments),
-            _device_metadata_overrides(arguments),
-            _furniture_overrides(arguments),
-            extra_devices=_extra_devices(arguments),
-            device_specs=_device_specs(arguments),
-        ),
-        "learn_impacts": lambda arguments: learn_scenario_impacts(
-            _required_string(arguments, "scenario_name"),
-            _device_overrides(arguments),
-            _device_metadata_overrides(arguments),
-            _furniture_overrides(arguments),
-            extra_devices=_extra_devices(arguments),
-            device_specs=_device_specs(arguments),
-        ),
-        "run_window_matrix": lambda _arguments: evaluate_window_matrix(),
-        "run_window_direct": lambda arguments: evaluate_window_direct(
-            outdoor_temperature=_required_number(arguments, "outdoor_temperature"),
-            outdoor_humidity=_required_number(arguments, "outdoor_humidity"),
-            sunlight_illuminance=_required_number(arguments, "sunlight_illuminance"),
-            opening_ratio=_optional_number(arguments, "opening_ratio", 0.7),
-            furniture_overrides=_furniture_overrides(arguments),
-            indoor_temperature=_optional_nullable_number(arguments, "indoor_temperature"),
-            indoor_humidity=_optional_nullable_number(arguments, "indoor_humidity"),
-            base_illuminance=_optional_number(arguments, "base_illuminance", 70.0),
-            daylight_factor=_optional_number(arguments, "daylight_factor", 0.95),
-            elapsed_minutes=_optional_number(arguments, "elapsed_minutes", 18.0),
-            extra_devices=_extra_devices(arguments),
-            device_specs=_device_specs(arguments),
-        ),
-        "none": lambda _arguments: {"message": "No tool was required."},
-    }
+    tools = {name: (lambda arguments, tool_name=name: _execute_mcp_tool(tool_name, arguments)) for name in MCP_TOOL_NAMES}
+    tools["none"] = lambda _arguments: {"message": "No tool was required."}
+    return tools
 
 
 def build_tool_selection_prompt(question: str) -> str:
-    scenarios = ", ".join(scenario["name"] for scenario in list_scenario_metadata())
-    window_scenarios = ", ".join(scenario["name"] for scenario in list_window_scenario_metadata())
     return f"""你要把使用者問題轉成一個工具呼叫。
 只能輸出 JSON，不要輸出 Markdown，不要加解釋。
 
 可用工具：
-1. list_scenarios: 列出內建情境。arguments={{}}
-2. list_window_scenarios: 列出 48 個窗戶時段/天氣/季節情境。arguments={{}}
-3. run_scenario: 執行情境。arguments={{"scenario_name":"情境名稱","ac_main":0到1,"window_main":0到1,"light_main":0到1,"cabinet_window":0到1,"sofa_main":0到1,"table_center":0到1,"ac_mode":"cool|dry|heat|fan","ac_target_temperature":20到33,"ac_horizontal_mode":"fixed|swing","ac_horizontal_angle_deg":-60到60,"ac_vertical_mode":"fixed|swing","ac_vertical_angle_deg":0到40,"extra_devices":[{{"name":"extra_ac_1","kind":"ac","activation":1.0,"power":1.1,"influence_radius":2.8,"position":{{"x":4.8,"y":2.0,"z":2.6}},"metadata":{{"label":"Extra AC","ac_mode":"cool","target_temperature":23}}}}],"device_specs":[{{"name":"window_main","removed":true}},{{"name":"light_main","activation":1.0,"power":1.4,"position":{{"x":2.4,"y":2.0,"z":2.8}}}}]}}
-4. rank_actions: 排序設備候選動作。arguments 與 run_scenario 相同。
-5. sample_point: 查詢座標估計值。arguments={{"scenario_name":"情境名稱","x":數字,"y":數字,"z":數字}}，也可附加 run_scenario 的可選冷氣、設備與家具參數。
-6. compare_baseline: 比較本研究模型與 IDW baseline。arguments 與 run_scenario 相同。
-7. learn_impacts: 從前後感測資料學習非連網裝置影響。arguments 與 run_scenario 相同。
-8. run_window_matrix: 執行全部 48 個窗戶矩陣模擬。arguments={{}}
-9. run_window_direct: 直接提供窗戶外部條件並執行窗戶模擬。arguments={{"outdoor_temperature":數字,"outdoor_humidity":數字,"sunlight_illuminance":數字,"opening_ratio":0到1數字,"cabinet_window":0到1,"sofa_main":0到1,"table_center":0到1,"extra_devices":[{{"name":"extra_light_1","kind":"light","activation":1.0,"power":0.9,"position":{{"x":3.0,"y":2.0,"z":2.8}},"metadata":{{"label":"Task Light","illuminance_gain":900}}}}],"device_specs":[{{"name":"window_main","surface_width":2.1,"surface_height":1.4}}]}}
-10. none: 不需要工具。
-
-可用情境名稱：
-{scenarios}
-
-可用窗戶矩陣情境名稱：
-{window_scenarios}
+1. initialize_environment: 初始化房間基準、外部環境、設備與家具。arguments={{"baseline":{{"indoor_temperature":29,"indoor_humidity":67,"base_illuminance":90}},"environment":{{"outdoor_temperature":33,"outdoor_humidity":74,"sunlight_illuminance":32000}},"devices":[{{"name":"ac_main","kind":"ac","activation":0.0}}],"furniture":[{{"name":"cabinet_window","activation":1.0}}]}}
+2. sample_point: 查指定座標在 elapsed_minutes 或 steady_state 下的溫度/濕度/照度。arguments={{"x":3,"y":2,"z":1.2,"elapsed_minutes":18}} 或 {{"x":3,"y":2,"z":1.2,"steady_state":true}}
+3. learn_impacts: 建立或完成 before/after impact learning record。start arguments={{"device_name":"ac_main","device_state":{{"activation":0.85,"kind":"ac","ac_mode":"cool"}},"before_observations":{{...}}}}；finish arguments={{"phase":"finish","learning_record_id":"...","after_observations":{{...}}}}
+4. run_window_direct: 直接提供窗戶外部條件。arguments={{"outdoor_temperature":35,"outdoor_humidity":82,"sunlight_illuminance":18000,"opening_ratio":0.45}}
+5. rank_actions: 輸入指定座標與目標，依註冊設備排序控制動作。arguments={{"x":3,"y":2,"z":1.2,"target":{{"temperature":25,"humidity":58,"illuminance":500}}}}
+6. none: 不需要工具。
 
 輸出格式範例：
-{{"tool":"rank_actions","arguments":{{"scenario_name":"idle"}}}}
+{{"tool":"rank_actions","arguments":{{"x":3,"y":2,"z":1.2,"target":{{"temperature":25,"humidity":58,"illuminance":500}}}}}}
 
 使用者問題：
 {question}
@@ -197,42 +134,33 @@ def build_tool_selection_prompt(question: str) -> str:
 
 def heuristic_tool_selection(question: str) -> Dict[str, Any]:
     lowered = question.lower()
-    scenario = find_scenario_name(lowered) or "idle"
     direct_window_arguments = _parse_direct_window_arguments(lowered)
     if direct_window_arguments:
         return {"tool": "run_window_direct", "arguments": direct_window_arguments}
 
-    if _mentions_window_matrix(lowered):
-        if _is_window_matrix_scenario(scenario) and any(
-            keyword in lowered for keyword in ["模擬", "run", "誤差", "mae", "結果"]
-        ):
-            return {"tool": "run_scenario", "arguments": {"scenario_name": scenario}}
-        if any(keyword in lowered for keyword in ["列出", "清單", "有哪些", "list"]):
-            return {"tool": "list_window_scenarios", "arguments": {}}
-        return {"tool": "run_window_matrix", "arguments": {}}
+    if any(keyword in lowered for keyword in ["初始化", "註冊", "register", "設備", "家具", "baseline"]):
+        return {"tool": "initialize_environment", "arguments": {}}
+
+    if any(keyword in lowered for keyword in ["推薦", "排序", "action", "rank", "開冷氣", "開窗", "開燈"]):
+        numbers = [float(item) for item in re.findall(r"[-+]?\d+(?:\.\d+)?", lowered)]
+        point = {"x": 3.0, "y": 2.0, "z": 1.2}
+        if len(numbers) >= 3:
+            point = {"x": numbers[0], "y": numbers[1], "z": numbers[2]}
+        return {"tool": "rank_actions", "arguments": point}
 
     if any(keyword in lowered for keyword in ["座標", "point", "sample", "x=", "y=", "z="]):
         numbers = [float(item) for item in re.findall(r"[-+]?\d+(?:\.\d+)?", lowered)]
         if len(numbers) >= 3:
-            return {
-                "tool": "sample_point",
-                "arguments": {"scenario_name": scenario, "x": numbers[0], "y": numbers[1], "z": numbers[2]},
-            }
-
-    if any(keyword in lowered for keyword in ["推薦", "排序", "action", "rank", "開冷氣", "開窗", "開燈"]):
-        return {"tool": "rank_actions", "arguments": {"scenario_name": scenario}}
-
-    if any(keyword in lowered for keyword in ["baseline", "idw", "比較模型", "基準", "誤差比較"]):
-        return {"tool": "compare_baseline", "arguments": {"scenario_name": scenario}}
+            return {"tool": "sample_point", "arguments": {"x": numbers[0], "y": numbers[1], "z": numbers[2]}}
 
     if any(keyword in lowered for keyword in ["學習", "影響", "非連網", "appliance impact", "learn"]):
-        return {"tool": "learn_impacts", "arguments": {"scenario_name": scenario}}
-
-    if any(keyword in lowered for keyword in ["情境", "scenario", "有哪些"]):
-        return {"tool": "list_scenarios", "arguments": {}}
-
-    if any(keyword in lowered for keyword in ["模擬", "run", "誤差", "mae", "結果"]):
-        return {"tool": "run_scenario", "arguments": {"scenario_name": scenario}}
+        return {
+            "tool": "learn_impacts",
+            "arguments": {
+                "device_name": _device_name_from_text(lowered),
+                "device_state": {"activation": 1.0},
+            },
+        }
 
     return {"tool": "none", "answer": "這個問題沒有明確對應到目前的數位孿生工具。"}
 
@@ -268,6 +196,16 @@ def _parse_direct_window_arguments(text: str) -> Optional[Dict[str, float]]:
     if len(numbers) >= 6:
         arguments["indoor_humidity"] = numbers[5]
     return arguments
+
+
+def _device_name_from_text(text: str) -> str:
+    if any(keyword in text for keyword in ["冷氣", "ac", "air"]):
+        return "ac_main"
+    if any(keyword in text for keyword in ["窗戶", "window"]):
+        return "window_main"
+    if any(keyword in text for keyword in ["燈", "照明", "light"]):
+        return "light_main"
+    return "ac_main"
 
 
 def _device_overrides(arguments: Dict[str, Any]) -> Dict[str, float]:

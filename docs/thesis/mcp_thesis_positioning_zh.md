@@ -81,10 +81,11 @@ MCP tool interface
 
 MCP tools 對應：
 
-- `list_scenarios`
-- `run_scenario`
-- `rank_actions`
+- `initialize_environment`
 - `sample_point`
+- `learn_impacts`
+- `run_window_direct`
+- `rank_actions`
 
 ### 第四章 MCP 服務與 AI Agent 存取流程
 
@@ -102,10 +103,11 @@ MCP tools 對應：
 
 除了原本的模型誤差，也加入 MCP 功能驗證：
 
-- MCP server 是否能列出情境。
-- MCP server 是否能執行情境。
-- MCP server 是否能回傳推薦排序。
-- MCP server 是否能查詢任意座標。
+- MCP server 是否能初始化環境、設備、家具與 baseline。
+- MCP server 是否能在指定 elapsed time 或 steady state 查詢任意座標。
+- MCP server 是否能建立 before/after impact learning record，並在資料足夠時輸出 learned coefficients。
+- MCP server 是否能用 direct window data 執行窗戶模擬。
+- MCP server 是否能針對指定座標與目標值回傳推薦排序。
 - Gemma bridge 是否能根據自然語言選擇工具。
 
 ## 可宣稱的貢獻
@@ -115,7 +117,7 @@ MCP tools 對應：
 1. 提出一個針對非連網家電環境影響學習的單房間 spatial digital twin prototype。
 2. 提出一個使用 8 顆角落感測器殘差進行 temperature、humidity、illuminance 空間場校正的流程。
 3. 根據學習後的裝置影響，輸出三個環境變數的候選控制動作排序。
-4. 將模型封裝為 MCP tools，使 AI client 能以標準化方式存取情境模擬、座標估計與設備推薦功能。
+4. 將模型封裝為 MCP tools，使 AI client 能以標準化方式初始化環境、查詢座標估計、記錄裝置影響學習資料、輸入窗戶外部條件與取得指定點設備推薦。
 
 ## 不建議宣稱
 

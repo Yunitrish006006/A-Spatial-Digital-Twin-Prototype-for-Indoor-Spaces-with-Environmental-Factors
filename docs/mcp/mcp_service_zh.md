@@ -1,21 +1,18 @@
 # MCP-Enabled 數位孿生服務設計與使用方式
 
-本專案已加入一個本地 stdio MCP server，可讓支援 MCP 的 client 直接呼叫單房間數位孿生模型。若將 MCP 納入論文主題，建議定位為「AI-agent-accessible interface」，也就是讓模型可被 AI client 以標準工具介面使用，而不是把整篇論文改成通訊協定研究。
+本專案提供一個本地 stdio MCP server，讓支援 MCP 的 client 可以用標準工具介面呼叫單房間環境數位孿生。MCP 在本研究中不是預測模型，也不是新的通訊協定貢獻；它是把同一套 service layer 包成 AI client 可呼叫的工具入口。
 
-## 為什麼適合做成 MCP
+## 目前 MCP 的定位
 
-本研究原型的核心能力很適合包成 MCP tools：
+目前 MCP 介面已從早期的「驗證用工具集合」收斂為實際互動流程：
 
-- 查詢內建模擬情境。
-- 執行情境並回傳重建誤差。
-- 取得冷氣、窗戶、照明等候選動作排序。
-- 查詢房間任意座標的 temperature、humidity、illuminance 估計值。
-- 比較本研究模型與 IDW baseline。
-- 學習非連網裝置啟用前後造成的環境影響係數。
-- 執行窗戶在時段、天氣、季節組合下的 48 組模擬矩陣。
-- 直接提供窗戶外部條件，例如外部溫度、濕度、日照與開窗比例，立即估計三因子區域影響。
+1. 先初始化環境、設備、家具與室內 baseline。
+2. 在已註冊環境中查詢任意座標的 temperature、humidity、illuminance。
+3. 對非連網裝置建立 before/after 觀測紀錄，並在資料足夠時學習影響係數。
+4. 對窗戶直接輸入外部溫度、濕度、日照與開窗比例。
+5. 對指定座標與目標值，根據目前註冊設備排序候選操作。
 
-MCP 化後，模型不只是 Python script，而是可以被 AI client 當作外部工具呼叫。
+`run_demo.py`、`run_window_matrix.py`、`compare_baseline` 等仍存在於 service 或實驗腳本中，但它們不再作為 MCP 對外 tools 暴露。這樣可以避免教授誤解 MCP 是在列出實驗結果；MCP 的重點是讓使用者或 AI client 操作同一個 digital twin runtime。
 
 ## 啟動方式
 
@@ -25,108 +22,122 @@ MCP 化後，模型不只是 Python script，而是可以被 AI client 當作外
 python3 scripts/run_mcp_server.py
 ```
 
-此 server 使用 stdio transport，會從標準輸入讀取 JSON-RPC 訊息，並從標準輸出回傳 JSON-RPC 結果。
+此 server 使用 stdio transport，從標準輸入讀取 JSON-RPC 訊息，並從標準輸出回傳 JSON-RPC 結果。
 
 ## MCP Tools
 
-### `list_scenarios`
+### `initialize_environment`
 
-列出內建的 8 組驗證情境。
+初始化 MCP session 內的註冊狀態，包含基礎情境、室內 baseline、外部環境、設備與家具阻擋物。後續 `sample_point`、`learn_impacts`、`rank_actions` 都會使用這個註冊狀態。
 
-輸入：
-
-```json
-{}
-```
-
-### `list_window_scenarios`
-
-列出 48 組窗戶矩陣情境，包含早上/中午/下午/晚上、陰天/晴天/雨天、春夏秋冬。
-
-輸入：
-
-```json
-{}
-```
-
-### `run_scenario`
-
-執行指定情境，回傳場重建誤差、感測器校正前後誤差、目標區域估計值。
-
-輸入：
+輸入範例：
 
 ```json
 {
-  "scenario_name": "idle"
-}
-```
-
-### `rank_actions`
-
-針對指定情境，依舒適度改善分數排序候選設備動作。
-
-輸入：
-
-```json
-{
-  "scenario_name": "idle"
+  "baseline": {
+    "indoor_temperature": 28.0,
+    "indoor_humidity": 64.0,
+    "base_illuminance": 120.0
+  },
+  "environment": {
+    "outdoor_temperature": 35.0,
+    "outdoor_humidity": 82.0,
+    "sunlight_illuminance": 18000.0
+  },
+  "devices": [
+    {
+      "name": "ac_main",
+      "kind": "ac",
+      "activation": 0.0,
+      "metadata": {
+        "ac_mode": "cool",
+        "target_temperature": 24.0
+      }
+    }
+  ],
+  "furniture": [
+    {
+      "name": "cabinet_window",
+      "activation": 1.0
+    }
+  ],
+  "steady_state_minutes": 120.0
 }
 ```
 
 ### `sample_point`
 
-估計指定座標的三個環境因素。
+在目前註冊環境中查詢任意座標的三因子估計值。可指定 `elapsed_minutes`，也可用 `steady_state: true` 代表接近準穩態的時間。
 
-輸入：
+輸入範例：
 
 ```json
 {
-  "scenario_name": "light_only",
   "x": 3.0,
   "y": 2.0,
-  "z": 1.5
+  "z": 1.2,
+  "elapsed_minutes": 18.0
 }
 ```
 
-### `compare_baseline`
-
-比較本研究的 appliance influence model 與 IDW baseline。
-
-輸入：
+或：
 
 ```json
 {
-  "scenario_name": "light_only"
+  "x": 3.0,
+  "y": 2.0,
+  "z": 1.2,
+  "steady_state": true
 }
 ```
 
 ### `learn_impacts`
 
-從裝置啟用前後的感測器觀測差異，估計 active non-networked appliance 的影響係數。
+此工具用於正確處理非連網裝置 impact learning。它不是單純「跑一個情境」就宣稱已學習，而是建立或完成一筆 before/after 觀測紀錄。
 
-輸入：
+第一步 `start`：輸入要開啟的設備與狀態，並盡量提供開啟前的真實 8 顆感測器讀值。
 
 ```json
 {
-  "scenario_name": "ac_only"
+  "device_name": "ac_main",
+  "device_state": {
+    "activation": 0.85,
+    "kind": "ac",
+    "ac_mode": "cool",
+    "target_temperature": 22.0
+  },
+  "before_observations": {
+    "floor_sw": {"temperature": 29.1, "humidity": 67.0, "illuminance": 90.0}
+  },
+  "sample_point": {
+    "x": 5.0,
+    "y": 2.0,
+    "z": 1.5
+  }
 }
 ```
 
-### `run_window_matrix`
+回傳會包含 `learning_record_id`。若尚未提供 `after_observations`，狀態會是 `RECORDING`，不會產生 learned coefficients。
 
-一次執行全部 48 組窗戶矩陣模擬，回傳每組情境的外部條件、窗戶區、中心區與門側區估計值。
-
-輸入：
+第二步 `finish`：輸入同一批感測器在設備作用後的觀測值。
 
 ```json
-{}
+{
+  "phase": "finish",
+  "learning_record_id": "record-id",
+  "after_observations": {
+    "floor_sw": {"temperature": 27.4, "humidity": 64.2, "illuminance": 90.0}
+  }
+}
 ```
+
+只有同時具備 before/after observations 時，工具才會回傳 `learned_device_impacts`。若資料不足，回傳 `NEEDS_DATA`。
 
 ### `run_window_direct`
 
-不使用列舉矩陣，直接由使用者提供外部條件建立窗戶模擬。此工具適合接入實際天氣 API、手動輸入或其他非分類資料來源。
+直接輸入外部窗戶條件，不經 48 組 season/weather/time preset。此工具適合接入天氣 API、手動輸入或其他非分類資料來源。
 
-輸入：
+輸入範例：
 
 ```json
 {
@@ -134,44 +145,44 @@ python3 scripts/run_mcp_server.py
   "outdoor_humidity": 82.0,
   "sunlight_illuminance": 18000.0,
   "opening_ratio": 0.45,
-  "indoor_temperature": 28.0,
-  "indoor_humidity": 64.0
+  "update_environment": true
 }
 ```
 
-## 可用情境名稱
+`update_environment: true` 時，MCP session 會把該外部環境與窗戶開度更新為後續查詢使用的註冊狀態。
 
-- `idle`
-- `ac_only`
-- `window_only`
-- `light_only`
-- `ac_window`
-- `window_light`
-- `ac_light`
-- `all_active`
+### `rank_actions`
 
-窗戶矩陣情境使用以下命名格式：
+輸入指定座標與目標三因子值，根據目前註冊設備產生候選操作，並依 comfort penalty 改善量排序。這已不再只針對預設 target zone，而是針對使用者指定的位置。
 
-```text
-window_<season>_<weather>_<time>
+輸入範例：
+
+```json
+{
+  "x": 3.0,
+  "y": 2.0,
+  "z": 1.2,
+  "target": {
+    "temperature": 25.0,
+    "humidity": 58.0,
+    "illuminance": 500.0,
+    "temperature_tolerance": 1.0,
+    "humidity_tolerance": 6.0,
+    "illuminance_tolerance": 120.0
+  }
+}
 ```
 
-例如：
-
-- `window_summer_sunny_noon`
-- `window_winter_rainy_night`
-
 ## 本地手動測試
-
-可用下面的 JSON-RPC 訊息手動測試：
 
 ```bash
 printf '%s\n' \
 '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual","version":"0.1"}}}' \
 '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rank_actions","arguments":{"scenario_name":"idle"}}}' \
-'{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"run_window_matrix","arguments":{}}}' \
-'{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"run_window_direct","arguments":{"outdoor_temperature":35,"outdoor_humidity":82,"sunlight_illuminance":18000,"opening_ratio":0.45}}}' \
+'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"initialize_environment","arguments":{"baseline":{"indoor_temperature":28,"indoor_humidity":64,"base_illuminance":120},"devices":[{"name":"ac_main","kind":"ac","activation":0.85,"metadata":{"ac_mode":"cool","target_temperature":22}}]}}}' \
+'{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"sample_point","arguments":{"x":5,"y":2,"z":1.5,"steady_state":true}}}' \
+'{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"rank_actions","arguments":{"x":3,"y":2,"z":1.2,"target":{"temperature":25,"humidity":58,"illuminance":500}}}}' \
+'{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"run_window_direct","arguments":{"outdoor_temperature":35,"outdoor_humidity":82,"sunlight_illuminance":18000,"opening_ratio":0.45,"update_environment":true}}}' \
 | python3 scripts/run_mcp_server.py
 ```
 
@@ -196,12 +207,13 @@ printf '%s\n' \
 
 - 目前是本地 stdio MCP server，不是遠端 HTTP MCP。
 - 尚未加入 OAuth 或使用者權限控制。
-- 模型情境仍以內建標準案例、窗戶矩陣案例與窗戶 direct input 為主，尚未開放任意房間 JSON 輸入。
+- `initialize_environment` 目前以標準單房間拓樸為基礎，支援設備與家具註冊，但尚未完整開放任意房間 JSON 幾何。
+- `learn_impacts` 需要真實 before/after 感測讀值才會產生可主張的 impact coefficients；缺資料時只記錄事件。
 - 輸出以 JSON text content 為主，尚未提供 MCP resource 或圖片 resource。
 
 ## 後續可擴充方向
 
-1. 加入 `create_room_simulation` tool，讓 client 傳入自訂房間、設備與外部環境。
-2. 加入 `export_heatmap` tool，讓 MCP 回傳 SVG 熱圖檔案路徑或 resource。
+1. 將 `initialize_environment` 擴充為完整任意房間幾何輸入。
+2. 加入 `export_heatmap` 或 MCP resource，回傳熱圖/照度圖資源。
 3. 包成遠端 HTTP MCP server，部署到 Cloudflare Workers。
 4. 加入 OAuth，讓遠端 MCP 可安全被不同 client 使用。

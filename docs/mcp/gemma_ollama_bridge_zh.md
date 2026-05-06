@@ -37,51 +37,48 @@ Gemma 本身不是 MCP client，因此它不能「自己」直接呼叫 MCP tool
 查詢建議動作：
 
 ```bash
-python3 scripts/ask_gemma.py "idle 情境下建議做什麼動作？"
+python3 scripts/ask_gemma.py "座標 x=3 y=2 z=1.2 建議做什麼動作？"
 ```
 
 只看工具選擇與原始工具輸出：
 
 ```bash
-python3 scripts/ask_gemma.py "idle 情境下建議做什麼動作？" --tool-only
+python3 scripts/ask_gemma.py "座標 x=3 y=2 z=1.2 建議做什麼動作？" --tool-only
 ```
 
 查詢座標點：
 
 ```bash
-python3 scripts/ask_gemma.py "light_only 情境下，座標 x=3 y=2 z=1.5 的溫度濕度照度是多少？"
+python3 scripts/ask_gemma.py "座標 x=3 y=2 z=1.5 的溫度濕度照度是多少？"
 ```
 
-執行窗戶時段/天氣/季節矩陣：
+直接輸入窗戶外部資料：
 
 ```bash
-python3 scripts/ask_gemma.py "幫我跑窗戶早上中午下午晚上、陰天晴天雨天、四季的模擬" --tool-only
+python3 scripts/ask_gemma.py "窗戶直接用外部溫度35 濕度82 日照18000 開窗比例45% 模擬" --tool-only
 ```
 
-執行單一窗戶矩陣情境：
+啟動 impact learning record：
 
 ```bash
-python3 scripts/ask_gemma.py "夏季晴天中午窗戶結果" --tool-only
+python3 scripts/ask_gemma.py "學習非連網冷氣影響" --tool-only
 ```
 
 指定其他 Ollama model：
 
 ```bash
-python3 scripts/ask_gemma.py "列出所有情境" --model gemma4:26b
+python3 scripts/ask_gemma.py "座標 x=3 y=2 z=1.2 建議做什麼動作？" --model gemma4:26b
 ```
 
 ## 可用工具
 
-Bridge 可呼叫與 MCP server 相同的核心能力：
+Bridge 透過同一個 `LocalMCPServer` 呼叫目前 MCP server 暴露的五個 tools：
 
-- `list_scenarios`
-- `list_window_scenarios`
-- `run_scenario`
-- `rank_actions`
+- `initialize_environment`
 - `sample_point`
-- `compare_baseline`
 - `learn_impacts`
-- `run_window_matrix`
+- `run_window_direct`
+- `rank_actions`
 
 ## 和 MCP server 的關係
 
@@ -92,13 +89,13 @@ Bridge 可呼叫與 MCP server 相同的核心能力：
 2. `scripts/ask_gemma.py`
    作為 Ollama/Gemma bridge，讓本機 Gemma 可以間接使用同一套數位孿生工具。
 
-兩者共用 `digital_twin/service.py`，因此模型結果一致。
+兩者最後都走同一套 MCP server 與 `digital_twin/core/service.py`，因此模型結果一致。
 
 ## 目前限制
 
 - Gemma 的工具選擇是 prompt-based JSON selection，不是原生 MCP tool calling。
 - 若 Gemma 回傳非 JSON，bridge 會使用簡單 heuristic fallback。
-- 目前支援內建標準情境與窗戶矩陣情境，尚未支援由自然語言建立任意房間。
+- 目前 bridge 的自然語言解析只覆蓋初始化、指定點查詢、impact learning、direct window input 與指定點 action ranking。
 - `gemma4:26b` 第一次呼叫會有冷啟動時間。
 
 ## 後續可加強

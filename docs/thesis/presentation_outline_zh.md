@@ -27,9 +27,12 @@
 - least-squares impact learning
 
 ## Slide 7: 系統實作與介面
-- MCP tools
-- Gemma bridge
-- Web demo
+- MCP 是工具化介面，不是預測模型本身
+- initialize：註冊環境、設備、家具與 baseline
+- sample point：查指定座標在特定時間或穩定態的溫濕照度
+- learn impacts：start/finish before-after record
+- window direct / rank actions：輸入外部窗戶資料，並針對指定座標排序註冊設備操作
+- Gemma bridge 與 Web demo 分別負責 AI tool calling 與人機展示
 
 ## Slide 8: 驗證流程與比較原則
 - E1-E3：synthetic full-field、IDW baseline、ablation

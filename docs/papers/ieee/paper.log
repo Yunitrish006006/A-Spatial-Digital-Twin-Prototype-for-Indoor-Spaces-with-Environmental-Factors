@@ -364,6 +364,9 @@ File: assets/field_mae_comparison.png Graphic file (type bmp)
 <assets/field_mae_comparison.png>
 File: ../thesis/assets/fig_5_7_light_only_illum_3d.png Graphic file (type bmp)
 <../thesis/assets/fig_5_7_light_only_illum_3d.png>
+
+Underfull \vbox (badness 2142) has occurred while \output is active []
+
  [4]
 Underfull \hbox (badness 1424) in paragraph at lines 211--212
 []\TU/pcr/m/n/10 For external comparison, we evaluate task-aligned
@@ -419,4 +422,4 @@ Before submitting the final camera ready copy, remember to:
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (6 pages, 257720 bytes).
+Output written on paper.xdv (6 pages, 263752 bytes).

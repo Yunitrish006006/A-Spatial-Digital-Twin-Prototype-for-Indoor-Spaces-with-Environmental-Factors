@@ -23,8 +23,8 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(parsed["arguments"]["scenario_name"], "idle")
 
     def test_parse_json_object_from_code_fence(self) -> None:
-        parsed = parse_json_object('```json\n{"tool":"list_scenarios","arguments":{}}\n```')
-        self.assertEqual(parsed["tool"], "list_scenarios")
+        parsed = parse_json_object('```json\n{"tool":"initialize_environment","arguments":{}}\n```')
+        self.assertEqual(parsed["tool"], "initialize_environment")
 
     def test_find_chinese_scenario_alias(self) -> None:
         self.assertEqual(find_scenario_name("請問冷氣情境"), "ac_only")
@@ -34,23 +34,18 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(find_scenario_name("夏季晴天中午窗戶結果"), "window_summer_sunny_noon")
 
     def test_heuristic_selects_rank_actions(self) -> None:
-        selected = heuristic_tool_selection("idle 情境推薦什麼動作")
+        selected = heuristic_tool_selection("座標 3 2 1.2 推薦什麼動作")
         self.assertEqual(selected["tool"], "rank_actions")
-        self.assertEqual(selected["arguments"]["scenario_name"], "idle")
+        self.assertEqual(selected["arguments"], {"x": 3.0, "y": 2.0, "z": 1.2})
 
-    def test_heuristic_selects_baseline_comparison(self) -> None:
-        selected = heuristic_tool_selection("light_only 跟 IDW baseline 誤差比較")
-        self.assertEqual(selected["tool"], "compare_baseline")
-        self.assertEqual(selected["arguments"]["scenario_name"], "light_only")
+    def test_heuristic_selects_initialize_environment(self) -> None:
+        selected = heuristic_tool_selection("幫我初始化設備家具跟 baseline")
+        self.assertEqual(selected["tool"], "initialize_environment")
 
     def test_heuristic_selects_impact_learning(self) -> None:
-        selected = heuristic_tool_selection("ac_only 學習非連網冷氣影響")
+        selected = heuristic_tool_selection("學習非連網冷氣影響")
         self.assertEqual(selected["tool"], "learn_impacts")
-        self.assertEqual(selected["arguments"]["scenario_name"], "ac_only")
-
-    def test_heuristic_selects_window_matrix(self) -> None:
-        selected = heuristic_tool_selection("幫我跑窗戶早上中午下午晚上陰天晴天雨天四季模擬")
-        self.assertEqual(selected["tool"], "run_window_matrix")
+        self.assertEqual(selected["arguments"]["device_name"], "ac_main")
 
     def test_heuristic_selects_direct_window_input(self) -> None:
         selected = heuristic_tool_selection("窗戶直接用外部溫度35 濕度82 日照18000 開窗比例45% 模擬")
@@ -60,35 +55,35 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(selected["arguments"]["sunlight_illuminance"], 18000.0)
         self.assertEqual(selected["arguments"]["opening_ratio"], 0.45)
 
-    def test_heuristic_selects_specific_window_scenario(self) -> None:
-        selected = heuristic_tool_selection("夏季晴天中午窗戶結果")
-        self.assertEqual(selected["tool"], "run_scenario")
-        self.assertEqual(selected["arguments"]["scenario_name"], "window_summer_sunny_noon")
-
     def test_execute_rank_actions_tool(self) -> None:
-        result = execute_tool("rank_actions", {"scenario_name": "idle"})
+        result = execute_tool("rank_actions", {"x": 3.0, "y": 2.0, "z": 1.2})
         self.assertEqual(result["scenario"], "idle")
+        self.assertEqual(result["point"], {"x": 3.0, "y": 2.0, "z": 1.2})
         self.assertGreater(len(result["recommendations"]), 0)
 
-    def test_execute_run_scenario_tool_with_ac_overrides(self) -> None:
-        cool = execute_tool(
-            "run_scenario",
-            {"scenario_name": "idle", "ac_main": 0.85, "ac_mode": "cool", "ac_target_temperature": 20.0},
+    def test_execute_initialize_then_sample_tool(self) -> None:
+        initialized = execute_tool(
+            "initialize_environment",
+            {
+                "devices": [
+                    {
+                        "name": "ac_main",
+                        "kind": "ac",
+                        "activation": 0.85,
+                        "metadata": {"ac_mode": "cool", "target_temperature": 22.0},
+                    }
+                ]
+            },
         )
-        heat = execute_tool(
-            "run_scenario",
-            {"scenario_name": "idle", "ac_main": 0.85, "ac_mode": "heat", "ac_target_temperature": 33.0},
-        )
-        self.assertLess(cool["target_zone_estimated"]["temperature"], heat["target_zone_estimated"]["temperature"])
+        self.assertEqual(initialized["status"], "INITIALIZED")
+        result = execute_tool("sample_point", {"x": 5.0, "y": 2.0, "z": 1.5, "steady_state": True})
+        self.assertEqual(result["sampling_mode"], "steady_state")
+        self.assertIn("temperature", result["values"])
 
     def test_execute_learn_impacts_tool(self) -> None:
-        result = execute_tool("learn_impacts", {"scenario_name": "ac_only"})
-        self.assertEqual(result["scenario"], "ac_only")
-        self.assertGreater(len(result["learned_device_impacts"]), 0)
-
-    def test_execute_window_matrix_tool(self) -> None:
-        result = execute_tool("run_window_matrix", {})
-        self.assertEqual(result["count"], 48)
+        result = execute_tool("learn_impacts", {"device_name": "ac_main", "device_state": {"activation": 0.85}})
+        self.assertEqual(result["status"], "RECORDING")
+        self.assertIn("learning_record_id", result)
 
     def test_execute_window_direct_tool(self) -> None:
         result = execute_tool(
@@ -104,7 +99,7 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(result["input"]["opening_ratio"], 0.45)
 
     def test_tool_output_is_json_serializable(self) -> None:
-        result = execute_tool("sample_point", {"scenario_name": "light_only", "x": 3, "y": 2, "z": 1.5})
+        result = execute_tool("sample_point", {"x": 3, "y": 2, "z": 1.5})
         json.dumps(result, ensure_ascii=False)
         self.assertIn("illuminance", result["values"])
 

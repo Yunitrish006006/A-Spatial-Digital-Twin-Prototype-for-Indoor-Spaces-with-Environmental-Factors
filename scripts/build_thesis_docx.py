@@ -121,7 +121,7 @@ def build_blocks() -> List[Block]:
             "This thesis proposes a sparse-sensing spatial digital twin for a single room. The final design uses variable-specific reduced-order nominal models with parameterized appliance influence functions, active-device power calibration, and trilinear residual correction from eight corner sensors: temperature is modeled through thermal exchange and heat-source terms, humidity through moisture exchange and dehumidification terms, and illuminance through source geometry, obstruction, and a lightweight one-bounce reflection approximation. The system further learns environmental impact coefficients of non-networked appliances from before-and-after sensor observations, ranks candidate control actions according to target-zone comfort improvement, and extends the base estimator with an optional hybrid residual neural correction layer instead of replacing the base model with an end-to-end black-box predictor."
         ),
         paragraph(
-            "The prototype is implemented in Python and exposed through a local service layer, including an MCP interface and a rotatable web demo, enabling interactive scenario queries, point-level estimation, baseline comparison, appliance-impact learning, and a 48-case window simulation matrix across time of day, weather, and season. A lightweight one-bounce diffuse reflection approximation is further added to the illuminance path so that floors, walls, ceilings, and active furniture surfaces can contribute indirect fill light without requiring full optical rendering. The evaluation separates controlled full-field evidence, public task-aligned comparisons, and real sparse-calibration checks. Across the canonical scenarios, the base model achieves average MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance, compared with 0.1723, 0.4633, and 75.0516 for IDW. The hybrid residual layer with Fourier low-pass denoising on temperature and humidity residual traces further reduces default held-out field MAE to 0.0023, 0.0041, and 0.1675, while leave-one-scenario-out evaluation averages 0.0017, 0.0055, and 0.1581, respectively. A preliminary seven-day real-bedroom snapshot validation reduces pillow-point MAE from 0.8967, 4.1286, and 358.6392 to 0.1676, 0.3939, and 21.3753 for temperature, humidity, and illuminance. Action recommendations are treated as model-based counterfactual rankings; causal validation of recommendation efficacy requires a before/after intervention protocol. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
+            "The prototype is implemented in Python and exposed through a local service layer, including a stateful MCP interface and a rotatable web demo. The MCP interface now focuses on practical runtime use: initializing the registered environment, sampling a target point after a specified elapsed time or steady-state interval, recording before/after observations for appliance-impact learning, running direct window-condition input, and ranking registered-device actions for a specified point target. A lightweight one-bounce diffuse reflection approximation is further added to the illuminance path so that floors, walls, ceilings, and active furniture surfaces can contribute indirect fill light without requiring full optical rendering. The evaluation separates controlled full-field evidence, public task-aligned comparisons, and real sparse-calibration checks. Across the canonical scenarios, the base model achieves average MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance, compared with 0.1723, 0.4633, and 75.0516 for IDW. The hybrid residual layer with Fourier low-pass denoising on temperature and humidity residual traces further reduces default held-out field MAE to 0.0023, 0.0041, and 0.1675, while leave-one-scenario-out evaluation averages 0.0017, 0.0055, and 0.1581, respectively. A preliminary seven-day real-bedroom snapshot validation reduces pillow-point MAE from 0.8967, 4.1286, and 358.6392 to 0.1676, 0.3939, and 21.3753 for temperature, humidity, and illuminance. Action recommendations are treated as model-based counterfactual rankings; causal validation of recommendation efficacy requires a before/after intervention protocol. These results indicate that sparse corner sensing can still support an interpretable and trainable indoor twin when model structure, calibration, and learning are assigned to different layers."
         ),
         paragraph(
             "For public head-to-head comparison, SML2010 and CU-BEMS are used only as task-aligned external benchmarks rather than dense 3D field ground truth. Raw public data are normalized, baseline models are evaluated on the same chronological 70/30 split, and the proposed digital twin plus hybrid residual checkpoint is mapped into a structured prior with a small linear readout head. The SML2010 comparison shows the strongest advantage on facade event delta tasks, especially the 60-minute horizon where all six S3 targets achieve the best MAE. CU-BEMS shows a different pattern: the mapped model often improves over linear regression but does not outperform persistence, which clarifies the model's claim boundary. The web demo exposes this comparison through a Public Dataset Comparison panel and includes a Term Glossary for presentation use."
@@ -191,7 +191,6 @@ def build_blocks() -> List[Block]:
         paragraph("附錄 A 原型執行方式…… 22"),
         paragraph("附錄 B Web Demo 操作與公開比較展示…… 22"),
         paragraph("附錄 C 名詞解釋…… 23"),
-        paragraph("附錄 D 後續 IEEE 稿件資料來源原則…… 24"),
         page_break(),
         heading("表目錄", 1),
         paragraph("表 2-1 相似研究差異比較…… 5"),
@@ -308,7 +307,7 @@ def build_blocks() -> List[Block]:
         ),
         heading("2.6 MCP 與 AI Agent Tool Interface", 2),
         paragraph(
-            "Model Context Protocol（MCP）提供一種標準化工具介面，使外部模型或 AI client 能以一致方式呼叫系統能力。本研究將數位孿生原型封裝為本地 MCP server，使情境查詢、場估計、動作排序、點位取樣與窗戶條件模擬等功能，可被 AI agent 直接使用。需要強調的是，MCP 在本研究中的角色屬於系統整合與工具化封裝，用以驗證數位孿生模型可被外部 AI 系統操作，而非針對 MCP 通訊協定本身提出新方法。"
+            "Model Context Protocol（MCP）提供一種標準化工具介面，使外部模型或 AI client 能以一致方式呼叫系統能力。本研究將數位孿生原型封裝為本地 MCP server，但其角色不是執行論文驗證實驗，而是提供實際互動流程：先初始化環境、設備、家具與室內 baseline，再查詢指定座標於特定時間或準穩態下的三因子估計，並可建立 before/after 裝置影響學習紀錄、直接輸入窗戶外部資料，以及針對指定座標目標排序控制候選動作。需要強調的是，MCP 在本研究中的角色屬於系統整合與工具化封裝，用以驗證數位孿生模型可被外部 AI 系統操作，而非針對 MCP 通訊協定本身提出新方法。"
         ),
         heading("2.7 與相似研究之差異定位", 2),
         paragraph(
@@ -635,7 +634,7 @@ def build_blocks() -> List[Block]:
             "其中 v 分別代表 temperature、humidity 與 illuminance。換言之，神經網路不是直接學整個場，而是學主模型剩餘誤差。若未來接入真實資料，則可分成兩種層次：第一種只使用 8 顆角落感測器，將其作為參數校正、裝置影響學習與角落 residual fine-tune 的監督訊號；第二種則在有移動式量測或額外空間探針時，再擴充為更完整的空間 residual 訓練。這樣可避免只憑 8 個角落點就對全室高解析度場做過度宣稱。"
         ),
         paragraph(
-            "在目前的實作中，hybrid residual 訓練可選擇再加入 Fourier low-pass denoising。具體作法是：先針對同一採樣點沿 elapsed time 建立一段短 residual trace，再將該 trace 做 discrete Fourier transform、套用低通遮罩，最後以 inverse transform 還原較平滑的 residual target。根據目前實驗，此做法對 temperature 幾乎不改變結果，對 humidity 有小幅改善，但若直接套用到 illuminance 則會抹去有用的快速變化，因此目前只對 temperature 與 humidity 啟用。"
+            "在目前的實作中，hybrid residual 訓練可選擇再加入 Fourier low-pass denoising。具體作法是：先針對同一採樣點沿 elapsed time 建立一段短 residual trace，再將該 trace 做 discrete Fourier transform、套用低通遮罩，最後以 inverse transform 還原較平滑的 residual target。根據目前實驗，此做法對 temperature 幾乎不改變結果，對 humidity 有小幅改善，但若直接套用到 illuminance 則會抹去有用的快速變化，因此目前只對 temperature 與 humidity 啟用。這個設計來自三個環境因子的物理特性差異：temperature 與 humidity 主要受熱容量、空氣混合、水氣交換與除濕作用影響，時間變化通常較平滑，高頻成分較可能是感測雜訊或短時擾動；illuminance 則直接受燈具開關、窗戶日照、遮蔽邊界、家具陰影與反射路徑影響，場值可能在短時間內出現物理上有意義的跳變。因此，照度 residual 的高頻部分不應被一律視為雜訊，否則會削弱模型對光源與遮蔽快速變化的學習能力。"
         ),
         paragraph(
             "相較於以固定時間窗做積分或區間平均的平滑方式，Fourier low-pass denoising 更適合目前題目。兩者都能降低短時振盪，但時間窗積分本質上屬於時間域中的固定 box filter，若視窗太小則去噪不足，若視窗太大則容易同時模糊瞬態響應與局部轉折，甚至造成較明顯的 lag。相對地，Fourier 低通是直接在頻域中抑制高頻成分，再還原回時間域，因此可以在保留低頻主趨勢的同時，仍然取得對應目前時間點的 denoised residual endpoint。換言之，它不是把時間資訊丟掉，而是在保留時間位置的前提下降低高頻擾動。"
@@ -653,7 +652,7 @@ def build_blocks() -> List[Block]:
         paragraph("其損失函數可表示為："),
         math(r"\mathcal{L}(\boldsymbol{\theta}_v) = \frac{1}{N}\sum_{i=1}^{N}\bigl\|R_v^*(\mathbf{p}_i,t_i) - R_v(\mathbf{p}_i,t_i;\boldsymbol{\theta}_v)\bigr\|^2 + \lambda\|\boldsymbol{\theta}_v\|^2"),
         paragraph(
-            "本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。若啟用頻域去噪，temperature 與 humidity 會先將 $R_v^*$ 沿短時間軌跡做 Fourier low-pass denoising，再送入 MLP 訓練；illuminance 則保留原始 residual target。此設計的目的在於保留主模型可解釋性，同時以資料驅動方式修正其剩餘誤差。"
+            "本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。若啟用頻域去噪，temperature 與 humidity 會先將 $R_v^*$ 沿短時間軌跡做 Fourier low-pass denoising，再送入 MLP 訓練；illuminance 則保留原始 residual target。此設計的目的在於保留主模型可解釋性，同時尊重三因子的物理差異：溫度與濕度 residual 較適合被平滑為低頻趨勢，照度 residual 則需保留由光源、日照、遮蔽與反射造成的短時結構。"
         ),
         heading("3.9 控制動作排序", 2),
         paragraph(
@@ -728,9 +727,9 @@ def build_blocks() -> List[Block]:
                 ],
                 [
                     "Fourier low-pass denoising",
-                    "溫度與濕度 residual 常含短時感測雜訊，直接訓練會使模型學到高頻擾動。",
-                    "在頻域抑制高頻成分並保留低頻趨勢，讓 residual target 更接近可重現的環境變化。",
-                    "本文不將它套用於照度 residual，因為照明變化本身可能具有快速且有意義的跳變。",
+                    "溫度與濕度受熱容量、空氣混合與水氣交換影響，時間響應相對平滑，residual 中的高頻成分較常是短時雜訊或擾動。",
+                    "在頻域抑制高頻成分並保留低頻趨勢，讓 temperature/humidity residual target 更接近可重現的環境變化。",
+                    "本文不將它套用於照度 residual，因為照度受燈具開關、日照、遮蔽、陰影與反射影響，快速變化本身可能是有物理意義的訊號。",
                 ],
                 [
                     "IDW baseline",
@@ -775,19 +774,18 @@ def build_blocks() -> List[Block]:
             ],
         ),
         heading("4.2 MCP Tools", 2),
-        paragraph("本地 MCP server 提供下列 tools："),
+        paragraph("本地 MCP server 目前保留五個互動流程 tools："),
         bullets(
             [
-                "list_scenarios：列出 8 組標準驗證情境。",
-                "list_window_scenarios：列出 48 組窗戶時段/天氣/季節情境。",
-                "run_scenario：執行情境並回傳重建誤差與目標區域估計。",
-                "rank_actions：依目標區域舒適度改善排序候選動作。",
-                "sample_point：估計指定座標的 temperature、humidity 與 illuminance。",
-                "compare_baseline：比較本研究模型與 IDW baseline。",
-                "learn_impacts：由前後感測資料學習非連網裝置影響。",
-                "run_window_matrix：執行全部 48 組窗戶矩陣模擬。",
-                "run_window_direct：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬。",
+                "initialize_environment：初始化 MCP session 中的情境、註冊設備、家具阻擋物、外部環境與室內 baseline。",
+                "sample_point：估計指定座標在特定 elapsed minutes 或 steady state 下的 temperature、humidity 與 illuminance，用於補足非感測點狀態。",
+                "learn_impacts：針對某個非連網設備建立 before/after observation record；只有同時具備開啟前與開啟後的真實感測讀值時，才計算 learned impact coefficients。",
+                "run_window_direct：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬，並可更新目前 MCP session 的外部環境。",
+                "rank_actions：輸入指定座標與目標三因子值，根據目前註冊設備產生候選操作並依 comfort penalty 改善量排序。",
             ]
+        ),
+        paragraph(
+            "早期用於驗證或展示的 list_scenarios、run_scenario、compare_baseline 與 run_window_matrix 仍可由實驗腳本或 web demo 使用，但不再作為 MCP 對外工具。此重構使 MCP 的定位更接近實際 runtime：先註冊環境，再查點位、記錄學習資料、輸入窗戶資料與排序控制動作。"
         ),
         heading("4.3 Gemma/Ollama Bridge", 2),
         paragraph(
@@ -1284,7 +1282,7 @@ def build_blocks() -> List[Block]:
                 ["Power Calibration", "依 active device 附近感測器殘差調整設備影響強度，使模型估計更貼近觀測。"],
                 ["Least Squares", "最小平方法；本文用於從設備前後感測差異估計非連網裝置影響係數。"],
                 ["Hybrid Residual Correction", "保留主物理模型，再用小型 neural network 學習主模型尚未吸收的剩餘誤差。"],
-                ["Fourier Low-Pass Denoising", "對 temperature 與 humidity residual trace 做低通濾波，降低高頻雜訊對 residual training 的影響。"],
+                ["Fourier Low-Pass Denoising", "對 temperature 與 humidity residual trace 做低通濾波，降低高頻雜訊對 residual training 的影響；不套用於 illuminance，因為照度可能因光源、日照與遮蔽產生有物理意義的快速變化。"],
                 ["One-Bounce Diffuse Reflection", "照度模型中的簡化反射近似，讓地板、牆面、天花板或家具表面提供間接回填亮度。"],
                 ["LOO", "Leave-One-Scenario-Out，以每次留下一個情境測試、其餘情境訓練的交叉驗證方式。"],
                 ["Ablation", "消融實驗；移除某個模型元件後比較指標變化，用來判斷元件貢獻。"],
@@ -1297,13 +1295,6 @@ def build_blocks() -> List[Block]:
                 ["MCP", "Model Context Protocol；本文用於將數位孿生能力封裝成 AI client 可呼叫的工具介面。"],
                 ["Direct Window Input", "不使用季節/天氣/時段 preset，而是直接輸入外部溫度、濕度、日照與開窗比例進行模擬。"],
             ],
-        ),
-        heading("附錄 D：後續 IEEE 稿件資料來源原則", 1),
-        paragraph(
-            "本中文論文完整稿作為後續 IEEE 稿件的主要資料來源。未來若需撰寫或修改 IEEE paper，應先從本中文論文抽取研究問題、方法架構、實驗設定、資料集限制、評估指標、表格數字與結論，再依 IEEE 篇幅壓縮文字；不應在 IEEE 稿件中另行加入與中文論文不同的 benchmark 數字、claim boundary 或方法描述。"
-        ),
-        paragraph(
-            "若後續實驗新增或數字更新，應先更新中文論文與其輸出，再由中文論文同步萃取到 IEEE 稿件。對公開資料集尤其要保留本論文的限制寫法：SML2010 與 CU-BEMS 可支援 task-aligned external benchmark，但不能宣稱完整 3D field MAE、8-corner calibration 或完整非連網裝置係數學習。"
         ),
     ]
 

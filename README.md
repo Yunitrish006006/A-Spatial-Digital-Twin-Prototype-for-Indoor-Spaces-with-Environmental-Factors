@@ -182,17 +182,13 @@ python3 scripts/run_public_dataset_model_comparison.py --dataset cu-bems --horiz
 python3 scripts/run_mcp_server.py
 ```
 
-目前提供九個 MCP tools：
+目前 MCP server 已收斂為五個互動流程 tools：
 
-- `list_scenarios`
-- `list_window_scenarios`
-- `run_scenario`
-- `rank_actions`
-- `sample_point`
-- `compare_baseline`
-- `learn_impacts`
-- `run_window_matrix`
-- `run_window_direct`
+- `initialize_environment`：初始化情境、註冊設備/家具、外部環境與室內 baseline。
+- `sample_point`：查詢指定座標在特定 elapsed minutes 或 steady state 下的三因子估計。
+- `learn_impacts`：建立或完成非連網裝置 before/after 觀測紀錄，用於學習 device impact。
+- `run_window_direct`：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬。
+- `rank_actions`：輸入指定座標與目標值，依目前註冊設備排序候選操作。
 
 詳細設定請見 `docs/mcp/mcp_service_zh.md`。
 
