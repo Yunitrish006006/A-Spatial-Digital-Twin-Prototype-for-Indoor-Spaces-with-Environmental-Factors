@@ -17,7 +17,6 @@ THESIS_SOURCES = [
     ROOT / "docs" / "papers" / "thesis" / "thesis_draft_zh.tex",
     ROOT / "docs" / "papers" / "ieee" / "paper.tex",
     ROOT / "scripts" / "build_thesis_docx.py",
-    ROOT / "scripts" / "build_thesis_full_zh_stable.py",
 ]
 
 METRICS = ("temperature", "humidity", "illuminance")
