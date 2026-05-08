@@ -21,7 +21,7 @@
 - 人機互動層與 AI 工具呼叫層共用服務編排入口
 
 ## Slide 7: 主要執行資料流
-- scenario 到 dashboard / MCP response 的流程
+- runtime request 到 dashboard / MCP response 的流程
 
 ## Slide 8: 房間拓樸、感測器與目標區域
 - 8 顆角落感測器與三個區域

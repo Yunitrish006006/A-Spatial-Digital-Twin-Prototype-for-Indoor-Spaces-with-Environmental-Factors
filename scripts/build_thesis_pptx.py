@@ -1821,7 +1821,7 @@ def build_outline_30min() -> str:
         ("研究問題與貢獻", ["RQ1-RQ4、主要技術貢獻、task-aligned benchmark 策略"]),
         ("文獻定位、研究缺口與比較原則", ["IEQ 實驗、場重建、hybrid model、digital twin 平台之差異", "公開資料集只比較相容子任務"]),
         ("整體系統架構", ["人機互動層與 AI 工具呼叫層共用服務編排入口"]),
-        ("主要執行資料流", ["scenario 到 dashboard / MCP response 的流程"]),
+        ("主要執行資料流", ["runtime request 到 dashboard / MCP response 的流程"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器與三個區域"]),
         ("模組化裝置與家具阻擋", ["裝置模組化、家具自適應阻擋"]),
         ("數學模型", ["變數專屬 nominal model + residual correction", "早期純插值與 local-only 模型失敗後的調整", "避免把同一套公式套用到溫度、濕度、照度"]),
