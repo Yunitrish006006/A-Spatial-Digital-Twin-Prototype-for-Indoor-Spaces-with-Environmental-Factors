@@ -184,7 +184,7 @@ python3 scripts/run_mcp_server.py
 
 目前 MCP server 已收斂為五個互動流程 tools：
 
-- `initialize_environment`：初始化情境、註冊設備/家具、外部環境與室內 baseline。
+- `initialize_environment`：初始化 MCP session；可設定 base scenario、室內 baseline、室外溫濕度/日照/daylight factor、註冊或移除設備、家具/遮蔽物、預設 elapsed/steady-state 時間與是否使用 hybrid residual。
 - `sample_point`：查詢指定座標在特定 elapsed minutes 或 steady state 下的三因子估計。
 - `learn_impacts`：建立或完成非連網裝置 before/after 觀測紀錄，用於學習 device impact。
 - `run_window_direct`：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬。

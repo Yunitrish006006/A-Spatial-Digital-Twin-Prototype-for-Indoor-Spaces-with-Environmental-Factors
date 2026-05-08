@@ -43,23 +43,78 @@ POINT_PROPERTIES = {
 
 BASELINE_SCHEMA = {
     "type": "object",
+    "description": "Indoor baseline before appliance influence and residual correction.",
     "properties": {
-        "indoor_temperature": {"type": "number"},
-        "indoor_humidity": {"type": "number"},
-        "base_illuminance": {"type": "number"},
+        "indoor_temperature": {"type": "number", "description": "Initial indoor temperature in °C."},
+        "indoor_humidity": {"type": "number", "description": "Initial indoor relative humidity in %, clamped to 0-100."},
+        "base_illuminance": {"type": "number", "description": "Initial indoor illuminance in lux, clamped to non-negative values."},
     },
     "additionalProperties": False,
 }
 
 ENVIRONMENT_SCHEMA = {
     "type": "object",
+    "description": "Outdoor boundary conditions used by window and daylight influence models.",
     "properties": {
-        "outdoor_temperature": {"type": "number"},
-        "outdoor_humidity": {"type": "number"},
-        "sunlight_illuminance": {"type": "number"},
-        "daylight_factor": {"type": "number"},
+        "outdoor_temperature": {"type": "number", "description": "Outdoor temperature in °C."},
+        "outdoor_humidity": {"type": "number", "description": "Outdoor relative humidity in %, clamped to 0-100."},
+        "sunlight_illuminance": {"type": "number", "description": "Outdoor sunlight illuminance in lux, clamped to non-negative values."},
+        "daylight_factor": {"type": "number", "description": "Daylight transmission factor, clamped to non-negative values."},
     },
     "additionalProperties": False,
+}
+
+VECTOR_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "x": {"type": "number", "description": "X coordinate in meters."},
+        "y": {"type": "number", "description": "Y coordinate in meters."},
+        "z": {"type": "number", "description": "Z coordinate in meters."},
+    },
+    "additionalProperties": False,
+}
+
+DEVICE_SCHEMA = {
+    "type": "object",
+    "description": "Device registration or override. Built-in names are ac_main, window_main, and light_main; custom devices may also be supplied.",
+    "properties": {
+        "name": {"type": "string", "description": "Device name to override or create."},
+        "kind": {"type": "string", "description": "Device kind: ac, window, or light."},
+        "activation": {"type": "number", "description": "Current activation level, clamped to 0-1."},
+        "removed": {"type": "boolean", "description": "When true, remove this built-in device from the registered state."},
+        "position": VECTOR_SCHEMA,
+        "orientation": VECTOR_SCHEMA,
+        "influence_radius": {"type": "number", "description": "Spatial influence radius in meters."},
+        "radius": {"type": "number", "description": "Alias for influence_radius."},
+        "response_time_minutes": {"type": "number", "description": "Time constant for dynamic activation."},
+        "power": {"type": "number", "description": "Device power scale, clamped to 0-4."},
+        "ac_mode": {"type": "string", "description": "AC mode, for example cool, dry, heat, or fan."},
+        "target_temperature": {"type": "number", "description": "AC target temperature in °C."},
+        "horizontal_mode": {"type": "string", "description": "AC horizontal sweep mode."},
+        "horizontal_angle_deg": {"type": "number", "description": "AC horizontal outlet angle in degrees."},
+        "vertical_mode": {"type": "string", "description": "AC vertical sweep mode."},
+        "vertical_angle_deg": {"type": "number", "description": "AC vertical outlet angle in degrees."},
+        "illuminance_gain": {"type": "number", "description": "Light output gain for light devices."},
+        "surface_width": {"type": "number", "description": "Display or emitting surface width in meters."},
+        "surface_height": {"type": "number", "description": "Display or emitting surface height in meters."},
+        "metadata": {"type": "object", "description": "Additional device metadata."},
+    },
+    "additionalProperties": True,
+}
+
+FURNITURE_SCHEMA = {
+    "type": "object",
+    "description": "Furniture blocker registration or built-in activation override. Built-in names are cabinet_window, sofa_main, and table_center.",
+    "properties": {
+        "name": {"type": "string", "description": "Furniture name to override or create."},
+        "kind": {"type": "string", "description": "Furniture kind or label."},
+        "activation": {"type": "number", "description": "Blocker activation level, clamped to 0-1."},
+        "min_corner": VECTOR_SCHEMA,
+        "max_corner": VECTOR_SCHEMA,
+        "block_strength": {"type": "number", "description": "Obstruction strength, clamped to 0.05-0.95."},
+        "metadata": {"type": "object", "description": "Additional blocker metadata such as reflectance or light/ac/window block factors."},
+    },
+    "additionalProperties": True,
 }
 
 TOOLS = [
@@ -78,6 +133,7 @@ TOOLS = [
                 "devices": {
                     "type": "array",
                     "description": "Registered device specs. Supports built-in names or custom ac/window/light devices.",
+                    "items": DEVICE_SCHEMA,
                 },
                 "replace_existing_devices": {
                     "type": "boolean",
@@ -86,10 +142,11 @@ TOOLS = [
                 "furniture": {
                     "type": "array",
                     "description": "Registered furniture blockers or built-in furniture activation overrides.",
+                    "items": FURNITURE_SCHEMA,
                 },
-                "elapsed_minutes": {"type": "number"},
-                "steady_state_minutes": {"type": "number"},
-                "use_hybrid_residual": {"type": "boolean"},
+                "elapsed_minutes": {"type": "number", "description": "Default elapsed time used by later calls when no time is supplied."},
+                "steady_state_minutes": {"type": "number", "description": "Elapsed time used when later point sampling or ranking asks for steady_state."},
+                "use_hybrid_residual": {"type": "boolean", "description": "Default estimator choice for later calls; true uses the saved hybrid residual checkpoint when available."},
             },
             "additionalProperties": False,
         },

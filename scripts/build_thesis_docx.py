@@ -5,6 +5,7 @@ from typing import Dict, Iterable, List
 import shutil
 import struct
 import subprocess
+import tempfile
 from xml.sax.saxutils import escape
 import zipfile
 
@@ -33,30 +34,61 @@ def ensure_image_asset(block: Block) -> Path:
         qlmanage = shutil.which("qlmanage")
         if qlmanage is None:
             raise SystemExit("qlmanage not found. It is required to convert SVG figures into PNG assets.")
-        temp_dir = PAPER_ASSETS / ".ql_tmp"
-        temp_dir.mkdir(parents=True, exist_ok=True)
-        completed = subprocess.run(
-            [qlmanage, "-t", "-s", "1800", "-o", str(temp_dir), str(source)],
-            cwd=ROOT,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if completed.returncode != 0:
-            raise SystemExit(completed.stderr or completed.stdout or "Failed to render figure asset via qlmanage.")
-        rendered = temp_dir / f"{source.name}.png"
-        if not rendered.exists():
-            png_candidates = sorted(temp_dir.glob("*.png"))
-            if len(png_candidates) == 1:
-                rendered = png_candidates[0]
-            else:
-                raise SystemExit(f"qlmanage did not produce expected PNG asset for {source}")
-        shutil.move(str(rendered), str(target))
+        with tempfile.TemporaryDirectory(prefix="thesis_ql_", dir="/private/tmp") as temp_name:
+            temp_dir = Path(temp_name)
+            render_source = source
+            svg_text = source.read_text(encoding="utf-8", errors="ignore")
+            if 'width="1600" height="900" viewBox="0 0 1600 900"' in svg_text:
+                padded_source = temp_dir / source.name
+                padded_source.write_text(
+                    svg_text.replace('width="1600" height="900"', 'width="1600" height="1600"', 1),
+                    encoding="utf-8",
+                )
+                render_source = padded_source
+            completed = subprocess.run(
+                [qlmanage, "-t", "-s", "1800", "-o", str(temp_dir), str(render_source)],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if completed.returncode != 0:
+                raise SystemExit(completed.stderr or completed.stdout or "Failed to render figure asset via qlmanage.")
+            rendered = temp_dir / f"{render_source.name}.png"
+            if not rendered.exists():
+                png_candidates = sorted(temp_dir.glob("*.png"))
+                if len(png_candidates) == 1:
+                    rendered = png_candidates[0]
+                else:
+                    raise SystemExit(f"qlmanage did not produce expected PNG asset for {source}")
+            shutil.move(str(rendered), str(target))
+        crop_png_to_content(target)
         return target
     target = PAPER_ASSETS / f"{asset_name}{source.suffix.lower()}"
     if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
         shutil.copy2(source, target)
     return target
+
+
+def crop_png_to_content(path: Path, padding: int = 24) -> None:
+    try:
+        from PIL import Image, ImageChops
+    except ImportError:
+        return
+
+    with Image.open(path) as image:
+        rgb = image.convert("RGB")
+        background = Image.new("RGB", rgb.size, rgb.getpixel((0, 0)))
+        bbox = ImageChops.difference(rgb, background).getbbox()
+        if not bbox:
+            return
+        left = max(0, bbox[0] - padding)
+        top = max(0, bbox[1] - padding)
+        right = min(rgb.width, bbox[2] + padding)
+        bottom = min(rgb.height, bbox[3] + padding)
+        if (left, top, right, bottom) == (0, 0, rgb.width, rgb.height):
+            return
+        rgb.crop((left, top, right, bottom)).save(path)
 
 
 def png_dimensions(path: Path) -> List[int]:
@@ -151,6 +183,8 @@ def build_blocks() -> List[Block]:
         paragraph("    3.5.1 8 點場推估的可證明範圍…… 9"),
         paragraph("  3.6 非連網裝置影響學習…… 9"),
         paragraph("  3.7 訓練資料組裝流程…… 9"),
+        paragraph("    3.7.1 學習與訓練資料流…… 10"),
+        paragraph("    3.7.2 訓練完成後的推論與推薦資料流…… 10"),
         paragraph("  3.8 Hybrid Residual Neural Network 延伸…… 10"),
         paragraph("  3.9 控制動作排序…… 10"),
         paragraph("  3.10 方法選擇理由與限制…… 10"),
@@ -204,6 +238,7 @@ def build_blocks() -> List[Block]:
         paragraph("圖 3-2 主要執行資料流…… 7"),
         paragraph("圖 3-3 房間感測器與目標區域配置…… 8"),
         paragraph("圖 3-4 感測器校正與影響學習流程…… 9"),
+        paragraph("圖 3-5 模型學習、推論與推薦資料流…… 10"),
         paragraph("圖 5-1 驗證與實驗流程…… 13"),
         paragraph("圖 5-2 三裝置同時作用溫度場 3D 點雲（all_active）…… 13"),
         paragraph("圖 5-3 僅冷氣作用溫度場 3D 點雲（ac_only）…… 14"),
@@ -295,7 +330,7 @@ def build_blocks() -> List[Block]:
         ),
         heading("2.6 MCP 與 AI Agent Tool Interface", 2),
         paragraph(
-            "Model Context Protocol（MCP）提供一種標準化工具介面，使外部模型或 AI client 能以一致方式呼叫系統能力。本研究將數位孿生原型封裝為本地 MCP server，但其角色不是執行論文驗證實驗，而是提供實際互動流程：先初始化環境、設備、家具與室內 baseline，再查詢指定座標於特定時間或準穩態下的三因子估計，並可建立 before/after 裝置影響學習紀錄、直接輸入窗戶外部資料，以及針對指定座標目標排序控制候選動作。需要強調的是，MCP 在本研究中的角色屬於系統整合與工具化封裝，用以驗證數位孿生模型可被外部 AI 系統操作，而非針對 MCP 通訊協定本身提出新方法。"
+            "Model Context Protocol（MCP）提供一種標準化工具介面，使外部模型或 AI client 能以一致方式呼叫系統能力。本研究將數位孿生原型封裝為本地 MCP server，但其角色不是執行論文驗證實驗，而是提供實際互動流程：先初始化 MCP session 的 runtime state，包含 base scenario、室內 baseline、外部邊界條件、註冊設備、家具/遮蔽物、預設時間與 estimator 選擇，再查詢指定座標於特定時間或準穩態下的三因子估計，並可建立 before/after 裝置影響學習紀錄、直接輸入窗戶外部資料，以及針對指定座標目標排序控制候選動作。需要強調的是，MCP 在本研究中的角色屬於系統整合與工具化封裝，用以驗證數位孿生模型可被外部 AI 系統操作，而非針對 MCP 通訊協定本身提出新方法。"
         ),
         heading("2.7 與相似研究之差異定位", 2),
         paragraph(
@@ -393,6 +428,21 @@ def build_blocks() -> List[Block]:
             "為避免把不同物理性質的環境量硬套到同一個公式，本研究將估測流程拆成兩層。第一層是依變數而異的 nominal model $N_v(\\mathbf{p},t)$，負責描述該變數的主要物理趨勢；第二層是由 8 顆角落感測器提供的 residual correction $C_v(\\mathbf{p},t)$，負責吸收低階空間偏差。因此任一環境因素 $v\\in\\{T,H,L\\}$ 的最終估計值皆寫成："
         ),
         math(r"\hat{F}_v(\mathbf{p},t)=N_v(\mathbf{p},t)+C_v(\mathbf{p},t)"),
+        table(
+            ["符號", "詳細意義", "單位或備註"],
+            [
+                ["$\\hat{F}_v(\\mathbf{p},t)$", "環境因素 $v$ 在位置 $\\mathbf{p}$ 與時間 $t$ 的最終估計值。", "溫度為 °C、濕度為 %RH、照度為 lux。"],
+                ["$v$", "被估計的環境因素索引。", "$v\\in\\{T,H,L\\}$，分別代表 temperature、humidity、illuminance。"],
+                ["$T(\\mathbf{p},t)$", "位置 $\\mathbf{p}$、時間 $t$ 的溫度場。", "單位為 °C。"],
+                ["$H(\\mathbf{p},t)$", "位置 $\\mathbf{p}$、時間 $t$ 的相對濕度場。", "單位為 %RH，後續以 $\\mathrm{clip}_{[0,100]}$ 限制在 0 到 100。"],
+                ["$L(\\mathbf{p},t)$", "位置 $\\mathbf{p}$、時間 $t$ 的照度場。", "單位為 lux，後續以 $\\max\\{0,\\cdot\\}$ 避免負照度。"],
+                ["$\\mathbf{p}=(x,y,z)$", "查詢點或採樣點的三維座標。", "單位為 m，座標系統與房間設計檔一致。"],
+                ["$x,y,z$", "分別為房間寬度方向、長度方向與高度方向座標。", "原點位於房間地面西南角。"],
+                ["$t$", "情境經過時間、設備啟動後時間或 demo 時間軸上的查詢時間。", "單位依實作通常為 s 或 min；論文公式只表示相對時間。"],
+                ["$N_v(\\mathbf{p},t)$", "變數專屬 nominal model 輸出，負責描述該變數主要物理趨勢。", "溫度、濕度、照度各自使用不同公式。"],
+                ["$C_v(\\mathbf{p},t)$", "由 8 顆角落感測器 residual 形成的校正場。", "用於修正 nominal model 的低階空間偏差。"],
+            ],
+        ),
         heading("3.3.1 共用符號與 Indoor Baseline", 3),
         paragraph(
             "其中 $T$ 代表 temperature，$H$ 代表 relative humidity，$L$ 代表 illuminance。$C_v$ 的三線性形式在 3.5 節定義；本節先定義三個不同的 nominal model。為了讓公式可讀，本研究先定義共用的幾何與裝置符號。令查詢點為 $\\mathbf{p}=(x,y,z)$，房間高度為 $H_r$，則正規化垂直位置為："
@@ -429,14 +479,29 @@ def build_blocks() -> List[Block]:
             "$A_j(t)$ 描述裝置由剛啟動到接近準穩態的時間響應；$R_j$ 是距離衰減；$D_j$ 是方向性項，例如冷氣出風方向或燈具照射方向；$V_j$ 是家具或牆面造成的可見性／遮蔽項；$r_j$ 是裝置影響半徑。這個 envelope 是三個變數共用的空間結構，但各變數如何使用它並不相同。"
         ),
         table(
-            ["符號", "意義"],
+            ["符號", "詳細意義", "單位或備註"],
             [
-                ["$T_0,H_0,L_0$", "Indoor baseline，即設備作用與 residual correction 前的起始室內溫度、相對濕度與照度"],
-                ["$T_{\\mathrm{out}},H_{\\mathrm{out}},S_{\\mathrm{out}}$", "室外溫度、室外相對濕度與外部日照照度"],
-                ["$P_j$", "第 $j$ 個裝置的 power scale，可由感測資料校正"],
-                ["$k^{g},k^{s}$", "全室平均響應與空間局部響應的簡化增益係數"],
-                ["$M(t)$", "房間混合係數，用於控制垂直分層強度"],
-                ["$C_v(\\mathbf{p},t)$", "由 8 顆角落感測器 residual 形成的三線性校正場"],
+                ["$T_0,H_0,L_0$", "Indoor baseline，即設備作用與 residual correction 前的起始室內溫度、相對濕度與照度。", "分別為 °C、%RH、lux。"],
+                ["$\\mathbf{b}_0$", "三個 baseline 值組成的向量。", "$\\mathbf{b}_0=(T_0,H_0,L_0)$。"],
+                ["$\\mathcal{S}$", "角落感測器集合。", "本研究固定為 8 顆。"],
+                ["$s$", "感測器索引。", "$s\\in\\mathcal{S}$。"],
+                ["$\\mathbf{p}_s$", "第 $s$ 顆感測器的位置。", "位於地面四角或天花板四角。"],
+                ["$t_{\\mathrm{ref}}$", "用來初始化 baseline 的參考時間。", "應選在設備作用尚未加入或狀態穩定時。"],
+                ["$O_v(\\mathbf{p}_s,t_{\\mathrm{ref}})$", "感測器在位置 $\\mathbf{p}_s$、時間 $t_{\\mathrm{ref}}$ 對變數 $v$ 的實際觀測值。", "作為 baseline 或 residual 的資料來源。"],
+                ["$z,H_r,\\zeta$", "$z$ 為查詢點高度，$H_r$ 為房間高度，$\\zeta=z/H_r-1/2$ 為中心化高度。", "$\\zeta>0$ 表示偏上層，$\\zeta<0$ 表示偏下層。"],
+                ["$j$", "裝置索引。", "例如冷氣、窗戶或燈具。"],
+                ["$A_j(t)$", "第 $j$ 個裝置在時間 $t$ 的有效啟用量。", "由 $a_j$ 與 $\\tau_j$ 控制。"],
+                ["$a_j$", "裝置啟用強度或穩態比例。", "常介於 0 到 1；也可視為經校正後的強度尺度。"],
+                ["$\\tau_j$", "裝置接近穩態的時間常數。", "愈大代表影響累積愈慢。"],
+                ["$E_j(\\mathbf{p},t)$", "裝置在位置 $\\mathbf{p}$、時間 $t$ 的空間影響 envelope。", "結合時間響應、距離、方向與遮蔽。"],
+                ["$R_j(\\mathbf{p})$", "距離衰減項。", "$\\exp(-\\|\\mathbf{p}-\\mathbf{p}_j\\|/r_j)$。"],
+                ["$D_j(\\mathbf{p},t)$", "方向性或朝向權重。", "用於冷氣出風方向、窗戶日照方向或燈具照射方向。"],
+                ["$V_j(\\mathbf{p})$", "可見性或遮蔽項。", "0 表示完全遮蔽，1 表示未遮蔽，中間值表示部分遮蔽。"],
+                ["$\\mathbf{p}_j$", "第 $j$ 個裝置的位置。", "與房間座標同單位 m。"],
+                ["$r_j$", "第 $j$ 個裝置的作用半徑或衰減尺度。", "單位為 m。"],
+                ["$P_j$", "第 $j$ 個裝置的 power scale。", "可由感測器資料校正，用來修正預設設備強度。"],
+                ["$k^{g},k^{s}$", "全室平均響應與空間局部響應的簡化增益係數。", "$g$ 表示 global，$s$ 表示 spatial/local。"],
+                ["$M(t)$", "房間混合係數。", "用於調整垂直分層項的強度。"],
             ],
         ),
         heading("3.3.2 溫度場模型", 3),
@@ -476,6 +541,27 @@ def build_blocks() -> List[Block]:
         paragraph(
             "其中 $s_m$ 由冷氣模式決定，冷房或除濕時為負，加熱時為正，送風模式不產生全室熱量變化；$d_T$ 代表冷氣設定溫度與室內基準溫度形成的需求量。此式的重點是：溫度使用熱交換與熱源項，不使用照度的光學項。"
         ),
+        table(
+            ["溫度公式符號", "詳細意義", "物理角色"],
+            [
+                ["$N_T(\\mathbf{p},t)$", "溫度 nominal estimate。", "在尚未加上角落 residual correction 前，模型對位置 $\\mathbf{p}$ 的溫度估計。"],
+                ["$B_T(t)$", "全室平均溫度響應。", "描述設備或窗戶造成的整體室溫偏移，不區分房間內不同位置。"],
+                ["$S_T(\\mathbf{p},t)$", "局部溫度響應。", "描述冷氣出風口、窗邊或燈具附近與其他位置不同的局部熱影響。"],
+                ["$\\gamma_T$", "垂直溫度分層係數。", "控制上層與下層溫度差的強度。"],
+                ["$M(t)$", "混合係數。", "與 $\\gamma_T\\zeta$ 相乘，用來調整分層效果隨時間或混合狀態的變化。"],
+                ["$\\zeta$", "中心化高度。", "使垂直項在房間中層附近為 0，上層與下層分別呈現正負偏移。"],
+                ["$B_{\\mathrm{ac},T},S_{\\mathrm{ac},T}$", "冷氣造成的全室與局部溫度項。", "通常為降溫；符號由 $s_m$ 與冷氣模式決定。"],
+                ["$B_{\\mathrm{win},T},S_{\\mathrm{win},T}$", "窗戶造成的全室與局部溫度項。", "由室外與室內基準溫差 $T_{\\mathrm{out}}-T_0$ 決定升溫或降溫。"],
+                ["$B_{\\mathrm{light},T},S_{\\mathrm{light},T}$", "照明造成的全室與局部熱項。", "表示燈具發熱對溫度的低階近似。"],
+                ["$s_m$", "冷氣模式符號。", "冷房或除濕為負、加熱為正、送風近似為 0。"],
+                ["$d_T$", "冷氣溫度需求量。", "表示冷氣設定溫度與目前 indoor baseline 之間的差距強度。"],
+                ["$k_{\\mathrm{ac},T}^{g},k_{\\mathrm{win},T}^{g},k_{\\mathrm{light},T}^{g}$", "溫度全室響應增益。", "決定各裝置對 $B_T(t)$ 的影響大小。"],
+                ["$k_{\\mathrm{ac},T}^{s},k_{\\mathrm{win},T}^{s},k_{\\mathrm{light},T}^{s}$", "溫度局部響應增益。", "決定各裝置對 $S_T(\\mathbf{p},t)$ 的影響大小。"],
+                ["$P_{\\mathrm{ac}},P_{\\mathrm{win}},P_{\\mathrm{light}}$", "冷氣、窗戶與照明的 power scale。", "由預設值或感測器 calibration 給定，用來修正裝置實際強度。"],
+                ["$A_{\\mathrm{ac}},A_{\\mathrm{win}},A_{\\mathrm{light}}$", "冷氣、窗戶與照明的時間啟用量。", "表示設備影響隨 elapsed time 逐漸累積。"],
+                ["$E_{\\mathrm{ac}},E_{\\mathrm{win}},E_{\\mathrm{light}}$", "冷氣、窗戶與照明的空間 envelope。", "表示位置、方向與遮蔽造成的局部影響差異。"],
+            ],
+        ),
         heading("3.3.3 濕度場模型", 3),
         paragraph("濕度場的 nominal model 不直接套用熱場公式，而是使用水氣交換與冷氣除濕近似。其結構同樣分成 indoor baseline、全室平均響應、局部空間響應與垂直濕度梯度："),
         math(
@@ -494,6 +580,25 @@ def build_blocks() -> List[Block]:
         paragraph(
             "其中 $H_0$ 為室內基準相對濕度，$H_{\\mathrm{out}}$ 為室外相對濕度，$d_H$ 為除濕需求量。冷氣項為負值，表示除濕；窗戶項由 $(H_{\\mathrm{out}}-H_0)$ 決定正負，表示外氣較濕時提高室內濕度，外氣較乾時降低室內濕度。此處並未主張完整求解水氣質量守恆或 psychrometric model，而是使用控制導向的低階近似，再交由角落感測器 residual 校正吸收模型偏差。"
         ),
+        table(
+            ["濕度公式符號", "詳細意義", "物理角色"],
+            [
+                ["$N_H(\\mathbf{p},t)$", "濕度 nominal estimate。", "在尚未加上角落 residual correction 前，模型對位置 $\\mathbf{p}$ 的相對濕度估計。"],
+                ["$\\mathrm{clip}_{[0,100]}$", "上下界截斷函數。", "確保相對濕度不低於 0% 且不高於 100%。"],
+                ["$H_0$", "室內基準相對濕度。", "設備作用前或查詢前的室內濕度起點。"],
+                ["$B_H(t)$", "全室平均濕度響應。", "描述冷氣除濕或窗戶換氣對全室濕度的平均影響。"],
+                ["$S_H(\\mathbf{p},t)$", "局部濕度響應。", "描述冷氣附近、窗邊等位置的濕度變化差異。"],
+                ["$\\gamma_H$", "垂直濕度梯度係數。", "控制高度造成的濕度分層強度。"],
+                ["$-\\gamma_H M(t)\\zeta$", "濕度垂直項。", "使用負號表示目前模型假設上層與下層濕度梯度方向與溫度項不同。"],
+                ["$k_{\\mathrm{ac},H}^{g},k_{\\mathrm{ac},H}^{s}$", "冷氣除濕的全室與局部增益。", "增益越大，冷氣對濕度下降的影響越強。"],
+                ["$k_{\\mathrm{win},H}^{g},k_{\\mathrm{win},H}^{s}$", "窗戶換氣的全室與局部濕度增益。", "增益越大，室外濕度與室內基準濕度的差異越容易傳入室內。"],
+                ["$d_H$", "除濕需求量。", "表示冷氣除濕作用的有效強度。"],
+                ["$H_{\\mathrm{out}}-H_0$", "室外與室內基準濕度差。", "大於 0 表示外氣較濕、開窗傾向增加濕度；小於 0 表示外氣較乾、開窗傾向降低濕度。"],
+                ["$P_{\\mathrm{ac}},P_{\\mathrm{win}}$", "冷氣與窗戶的 power scale。", "校正冷氣除濕強度與窗戶換氣強度。"],
+                ["$A_{\\mathrm{ac}},A_{\\mathrm{win}}$", "冷氣與窗戶的時間啟用量。", "描述除濕或換氣影響隨時間累積。"],
+                ["$E_{\\mathrm{ac}},E_{\\mathrm{win}}$", "冷氣與窗戶的空間 envelope。", "描述不同位置受冷氣或窗戶濕度影響的程度。"],
+            ],
+        ),
         heading("3.3.4 照度場模型", 3),
         paragraph("照度場的 nominal model 採用光源、日照、遮蔽與反射近似，不使用溫濕度的全室混合項："),
         math(
@@ -509,6 +614,26 @@ def build_blocks() -> List[Block]:
         ),
         paragraph(
             "其中 $L_0$ 為室內基準照度，$S_{\\mathrm{out}}$ 為外部日照照度，$d_f$ 為 daylight factor，$k_{\\mathrm{sol}}$ 為窗戶日照增益，$G_{\\mathrm{light}}$ 為燈具照度增益，$\\beta_{\\mathrm{amb}}$ 為窗邊散射背景光係數。$I^{\\mathrm{refl}}$ 是 3.4 節定義的 single-bounce diffuse reflection。照度模型的重點在於光源位置、方向性、距離衰減、遮蔽與表面反射，因此它與溫度、濕度的熱交換或水氣交換公式不同。"
+        ),
+        table(
+            ["照度公式符號", "詳細意義", "光學或模型角色"],
+            [
+                ["$N_L(\\mathbf{p},t)$", "照度 nominal estimate。", "在尚未加上角落 residual correction 前，模型對位置 $\\mathbf{p}$ 的照度估計。"],
+                ["$\\max\\{0,\\cdot\\}$", "非負截斷。", "避免因校正或負項造成物理上不合理的負照度。"],
+                ["$L_0$", "室內基準照度。", "沒有新增窗戶或燈具作用前的背景照度。"],
+                ["$L_{\\mathrm{win}}^{\\mathrm{dir}}$", "窗戶直射或主要入射光項。", "表示外部日照經窗戶進入室內後對查詢點的直接貢獻。"],
+                ["$L_{\\mathrm{light}}^{\\mathrm{dir}}$", "燈具直射光項。", "表示啟用中燈具對查詢點的直接照度貢獻。"],
+                ["$L_{\\mathrm{win}}^{\\mathrm{amb}}$", "窗邊環境散射光項。", "補足窗戶附近非直射但仍與開窗、外光相關的背景亮度。"],
+                ["$I^{\\mathrm{refl}}(\\mathbf{p},t)$", "單次漫反射項。", "由牆面、地板、天花板與家具表面作為次級反射面，補足 indirect fill light。"],
+                ["$S_{\\mathrm{out}}$", "外部日照照度。", "室外光源強度；天氣、時段或外部資料會改變此值。"],
+                ["$d_f$", "daylight factor。", "表示外部日照進入室內後的比例或衰減。"],
+                ["$k_{\\mathrm{sol}}$", "窗戶日照增益。", "調整窗戶直射光項的強度。"],
+                ["$G_{\\mathrm{light}}$", "燈具照度增益。", "調整燈具直射光項的強度。"],
+                ["$\\beta_{\\mathrm{amb}}$", "窗邊散射背景光係數。", "控制窗邊 ambient light 對室內照度的補償程度。"],
+                ["$\\mathbf{p}_{\\mathrm{win}}$", "窗戶位置。", "用於計算查詢點離窗戶的距離。"],
+                ["$r_{\\mathrm{win}}$", "窗戶影響半徑。", "控制 $L_{\\mathrm{win}}^{\\mathrm{amb}}$ 隨距離衰減的速度。"],
+                ["$1.8r_{\\mathrm{win}}$", "窗邊散射光的衰減尺度。", "比直接窗戶 envelope 稍長，用來表示散射光比直射項更平滑。"],
+            ],
         ),
         paragraph(
             "因此，本研究的主張不是「溫度、濕度、照度都遵守同一套 bulk + local 物理定律」，而是「三種變數各自先由符合其物理特性的低階 nominal model 產生估計，再共用 8 點 sparse-sensor residual correction」。這樣可同時保留可解釋性、低運算成本，以及由真實感測資料校正的能力。"
@@ -532,6 +657,24 @@ def build_blocks() -> List[Block]:
         paragraph(
             "其中 $s$ 代表 floor、ceiling、四面牆與啟用中的家具表面；$\\rho_s$ 為表面反射率；$\\bar{I}_s$ 為該表面中心由 direct light 接收到的照度；$A_s^{\\text{rel}}$ 為正規化後的面積因子；$\\ell_s$ 為衰減長度；$V_s(\\mathbf{p})$ 則延用既有遮蔽邏輯。這個公式的目的不是做高保真光學渲染，而是在不引入完整光傳輸模擬的前提下，補足 direct light 對 indirect fill light 的低估。"
         ),
+        table(
+            ["反射公式符號", "詳細意義", "模型角色"],
+            [
+                ["$I^{\\text{refl}}(\\mathbf{p},t)$", "查詢點收到的單次漫反射照度。", "加到照度 nominal model 中，補足 indirect fill light。"],
+                ["$\\sum_s$", "對所有候選反射表面加總。", "包含 floor、ceiling、四面牆，以及啟用中的家具表面。"],
+                ["$s$", "反射表面索引。", "每個 $s$ 對應一個具有位置、法向量與面積的表面。"],
+                ["$\\rho_s$", "表面 $s$ 的反射率。", "0 表示完全不反射，1 表示理想全反射；本研究使用簡化參數。"],
+                ["$\\bar{I}_s$", "表面 $s$ 中心接收到的 direct illuminance。", "表示該表面被窗戶或燈具照亮後可作為次級光源的強度。"],
+                ["$A_s^{\\text{rel}}$", "相對面積因子。", "面積越大的表面可提供較多反射貢獻；經正規化避免量級失控。"],
+                ["$\\mathbf{c}_s$", "表面 $s$ 的中心點。", "用來計算表面中心到查詢點的距離。"],
+                ["$\\ell_s$", "表面 $s$ 的反射衰減長度。", "值越大表示反射光衰減越慢。"],
+                ["$e^{-\\|\\mathbf{p}-\\mathbf{c}_s\\|/\\ell_s}$", "距離衰減項。", "查詢點離反射表面越遠，該表面的回填照度越弱。"],
+                ["$\\mathbf{n}_s$", "表面 $s$ 的外法向量或有效反射方向。", "用於判斷查詢點是否位於該表面可反射的方向。"],
+                ["$\\hat{\\mathbf{r}}_{s\\to p}$", "由表面中心指向查詢點的單位向量。", "與 $\\mathbf{n}_s$ 做內積以計算方向投影。"],
+                ["$\\max(0,\\mathbf{n}_s\\cdot\\hat{\\mathbf{r}}_{s\\to p})$", "Lambertian 方向投影近似。", "若查詢點在表面背向側，貢獻被截為 0。"],
+                ["$V_s(\\mathbf{p})$", "反射面到查詢點之間的可見性或遮蔽項。", "家具或牆面遮擋時降低反射貢獻。"],
+            ],
+        ),
         paragraph(
             "換言之，本研究對 illuminance 的設計取捨是：保留 direct source、directionality 與 obstruction 的可解釋結構，再另外加上一個單次漫反射近似，使牆、地板、天花板與家具能作為次級發光面回填照度。這樣既能維持與現有影響場模型一致的參數化形式，也比 full radiosity 更適合目前的單房間數位孿生原型。"
         ),
@@ -542,6 +685,18 @@ def build_blocks() -> List[Block]:
         math(r"C(\mathbf{p}) = c_0 + c_1 X + c_2 Y + c_3 Z + c_4 XY + c_5 XZ + c_6 YZ + c_7 XYZ"),
         paragraph(
             "其中 X、Y、Z 為正規化後的房間座標。相較於一階 affine surface，trilinear correction 可使用 8 個角點支撐 8 個校正係數，除了整體偏移與一階梯度外，也能表示角落之間的交互變化。不過此方法仍無法重建任意高頻局部變化，因此其定位仍是低成本、可解釋的場校正方法。"
+        ),
+        table(
+            ["校正公式符號", "詳細意義", "模型角色"],
+            [
+                ["$C(\\mathbf{p})$", "某一環境因素在查詢點的三線性 residual correction。", "加回 nominal model 以修正低階空間偏差。"],
+                ["$X,Y,Z$", "正規化房間座標，分別由 $x/W$、$y/L$、$z/H$ 得到。", "皆介於 0 到 1，表示查詢點在房間內的相對位置。"],
+                ["$c_0$", "常數項。", "修正整體偏移，也就是所有角點共同偏高或偏低的部分。"],
+                ["$c_1X,c_2Y,c_3Z$", "三個一階空間梯度項。", "修正沿寬度、長度與高度方向的線性偏差。"],
+                ["$c_4XY,c_5XZ,c_6YZ$", "兩兩交互項。", "修正兩個方向同時變化時的低階彎曲或角落差異。"],
+                ["$c_7XYZ$", "三方向交互項。", "修正需要同時考慮 x、y、z 三方向的角落差異。"],
+                ["$c_0,\\ldots,c_7$", "8 個三線性校正係數。", "由 8 顆角落感測器 residual 決定或等價地由 8 個 Lagrange basis 權重表示。"],
+            ],
         ),
         heading("3.5.1 8 點場推估的可證明範圍", 3),
         paragraph(
@@ -560,6 +715,22 @@ def build_blocks() -> List[Block]:
         math(r"C_v(X,Y,Z,t)=\sum_{a,b,c\in\{0,1\}} r_{abc}^{v}(t)\,\ell_a(X)\ell_b(Y)\ell_c(Z)"),
         paragraph("最後任一採樣點或查詢點的推估值為："),
         math(r"\hat{F}_v(\mathbf{p},t)=N_v(\mathbf{p},t)+C_v(X,Y,Z,t)"),
+        table(
+            ["8 點推估符號", "詳細意義", "推估或證明中的角色"],
+            [
+                ["$\\Omega=[0,W]\\times[0,L]\\times[0,H]$", "房間的三維定義域。", "$W,L,H$ 分別為房間寬度、長度與高度。"],
+                ["$X=x/W,Y=y/L,Z=z/H$", "將實際座標轉成 0 到 1 的正規化座標。", "讓八個角點可寫成 0 或 1 的組合。"],
+                ["$a,b,c\\in\\{0,1\\}$", "角點索引。", "a 對應 x 方向，b 對應 y 方向，c 對應 z 方向。"],
+                ["$\\mathbf{p}_{abc}$", "由索引 $a,b,c$ 指定的房間角點。", "例如 $\\mathbf{p}_{000}$ 是原點角，$\\mathbf{p}_{111}$ 是對角天花板角。"],
+                ["$O_v(\\mathbf{p}_{abc},t)$", "角點感測器對第 v 個環境因素的觀測。", "8 點推估的實測輸入。"],
+                ["$N_v(\\mathbf{p}_{abc},t)$", "主模型在同一角點的 nominal estimate。", "用來和觀測值相減得到 residual。"],
+                ["$r_{abc}^{v}(t)$", "角點 residual。", "等於觀測值減去 nominal estimate，是三線性校正的資料來源。"],
+                ["$\\ell_0(s)=1-s,\\ell_1(s)=s$", "一維線性 Lagrange basis。", "在座標為 0 或 1 的角點上會選出對應角點權重。"],
+                ["$\\ell_a(X)\\ell_b(Y)\\ell_c(Z)$", "三維角點權重。", "所有 8 個權重在房間內非負且總和為 1。"],
+                ["$C_v(X,Y,Z,t)$", "由 8 個角點 residual 加權得到的三線性校正值。", "使模型在角點與觀測一致，並在室內做低階補間。"],
+                ["$\\hat{F}_v$", "校正後的最終估計。", "等於 nominal estimate 加上 trilinear residual correction。"],
+            ],
+        ),
         paragraph(
             "此公式也可解讀為對 8 個角落 residual 做 convex combination：當 $0\\le X,Y,Z\\le1$ 時，所有權重 $\\ell_a(X)\\ell_b(Y)\\ell_c(Z)$ 皆非負，且權重和為 1。因此校正值不會由任一單點無限制外插，而是在 8 個角落 residual 的包絡內進行低階空間補間。"
         ),
@@ -579,6 +750,18 @@ def build_blocks() -> List[Block]:
         math(r"M_{xx}=\sup_{\Omega}|\partial^2 R_v/\partial x^2|,\quad M_{yy}=\sup_{\Omega}|\partial^2 R_v/\partial y^2|,\quad M_{zz}=\sup_{\Omega}|\partial^2 R_v/\partial z^2|"),
         paragraph("則三線性補間誤差可由下式界定："),
         math(r"|R_v(\mathbf{p},t)-C_v(\mathbf{p},t)|\le \frac{W^2}{8}M_{xx}+\frac{L^2}{8}M_{yy}+\frac{H^2}{8}M_{zz}"),
+        table(
+            ["誤差界符號", "詳細意義", "為什麼重要"],
+            [
+                ["$R_v(\\mathbf{p},t)$", "真實 residual，也就是真實場與 nominal estimate 的差。", "若它很平滑，8 點三線性校正較容易接近真實 residual。"],
+                ["$\\mathcal{V}$", "三線性函數空間。", "包含常數、一階項與交互項，共 8 個基底。"],
+                ["$M_{xx},M_{yy},M_{zz}$", "真實 residual 在 x、y、z 方向二階偏導的最大絕對值。", "代表 residual 的曲率或彎曲程度；值越大，8 點補間可能誤差越大。"],
+                ["$\\partial^2R_v/\\partial x^2$", "residual 沿 x 方向的二階變化率。", "衡量 residual 是否有無法由線性 x 項捕捉的彎曲。"],
+                ["$\\sup_{\\Omega}$", "在整個房間定義域內取最大上界。", "確保誤差界對房間內任一點都成立。"],
+                ["$W^2/8,L^2/8,H^2/8$", "房間尺寸造成的補間誤差尺度。", "房間越大、且 residual 曲率越高，角點補間的最壞情況誤差越大。"],
+                ["$|R_v-C_v|$", "真實 residual 與三線性校正 residual 的絕對誤差。", "這是 8 點推估能否接近真實場的關鍵誤差項。"],
+            ],
+        ),
         paragraph(
             "此誤差界可由一維線性補間誤差推得。對任一方向的一維線性補間，誤差上界為 $h^2\\sup|f''|/8$；三線性補間是 x、y、z 三個方向線性補間算子的張量積，且線性補間算子在 sup norm 下不放大函數最大值。因此三維誤差可分解為三個方向的一維補間誤差加總。此結果說明：8 點推估的準確度取決於主模型剩餘 residual 的平滑程度與曲率大小；若主模型已吸收主要設備影響，使 residual 只剩低頻偏移或緩慢梯度，8 點三線性校正可以提供有界且可解釋的估計；若 residual 含有強烈局部尖峰、遮蔽邊界或高頻變化，單靠 8 點無法保證準確，需額外空間探針、移動式量測或 hybrid residual 訓練資料補強。"
         ),
@@ -616,8 +799,32 @@ def build_blocks() -> List[Block]:
             r"&\text{device powers},\, \text{influence envelopes}]"
             r"\end{aligned}"
         ),
+        table(
+            ["訓練特徵符號", "詳細意義", "輸入資訊來源"],
+            [
+                ["$i$", "訓練樣本索引。", "每個樣本對應一個採樣點與一個時間。"],
+                ["$\\boldsymbol{\\varphi}_i$", "第 $i$ 筆樣本的特徵向量。", "作為 hybrid residual neural network 的輸入。"],
+                ["$x_i,y_i,z_i$", "第 $i$ 筆樣本的三維座標。", "來自採樣網格、角落感測器或額外 probe 點。"],
+                ["$t_i$", "第 $i$ 筆樣本的 elapsed time。", "來自情境時間軸或真實資料時間戳對齊後的相對時間。"],
+                ["indoor baseline", "$T_0,H_0,L_0$ 等室內起始狀態。", "由情境設定或設備啟用前感測器平均值取得。"],
+                ["outdoor conditions", "$T_{\\mathrm{out}},H_{\\mathrm{out}},S_{\\mathrm{out}}$ 等外部邊界條件。", "由情境、天氣 preset 或外部資料取得。"],
+                ["$F_{\\text{temp}},F_{\\text{hum}},F_{\\text{illum}}$", "主模型對三個環境因素的估計值。", "由 nominal model 加校正流程產生。"],
+                ["device activations", "冷氣、窗戶、照明等裝置的啟用狀態或控制比例。", "來自 device event log 或 scenario state。"],
+                ["device powers", "各裝置的 power scale 或校正後作用強度。", "由預設參數或 active-device calibration 取得。"],
+                ["influence envelopes", "各裝置在採樣點的 $E_j(\\mathbf{p}_i,t_i)$。", "由距離、方向與遮蔽模型計算。"],
+            ],
+        ),
         paragraph("若採用目前的模擬訓練設定，標籤來自 truth field 與主模型估計值之差："),
         math(r"y_i^v = F_v^{\text{truth}}(\mathbf{p}_i, t_i) - F_v(\mathbf{p}_i, t_i)"),
+        table(
+            ["標籤公式符號", "詳細意義", "訓練角色"],
+            [
+                ["$y_i^v$", "第 $i$ 筆樣本、第 $v$ 個環境因素的 residual label。", "神經網路要學習的目標值。"],
+                ["$F_v^{\\text{truth}}(\\mathbf{p}_i,t_i)$", "在模擬設定下可取得的 truth field。", "作為監督標籤來源；真實部署若無 dense ground truth 則不能直接取得。"],
+                ["$F_v(\\mathbf{p}_i,t_i)$", "主模型在同一點同一時間的估計值。", "與 truth field 相減後得到剩餘誤差。"],
+                ["$v$", "環境因素索引。", "temperature、humidity 與 illuminance 會分別建立 label。"],
+            ],
+        ),
         paragraph(
             "其中 v 分別代表 temperature、humidity 與 illuminance。換言之，神經網路不是直接學整個場，而是學主模型剩餘誤差。若未來接入真實資料，則可分成兩種層次：第一種只使用 8 顆角落感測器，將其作為參數校正、裝置影響學習與角落 residual fine-tune 的監督訊號；第二種則在有移動式量測或額外空間探針時，再擴充為更完整的空間 residual 訓練。這樣可避免只憑 8 個角落點就對全室高解析度場做過度宣稱。"
         ),
@@ -630,6 +837,137 @@ def build_blocks() -> List[Block]:
         paragraph(
             "整體而言，本研究的訓練資料流程可概括為：原始感測與事件資料先經時間對齊與情境整併，再由主模型產生 physics estimate，最後依任務不同分流為 least-squares impact learning、nominal model parameter calibration 或 hybrid residual neural training。此設計的優點在於，即使資料來源從模擬擴大到真實房間快照或長期 ESP32 量測，資料進入訓練流程的接口仍可保持一致。"
         ),
+        image(
+            "outputs/figures/architecture/模型學習推論與推薦資料流.svg",
+            "圖 3-5 模型學習、推論與推薦資料流。訓練端將原始感測、裝置事件、外部環境與情境資料轉為 scenario state，再分流為 impact learning 與 hybrid residual learning；推論端則使用同一個 scenario state 執行三因子估測，並以反事實模擬排序推薦動作。",
+            width_inches=6.5,
+            asset_name="fig_3_5_training_inference_flow",
+        ),
+        heading("3.7.1 學習與訓練資料流", 3),
+        paragraph(
+            "為避免把「資料如何進入模型」說成單一黑箱步驟，本研究將學習流程拆成資料輸入、時間與空間對齊、情境狀態組裝、主模型估計、任務分流與模型輸出六個階段，如圖 3-5 左側所示。此處的學習包含兩種不同任務：第一種是非連網裝置 impact learning，目標是從 before/after sensor delta 學出裝置影響係數；第二種是 hybrid residual learning，目標是讓神經網路學習主模型剩餘誤差。"
+        ),
+        code(
+            "raw sensor / event / outdoor / scenario data\n"
+            "→ time alignment and unit/coordinate normalization\n"
+            "→ scenario state assembly\n"
+            "→ reduced-order nominal estimate and sparse calibration\n"
+            "→ task branch: impact learning or hybrid residual learning\n"
+            "→ learned coefficients, checkpoint, and validation summary"
+        ),
+        table(
+            ["階段", "資料如何進入", "處理流程", "輸出"],
+            [
+                [
+                    "1. Raw input",
+                    "角落感測器時序、裝置事件、外部環境、房間/情境描述；若是 synthetic benchmark，另有 dense truth field 或 spatial probe labels。",
+                    "保留原始 timestamp、座標、裝置狀態、室外溫濕度與日照條件。",
+                    "可追溯的原始紀錄。",
+                ],
+                [
+                    "2. 對齊與正規化",
+                    "將不同來源資料依 timestamp 對齊，並統一座標、單位與欄位名稱。",
+                    "檢查點位是否在房間內；濕度限制在 0--100%；照度與 daylight factor 不允許為負；裝置 activation 限制在 0--1。",
+                    "同一時間軸上的 normalized records。",
+                ],
+                [
+                    "3. 情境狀態組裝",
+                    "baseline、outdoor conditions、device states、furniture blockers、elapsed time 與 room geometry 進入 scenario state。",
+                    "建立可被 service layer、web demo 與 MCP 共用的 runtime state。",
+                    "一個完整 scenario object 或 MCP registered state。",
+                ],
+                [
+                    "4. 主模型估計與校正",
+                    "scenario state 進入溫度、濕度、照度各自的 nominal model。",
+                    "計算設備 dynamic activation、influence envelope、照度 reflection；若有角落觀測，先校正 active-device power scale，再建立 trilinear residual correction。",
+                    "校正後 base estimate $F_v(\\mathbf{p},t)$。",
+                ],
+                [
+                    "5A. Impact learning 分支",
+                    "同一裝置啟用前後的 8 顆角落感測器觀測值。",
+                    "計算 sensor delta，建立 device spatial basis，使用 least-squares 解出各環境因素的 impact coefficients。",
+                    "learned device impact coefficients 與 learning record。",
+                ],
+                [
+                    "5B. Hybrid residual 分支",
+                    "採樣點座標、時間、baseline、外部環境、設備狀態、device powers、influence envelopes 與主模型估計值。",
+                    "建立特徵向量 $\\boldsymbol{\\varphi}_i$；以 $F_v^{\\text{truth}}-F_v$ 作為 residual label；temperature/humidity 可先做 Fourier low-pass denoising，illuminance 保留原始 residual。",
+                    "三個環境因素各自的 residual network parameters $\\boldsymbol{\\theta}_v$。",
+                ],
+                [
+                    "6. 訓練完成與驗證",
+                    "訓練結果與 held-out / LOO split。",
+                    "輸出 field MAE、sample count、no-Fourier 對照、LOO 平均與 checkpoint。",
+                    "summary JSON、hybrid residual checkpoint、論文驗證報告可重現的數字來源。",
+                ],
+            ],
+        ),
+        paragraph(
+            "因此，訓練完成後實際保留下來的不是一個取代全部物理模型的黑盒，而是三類可被後續推論使用的結果：校正後的主模型參數與 power scale、由 before/after 資料得到的裝置影響係數，以及 optional hybrid residual checkpoint。主模型仍負責主要物理趨勢；learned impact 與 hybrid residual 只補上非連網裝置作用與系統性殘差。"
+        ),
+        heading("3.7.2 訓練完成後的推論與推薦資料流", 3),
+        paragraph(
+            "模型訓練完成後，使用者或 MCP client 的輸入不會直接丟進神經網路得到答案，而是先被轉成與訓練階段一致的 scenario state，如圖 3-5 右側所示。接著系統先跑可解釋主模型，再視設定套用 sparse correction 與 hybrid residual，最後才輸出指定點或區域的三因子預測。若使用者要求推薦動作，系統會對每個候選動作建立反事實情境並重跑同一條推論流程，再依 comfort penalty 改善量排序。"
+        ),
+        code(
+            "runtime input: baseline + outdoor conditions + devices + furniture + point/target\n"
+            "→ scenario override and validation\n"
+            "→ nominal temperature/humidity/illuminance estimate\n"
+            "→ sparse correction and optional hybrid residual\n"
+            "→ point or zone prediction\n"
+            "→ counterfactual actions\n"
+            "→ comfort penalty reduction ranking"
+        ),
+        table(
+            ["階段", "輸入", "處理流程", "輸出"],
+            [
+                [
+                    "1. Runtime input",
+                    "MCP initialize、web demo、script 或 API 傳入 baseline、外部環境、設備狀態、家具、elapsed/steady-state、查詢座標與目標值。",
+                    "使用 `_scenario_with_overrides` 或 MCP registered state 建立目前房間狀態。",
+                    "可推論的 scenario state。",
+                ],
+                [
+                    "2. 主模型推論",
+                    "scenario state 與查詢點 $\\mathbf{p}$。",
+                    "分別計算 $N_T$、$N_H$、$N_L$；溫度處理熱交換，濕度處理水氣交換與除濕，照度處理直射、遮蔽與 single-bounce reflection。",
+                    "未套用 residual neural correction 的 base prediction。",
+                ],
+                [
+                    "3. 稀疏校正",
+                    "8 顆角落感測器觀測值或已註冊 baseline / calibration state。",
+                    "使用角落 residual 進行 active-device power calibration 與 trilinear residual correction，使模型在感測器位置貼近觀測。",
+                    "校正後的 $F_T,F_H,F_L$。",
+                ],
+                [
+                    "4. Optional hybrid residual",
+                    "若 `use_hybrid_residual=true` 且 checkpoint 存在，使用與訓練相同的特徵欄位。",
+                    "對查詢點建立 $\\boldsymbol{\\varphi}$，由 $R_v(\\mathbf{p},t;\\boldsymbol{\\theta}_v)$ 預測 residual，並加回主模型。",
+                    "$F_v^{\\text{hybrid}}=F_v+R_v$。",
+                ],
+                [
+                    "5. Point / zone prediction",
+                    "指定座標或目標區域。",
+                    "若是 `sample_point`，直接回傳該點 temperature、humidity、illuminance；若是 zone summary，對區域內採樣點做平均或統計。",
+                    "預測溫度、濕度、照度與 estimator 狀態。",
+                ],
+                [
+                    "6. Candidate action simulation",
+                    "目前註冊設備與候選動作，例如開冷氣、調整冷氣模式、開窗或開燈。",
+                    "對每個候選動作建立反事實 scenario，把裝置 activation 或 metadata 改成候選狀態，重新執行同一條推論流程。",
+                    "每個候選動作後的 $\\mathbf{q}_a=(q_T,q_H,q_L)$。",
+                ],
+                [
+                    "7. Recommendation ranking",
+                    "目前狀態 $\\mathbf{q}_{\\mathrm{base}}$、動作後狀態 $\\mathbf{q}_a$、舒適目標 $g_m$、容許範圍 $\\delta_m$ 與權重 $w_m$。",
+                    "先算目前 penalty，再算每個候選動作後的 penalty；排序分數為 $P(\\mathbf{q}_{\\mathrm{base}})-P(\\mathbf{q}_a)$。",
+                    "依預測改善量排序的推薦動作清單、預測改善值與注意事項。",
+                ],
+            ],
+        ),
+        paragraph(
+            "這條推論流程也說明本研究的推薦動作不是規則表，也不是 LLM 直接猜測，而是由同一套數位孿生模型對候選動作做反事實模擬。若排名第一的動作是開冷氣，代表模型預測在目前 baseline、外部環境、家具遮蔽與設備狀態下，開冷氣後目標點或目標區域的 comfort penalty 下降最多；但它仍需 5.8 節的 before/after 介入實驗才能證明真實因果改善。"
+        ),
         heading("3.8 Hybrid Residual Neural Network 延伸", 2),
         paragraph(
             "雖然主模型已具有可解釋的變數專屬 nominal model 結構，但在設備交互作用、局部照度分布或窗邊複合邊界條件下，仍可能存在系統性殘差。為此，本研究不以純黑盒神經網路取代主模型，而是加入 hybrid residual neural network 作為第二層修正器："
@@ -639,6 +977,21 @@ def build_blocks() -> List[Block]:
         math(r"R_v^*(\mathbf{p},t) = F_v^{\text{truth}}(\mathbf{p},t) - F_v(\mathbf{p},t)"),
         paragraph("其損失函數可表示為："),
         math(r"\mathcal{L}(\boldsymbol{\theta}_v) = \frac{1}{N}\sum_{i=1}^{N}\bigl\|R_v^*(\mathbf{p}_i,t_i) - R_v(\mathbf{p}_i,t_i;\boldsymbol{\theta}_v)\bigr\|^2 + \lambda\|\boldsymbol{\theta}_v\|^2"),
+        table(
+            ["Hybrid residual 符號", "詳細意義", "訓練或推論角色"],
+            [
+                ["$F_v^{\\text{hybrid}}$", "套用 neural residual 後的最終 hybrid estimate。", "等於主模型輸出加上神經網路預測的剩餘誤差。"],
+                ["$F_v$", "第三章前述 reduced-order 主模型輸出。", "提供可解釋的 baseline estimate。"],
+                ["$R_v(\\mathbf{p},t;\\boldsymbol{\\theta}_v)$", "第 $v$ 個環境因素的神經殘差模型。", "由 MLP 預測主模型尚未吸收的 residual。"],
+                ["$\\boldsymbol{\\theta}_v$", "第 $v$ 個殘差網路的可訓練參數。", "不同環境因素各自訓練一組參數。"],
+                ["$R_v^*$", "理想 residual target。", "由 truth field 減去主模型估計值形成。"],
+                ["$N$", "訓練樣本數。", "例如 default split 中的訓練或測試樣本數會分開統計。"],
+                ["$i$", "樣本索引。", "從 1 到 $N$。"],
+                ["$\\|\\cdot\\|^2$", "平方誤差。", "懲罰預測 residual 與目標 residual 的差距。"],
+                ["$\\lambda$", "L2 regularization 權重。", "控制模型參數大小，降低過擬合風險。"],
+                ["$\\lambda\\|\\boldsymbol{\\theta}_v\\|^2$", "參數懲罰項。", "鼓勵殘差網路保持較平滑、較小幅度的修正。"],
+            ],
+        ),
         paragraph(
             "本研究將座標、時間、室內外環境條件、主模型估計值、設備 activation、設備 power 與 influence envelope 作為輸入特徵，分別為溫度、濕度與照度訓練三個小型殘差網路。若啟用頻域去噪，temperature 與 humidity 會先將 $R_v^*$ 沿短時間軌跡做 Fourier low-pass denoising，再送入 MLP 訓練；illuminance 則保留原始 residual target。此設計的目的在於保留主模型可解釋性，同時尊重三因子的物理差異：溫度與濕度 residual 較適合被平滑為低頻趨勢，照度 residual 則需保留由光源、日照、遮蔽與反射造成的短時結構。"
         ),
@@ -649,8 +1002,27 @@ def build_blocks() -> List[Block]:
         paragraph(
             "具體而言，系統先以目前感測資料校正模型，取得目標區域目前三因子估計值並計算 baseline comfort penalty。接著，對每一個候選動作建立反事實情境：例如將冷氣 activation 調至 0.85、開窗至 0.7，或將主要照明調至 0.8，再重新模擬目標區域的溫度、濕度與照度。候選動作分數定義為 baseline penalty 減去動作後預測 penalty，因此分數愈高代表模型預期改善愈大。"
         ),
+        paragraph("comfort penalty 對每個因子使用目標值與容許範圍計算，可寫成："),
+        math(r"P(\mathbf{q})=\sum_{m\in\{T,H,L\}} w_m \max\left(0,\frac{|q_m-g_m|-\delta_m}{\delta_m}\right)"),
+        paragraph("候選動作 $a$ 的排序分數定義為："),
+        math(r"\mathrm{score}(a)=P(\mathbf{q}_{\mathrm{base}})-P(\mathbf{q}_{a})"),
+        table(
+            ["控制排序符號", "詳細意義", "排序中的角色"],
+            [
+                ["$m$", "comfort penalty 中的環境因素索引。", "$m\\in\\{T,H,L\\}$，分別對應溫度、濕度與照度。"],
+                ["$\\mathbf{q}$", "目標區域或指定座標的三因子估計向量。", "可寫成 $(q_T,q_H,q_L)$。"],
+                ["$q_m$", "目標點或目標區域中第 $m$ 個環境因素的估計值。", "由目前模型或反事實動作模擬得到。"],
+                ["$g_m$", "第 $m$ 個環境因素的舒適目標值。", "例如目標溫度、目標濕度或目標照度。"],
+                ["$\\delta_m$", "第 $m$ 個環境因素的可接受容許範圍。", "偏差小於此範圍時不產生 penalty。"],
+                ["$w_m$", "第 $m$ 個環境因素的權重。", "用來表示溫度、濕度與照度在決策中的重要程度。"],
+                ["$P(\\mathbf{q})$", "comfort penalty。", "值越小表示越接近舒適目標。"],
+                ["$\\mathbf{q}_{\\mathrm{base}}$", "尚未套用候選動作時的目前狀態估計。", "用來計算 baseline penalty。"],
+                ["$\\mathbf{q}_a$", "套用候選動作 $a$ 後的反事實估計。", "由模型重新模擬得到，不是實際控制後的量測值。"],
+                ["$\\mathrm{score}(a)$", "候選動作 $a$ 的改善分數。", "分數越高，表示模型預期該動作越能降低 comfort penalty。"],
+            ],
+        ),
         paragraph(
-            "comfort penalty 對每個因子使用目標值與容許範圍計算：若預測值落在容許範圍內，該因子 penalty 為 0；若超出容許範圍，則以超出量除以容許範圍後乘上對應權重。此設計避免微小偏差被過度懲罰，也使不同量綱的溫度、濕度與照度可被加總。需要注意的是，這裡的推薦排序屬於 model-based counterfactual simulation，並不等同於已完成實際控制驗證。"
+            "若預測值落在容許範圍內，該因子 penalty 為 0；若超出容許範圍，則以超出量除以容許範圍後乘上對應權重。此設計避免微小偏差被過度懲罰，也使不同量綱的溫度、濕度與照度可被加總。需要注意的是，這裡的推薦排序屬於 model-based counterfactual simulation，並不等同於已完成實際控制驗證。"
         ),
         heading("3.10 方法選擇理由與限制", 2),
         paragraph(
@@ -765,12 +1137,38 @@ def build_blocks() -> List[Block]:
         paragraph("本地 MCP server 目前保留五個互動流程 tools："),
         bullets(
             [
-                "initialize_environment：初始化 MCP session 中的情境、註冊設備、家具阻擋物、外部環境與室內 baseline。",
+                "initialize_environment：初始化 MCP session 的 runtime state，包含 base scenario、室內 baseline、外部環境、註冊設備、家具阻擋物、預設時間與 estimator 選擇。",
                 "sample_point：估計指定座標在特定 elapsed minutes 或 steady state 下的 temperature、humidity 與 illuminance，用於補足非感測點狀態。",
                 "learn_impacts：針對某個非連網設備建立 before/after observation record；只有同時具備開啟前與開啟後的真實感測讀值時，才計算 learned impact coefficients。",
                 "run_window_direct：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬，並可更新目前 MCP session 的外部環境。",
                 "rank_actions：輸入指定座標與目標三因子值，根據目前註冊設備產生候選操作並依 comfort penalty 改善量排序。",
             ]
+        ),
+        paragraph(
+            "其中 initialize_environment 是 MCP runtime 的起點，不是單純把場景名稱設為 idle。它會建立後續工具共用的 session state，因此必須清楚區分哪些項目是在初始化時註冊，哪些是後續查詢才輸入。表 4-2 列出目前初始化可設定的內容。"
+        ),
+        paragraph("表 4-2 initialize_environment 可設定內容"),
+        table(
+            ["欄位", "可設定內容", "後續影響"],
+            [
+                ["scenario_name", "選擇基礎情境，例如 idle 或其他內建情境。", "決定標準房間模板、內建設備、內建家具與基礎拓樸。"],
+                ["baseline.indoor_temperature", "起始室內溫度，預設 29.0°C。", "作為溫度場 $T_0$，後續冷氣與窗戶影響都在此基準上疊加。"],
+                ["baseline.indoor_humidity", "起始室內相對濕度，預設 67.0%。", "作為濕度場 $H_0$，決定除濕與外氣交換方向。"],
+                ["baseline.base_illuminance", "起始室內背景照度，預設 90.0 lux。", "作為照度場 $L_0$，窗戶日照、燈具與反射項會疊加其上。"],
+                ["environment.outdoor_temperature", "室外溫度，預設 33.0°C。", "影響窗戶造成的熱交換。"],
+                ["environment.outdoor_humidity", "室外相對濕度，預設 74.0%。", "影響開窗後室內濕度上升或下降。"],
+                ["environment.sunlight_illuminance", "室外日照照度，預設 32000 lux。", "影響窗戶直射光與 single-bounce reflection 的光源強度。"],
+                ["environment.daylight_factor", "日光進入室內的比例係數，預設 0.95。", "調整外部日照轉成室內照度的強度。"],
+                ["devices", "註冊或覆寫 ac_main、window_main、light_main，也可新增 custom ac/window/light。常用欄位包含 name、kind、activation、position、orientation、influence_radius、response_time_minutes、power、metadata；冷氣可加 ac_mode、target_temperature 與出風角度。", "後續 sample_point、learn_impacts 與 rank_actions 會依目前註冊設備計算。"],
+                ["replace_existing_devices", "若為 true，未列入 devices 的內建設備會被標記移除。", "可建立只包含指定設備的 runtime 環境。"],
+                ["furniture", "註冊或覆寫 cabinet_window、sofa_main、table_center，也可用 min_corner/max_corner 新增自訂家具或遮蔽物。", "影響照度遮蔽、單次反射、冷氣/窗戶可見性與混合懲罰。"],
+                ["elapsed_minutes", "後續工具未指定時間時使用的預設 elapsed time，預設 18 分鐘。", "影響 dynamic activation 與指定時間點的 point sample。"],
+                ["steady_state_minutes", "後續使用 steady_state: true 時的代表時間，預設 120 分鐘。", "用於查詢接近準穩態後的三因子估計。"],
+                ["use_hybrid_residual", "是否預設使用 hybrid residual corrected field。", "影響後續 sample_point 與 rank_actions 的估計器選擇；若無 checkpoint 則回到主模型。"],
+            ],
+        ),
+        paragraph(
+            "因此，若教授問「initialize 到底初始化什麼」，可回答：它是在 MCP session 中註冊一個可被後續工具共用的房間 runtime state，包含室內初始基準、外部邊界條件、目前設備狀態、家具遮蔽狀態、查詢時間預設值與估計器選擇。它尚未代表完成實驗驗證，也不是重新建立任意 BIM 幾何；目前仍以本研究標準單房間拓樸為基礎。"
         ),
         paragraph(
             "早期用於驗證或展示的 list_scenarios、run_scenario、compare_baseline 與 run_window_matrix 仍可由實驗腳本或 web demo 使用，但不再作為 MCP 對外工具。此重構使 MCP 的定位更接近實際 runtime：先註冊環境，再查點位、記錄學習資料、輸入窗戶資料與排序控制動作。"

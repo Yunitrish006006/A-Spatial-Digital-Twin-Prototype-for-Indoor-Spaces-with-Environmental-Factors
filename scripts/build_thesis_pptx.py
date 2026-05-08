@@ -980,22 +980,8 @@ def build_presentation() -> Presentation:
 
     # Slide 6
     slide = new_slide(prs)
-    add_title(slide, "感測器校正與影響學習")
-    add_picture(slide, ARCHITECTURE / "感測器校正與學習流程.svg", 0.7, 1.35, 6.3, 5.25)
-    add_bullets(
-        slide,
-        7.2,
-        1.55,
-        5.0,
-        5.0,
-        [
-            "先用 8 顆角落感測器比較預測值與觀測值",
-            "用殘差校準 active device power scale",
-            "再擬合 trilinear residual correction",
-            "before/after observations 另外用來學非連網裝置影響係數",
-        ],
-        level0_size=17,
-    )
+    add_title(slide, "模型學習、推論與推薦資料流")
+    add_picture(slide, ARCHITECTURE / "模型學習推論與推薦資料流.svg", 0.45, 1.12, 12.45, 5.72)
     add_footer(slide, 6)
 
     # Slide 7
@@ -1010,7 +996,7 @@ def build_presentation() -> Presentation:
         "MCP：工具化介面",
         [
             "MCP 不做預測；只提供 AI 可呼叫 runtime tools",
-            "initialize：註冊環境、設備、家具與 baseline",
+            "initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator",
             "sample point：查指定座標在特定時間/穩定態的三因子",
             "learn impacts：建立 before/after 觀測紀錄再學係數",
             "window direct：直接輸入外部溫濕度、日照與開窗比例",
@@ -1501,21 +1487,8 @@ def build_presentation_30min() -> Presentation:
 
     # 11 calibration and learning
     slide = new_slide(prs)
-    add_title(slide, "感測器校正與裝置影響學習")
-    add_picture(slide, ARCHITECTURE / "感測器校正與學習流程.svg", 0.7, 1.3, 6.2, 5.3)
-    add_card(
-        slide,
-        7.1,
-        1.45,
-        5.0,
-        5.0,
-        "兩條核心流程",
-        [
-            "1. 角落觀測殘差 → power calibration → trilinear correction",
-            "2. before/after 觀測差值 → least-squares impact learning",
-            "目標是讓模型可校正，也可學習非連網裝置影響",
-        ],
-    )
+    add_title(slide, "模型學習、推論與推薦資料流")
+    add_picture(slide, ARCHITECTURE / "模型學習推論與推薦資料流.svg", 0.45, 1.1, 12.45, 5.75)
     add_footer(slide, 11)
 
     # 12 implementation interfaces
@@ -1530,7 +1503,7 @@ def build_presentation_30min() -> Presentation:
         "MCP：工具化介面",
         [
             "MCP 不做預測；核心模型負責場估計、校正與排序",
-            "initialize：先註冊 runtime 環境與 baseline",
+            "initialize：註冊 scenario、baseline、外部邊界、設備/家具、時間與 estimator",
             "sample point：補足非感測點、可指定 elapsed/steady state",
             "learn impacts：start/finish before-after record",
             "window direct：輸入外部資料，不走 48 組 preset",
@@ -1787,8 +1760,8 @@ def build_outline() -> str:
         ("系統架構", ["入口分成使用者互動層與 AI 工具呼叫層", "服務編排、主模型與 residual 修正的分工"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器", "三個主要區域與三個核心裝置"]),
         ("數學模型", ["變數專屬 nominal model", "trilinear correction", "裝置與家具模組化", "溫度、濕度、照度分別使用不同公式"]),
-        ("感測器校正與影響學習", ["power calibration", "least-squares impact learning"]),
-        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：註冊環境、設備、家具與 baseline", "sample point：查指定座標在特定時間或穩定態的溫濕照度", "learn impacts：start/finish before-after record", "window direct / rank actions：輸入外部窗戶資料，並針對指定座標排序註冊設備操作", "Gemma bridge 與 Web demo 分別負責 AI tool calling 與人機展示"]),
+        ("模型學習、推論與推薦資料流", ["學習端：raw records → 對齊 → scenario state → labels → coefficients/checkpoint", "推論端：runtime input → nominal field → correction / hybrid → point or zone prediction", "推薦端：候選動作反事實重跑 → comfort penalty reduction 排序"]),
+        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、室內 baseline、外部邊界、設備/家具、預設時間與 estimator", "sample point：查指定座標在特定時間或穩定態的溫濕照度", "learn impacts：start/finish before-after record", "window direct / rank actions：輸入外部窗戶資料，並針對指定座標排序註冊設備操作", "Gemma bridge 與 Web demo 分別負責 AI tool calling 與人機展示"]),
         ("驗證流程與比較原則", ["E1-E3：synthetic full-field、IDW baseline、ablation", "E4：非連網裝置影響學習與推薦排序", "E5：48 組窗戶矩陣與 direct input", "E6：hybrid residual no-Fourier 與 LOO cross-validation", "E7：bedroom_01 7 天真實快照與 pillow hold-out", "E8 protocol、E9 public task-aligned benchmark；demo 不是量化實驗"]),
         ("主要結果", ["平均 field MAE", "IDW / Base / LOO Hybrid 誤差比較", "真實臥室 pillow MAE 比較", "推薦排序目前為 counterfactual simulation", "3D 視覺化案例"]),
         ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO MAE", "train/test sample count", "研究定位不是黑盒替代", "LOO 結果限標準情境 family"]),
@@ -1825,8 +1798,8 @@ def build_outline_30min() -> str:
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器與三個區域"]),
         ("模組化裝置與家具阻擋", ["裝置模組化、家具自適應阻擋"]),
         ("數學模型", ["變數專屬 nominal model + residual correction", "早期純插值與 local-only 模型失敗後的調整", "避免把同一套公式套用到溫度、濕度、照度"]),
-        ("感測器校正與裝置影響學習", ["power calibration 與 least squares"]),
-        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize / sample point：註冊環境後查指定座標三因子估計", "learn impacts：以 before/after observations 建立可學習資料", "window direct / rank actions：直接輸入窗戶外部資料，並針對指定座標排序註冊設備操作", "Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示"]),
+        ("模型學習、推論與推薦資料流", ["學習資料流：raw data → 對齊 → scenario state → labels → coefficients/checkpoint", "推論資料流：runtime input → nominal field → correction/hybrid → 溫濕照度", "推薦資料流：候選動作反事實重跑 → comfort penalty reduction 排序"]),
+        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator", "sample point：註冊環境後查指定座標三因子估計", "learn impacts：以 before/after observations 建立可學習資料", "window direct / rank actions：直接輸入窗戶外部資料，並針對指定座標排序註冊設備操作", "Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示"]),
         ("驗證設計", ["E1-E3：truth-adjusted simulation、IDW、synthetic ablation", "E4-E6：裝置影響學習、window matrix、hybrid no-Fourier/LOO", "E7：bedroom_01 7 天真實快照與 pillow 位置比較", "E8：推薦動作 before/after intervention protocol", "E9：public datasets 僅作 task-aligned benchmark", "Web demo 與 3D 展示是呈現層，不列為量化實驗"]),
         ("情境設計與輸入模式", ["8 組 scenario、48 組窗戶矩陣、direct input、timeline"]),
         ("主要量化結果", ["平均 MAE、IDW/Base/LOO Hybrid 誤差圖", "真實臥室 raw vs corrected pillow MAE", "推薦有效性以 actual comfort-penalty reduction 驗證", "實驗 E1-E7 與 E9 已有數值輸出；E8 僅為介入 protocol"]),

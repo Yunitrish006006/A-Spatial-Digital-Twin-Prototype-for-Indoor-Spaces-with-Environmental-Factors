@@ -87,6 +87,8 @@ MCP tools 對應：
 - `run_window_direct`
 - `rank_actions`
 
+其中 `initialize_environment` 需要說清楚它初始化的是 MCP session 的 runtime state，包含 base scenario、室內 baseline、外部溫濕度與日照條件、註冊設備、家具/遮蔽物、預設 elapsed/steady-state 時間，以及是否使用 hybrid residual estimator；它不是單純跑一個情境，也不是重新建立任意 BIM 幾何。
+
 ### 第四章 MCP 服務與 AI Agent 存取流程
 
 如果篇幅足夠，可以獨立成一章。若學校偏好模型導向，可併入第三章。
@@ -103,7 +105,7 @@ MCP tools 對應：
 
 除了原本的模型誤差，也加入 MCP 功能驗證：
 
-- MCP server 是否能初始化環境、設備、家具與 baseline。
+- MCP server 是否能初始化 base scenario、室內 baseline、外部環境、設備、家具/遮蔽物、預設時間與 estimator 選擇。
 - MCP server 是否能在指定 elapsed time 或 steady state 查詢任意座標。
 - MCP server 是否能建立 before/after impact learning record，並在資料足夠時輸出 learned coefficients。
 - MCP server 是否能用 direct window data 執行窗戶模擬。
@@ -117,7 +119,7 @@ MCP tools 對應：
 1. 提出一個針對非連網家電環境影響學習的單房間 spatial digital twin prototype。
 2. 提出一個使用 8 顆角落感測器殘差進行 temperature、humidity、illuminance 空間場校正的流程。
 3. 根據學習後的裝置影響，輸出三個環境變數的候選控制動作排序。
-4. 將模型封裝為 MCP tools，使 AI client 能以標準化方式初始化環境、查詢座標估計、記錄裝置影響學習資料、輸入窗戶外部條件與取得指定點設備推薦。
+4. 將模型封裝為 MCP tools，使 AI client 能以標準化方式初始化 runtime state、查詢座標估計、記錄裝置影響學習資料、輸入窗戶外部條件與取得指定點設備推薦。
 
 ## 不建議宣稱
 
@@ -139,11 +141,11 @@ MCP tools 對應：
 英文：
 
 ```text
-The proposed prototype learns the environmental impact of non-networked appliances from limited corner sensor observations and estimates single-room temperature, humidity, and illuminance fields. A local service layer, including an MCP interface, exposes scenario execution, point-level estimation, and candidate action ranking without changing the core reduced-order estimator.
+The proposed prototype learns the environmental impact of non-networked appliances from limited corner sensor observations and estimates single-room temperature, humidity, and illuminance fields. A local service layer, including an MCP interface, exposes runtime initialization, point-level estimation, impact-learning records, direct window input, and candidate action ranking without changing the core reduced-order estimator.
 ```
 
 中文：
 
 ```text
-本研究透過有限角落感測器觀測資料，學習非連網家電對單房間溫度、濕度與照度造成的環境影響，並估計其空間分布。除環境場估計模型外，本研究亦提供本地服務介面，其中包含 MCP 存取方式，使外部 AI client 能查詢情境、估計指定座標之環境狀態，並取得候選控制動作排序。
+本研究透過有限角落感測器觀測資料，學習非連網家電對單房間溫度、濕度與照度造成的環境影響，並估計其空間分布。除環境場估計模型外，本研究亦提供本地服務介面，其中包含 MCP 存取方式，使外部 AI client 能初始化 runtime state、估計指定座標之環境狀態、記錄裝置影響學習資料，並取得候選控制動作排序。
 ```

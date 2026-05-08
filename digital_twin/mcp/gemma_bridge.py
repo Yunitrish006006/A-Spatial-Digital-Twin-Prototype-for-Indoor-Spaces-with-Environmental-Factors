@@ -117,7 +117,7 @@ def build_tool_selection_prompt(question: str) -> str:
 只能輸出 JSON，不要輸出 Markdown，不要加解釋。
 
 可用工具：
-1. initialize_environment: 初始化房間基準、外部環境、設備與家具。arguments={{"baseline":{{"indoor_temperature":29,"indoor_humidity":67,"base_illuminance":90}},"environment":{{"outdoor_temperature":33,"outdoor_humidity":74,"sunlight_illuminance":32000}},"devices":[{{"name":"ac_main","kind":"ac","activation":0.0}}],"furniture":[{{"name":"cabinet_window","activation":1.0}}]}}
+1. initialize_environment: 初始化 MCP session，可設定 scenario_name、室內 baseline、室外溫濕度/日照/daylight_factor、設備、家具、elapsed/steady-state 時間與 use_hybrid_residual。arguments={{"scenario_name":"idle","baseline":{{"indoor_temperature":29,"indoor_humidity":67,"base_illuminance":90}},"environment":{{"outdoor_temperature":33,"outdoor_humidity":74,"sunlight_illuminance":32000,"daylight_factor":0.95}},"devices":[{{"name":"ac_main","kind":"ac","activation":0.0,"ac_mode":"cool","target_temperature":24}}],"furniture":[{{"name":"cabinet_window","activation":1.0}}],"elapsed_minutes":18,"steady_state_minutes":120}}
 2. sample_point: 查指定座標在 elapsed_minutes 或 steady_state 下的溫度/濕度/照度。arguments={{"x":3,"y":2,"z":1.2,"elapsed_minutes":18}} 或 {{"x":3,"y":2,"z":1.2,"steady_state":true}}
 3. learn_impacts: 建立或完成 before/after impact learning record。start arguments={{"device_name":"ac_main","device_state":{{"activation":0.85,"kind":"ac","ac_mode":"cool"}},"before_observations":{{...}}}}；finish arguments={{"phase":"finish","learning_record_id":"...","after_observations":{{...}}}}
 4. run_window_direct: 直接提供窗戶外部條件。arguments={{"outdoor_temperature":35,"outdoor_humidity":82,"sunlight_illuminance":18000,"opening_ratio":0.45}}

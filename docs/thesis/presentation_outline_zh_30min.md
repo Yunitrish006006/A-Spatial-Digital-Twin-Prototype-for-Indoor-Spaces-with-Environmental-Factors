@@ -34,12 +34,15 @@
 - 早期純插值與 local-only 模型失敗後的調整
 - 避免把同一套公式套用到溫度、濕度、照度
 
-## Slide 11: 感測器校正與裝置影響學習
-- power calibration 與 least squares
+## Slide 11: 模型學習、推論與推薦資料流
+- 學習資料流：raw data → 對齊 → scenario state → labels → coefficients/checkpoint
+- 推論資料流：runtime input → nominal field → correction/hybrid → 溫濕照度
+- 推薦資料流：候選動作反事實重跑 → comfort penalty reduction 排序
 
 ## Slide 12: 系統實作與介面
 - MCP 是工具化介面，不是預測模型本身
-- initialize / sample point：註冊環境後查指定座標三因子估計
+- initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator
+- sample point：註冊環境後查指定座標三因子估計
 - learn impacts：以 before/after observations 建立可學習資料
 - window direct / rank actions：直接輸入窗戶外部資料，並針對指定座標排序註冊設備操作
 - Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示

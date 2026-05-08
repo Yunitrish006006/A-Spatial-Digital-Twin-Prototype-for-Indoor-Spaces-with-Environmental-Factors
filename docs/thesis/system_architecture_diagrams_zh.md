@@ -88,7 +88,44 @@ flowchart TB
     R1 --> R3["Action ranking / recommendation"]
 ```
 
-## 4. 可模組化裝置與家具架構
+## 4. 模型學習推論與推薦資料流
+
+```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 18, 'rankSpacing': 28, 'curve': 'basis'}} }%%
+flowchart LR
+    subgraph Train["A. Learning and training path"]
+        direction TB
+        T0["Raw records<br/>corner sensors / device events / outdoor / scenario"] --> T1["Time alignment<br/>unit and coordinate normalization"]
+        T1 --> T2["Scenario state assembly<br/>baseline + outdoor + devices + furniture + time"]
+        T2 --> T3["Nominal field estimate<br/>temperature / humidity / illuminance"]
+        T3 --> T4["Sparse calibration<br/>power scale + trilinear residual"]
+        T4 --> T5{"Training branch"}
+        T5 --> T6["Impact learning<br/>before-after delta + device spatial basis"]
+        T5 --> T7["Hybrid residual learning<br/>features + residual labels"]
+        T6 --> A1[("Learned impact coefficients")]
+        T7 --> A2[("Residual checkpoint")]
+        T7 --> A3[("Validation summary JSON")]
+    end
+
+    subgraph Runtime["B. Runtime inference and recommendation path"]
+        direction TB
+        R0["Runtime input<br/>MCP / web demo / script / API"] --> R1["Scenario override and validation<br/>query point or target zone"]
+        R1 --> R2["Nominal T/H/L estimate<br/>variable-specific physical models"]
+        R2 --> R3["Sparse correction<br/>registered sensors or calibration state"]
+        R3 --> R4["Optional hybrid residual<br/>add learned residual if checkpoint exists"]
+        R4 --> R5["Point or zone prediction<br/>temperature + humidity + illuminance"]
+        R5 --> R6{"Need action ranking?"}
+        R6 -- "No" --> R7["Return prediction"]
+        R6 -- "Yes" --> R8["Counterfactual action simulation<br/>rerun inference for each candidate"]
+        R8 --> R9["Rank by comfort penalty reduction<br/>recommended device operation"]
+    end
+
+    A1 -. "device impact coefficients" .-> R3
+    A2 -. "optional residual model" .-> R4
+    A3 -. "reproducible evidence" .-> R9
+```
+
+## 5. 可模組化裝置與家具架構
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28}} }%%
@@ -106,7 +143,7 @@ flowchart TB
     E3 --> R
 ```
 
-## 5. 房間感測器與目標區域配置
+## 6. 房間感測器與目標區域配置
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 18, 'rankSpacing': 24}} }%%
@@ -150,7 +187,7 @@ flowchart LR
     Zones --> Floor
 ```
 
-## 6. 驗證與實驗流程圖
+## 7. 驗證與實驗流程圖
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28}} }%%
@@ -181,7 +218,7 @@ flowchart TB
     Corr --> Eval
 ```
 
-## 7. 程式碼結構圖
+## 8. 程式碼結構圖
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28}} }%%
@@ -198,7 +235,7 @@ flowchart TB
     DT --> WEB["web/<br/>web_demo / render"]
 ```
 
-## 8. 文件與輸出結構圖
+## 9. 文件與輸出結構圖
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28}} }%%
@@ -220,9 +257,10 @@ flowchart TB
     OUT --> PAP["papers/"]
 ```
 
-## 9. 圖表使用建議
+## 10. 圖表使用建議
 
 - 若要放進 GitHub repo，直接保留 Mermaid 區塊即可。
-- 若要放進論文正文，建議優先使用第 1 張、第 2 張、第 3 張、第 5 張與第 6 張。
-- 第 4 張適合放方法章或附錄，用來說明裝置與家具的可模組化設計。
-- 第 7 張與第 8 張較適合 README、系統說明或口試備用頁，不建議放論文正文。
+- 若要放進論文正文，建議優先使用第 1 張、第 2 張、第 3 張、第 4 張、第 6 張與第 7 張。
+- 第 4 張適合放方法章與口試簡報，用來說明資料如何從訓練一路接到推論與推薦。
+- 第 5 張適合放方法章或附錄，用來說明裝置與家具的可模組化設計。
+- 第 8 張與第 9 張較適合 README、系統說明或口試備用頁，不建議放論文正文。

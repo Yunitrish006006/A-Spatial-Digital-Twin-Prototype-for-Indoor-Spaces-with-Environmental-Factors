@@ -80,6 +80,8 @@ Bridge 透過同一個 `LocalMCPServer` 呼叫目前 MCP server 暴露的五個 
 - `run_window_direct`
 - `rank_actions`
 
+其中 `initialize_environment` 不是只選場景，而是註冊整個 MCP runtime state：base scenario、室內 baseline、外部環境、設備、家具/遮蔽物、預設 elapsed/steady-state 時間與 estimator 選擇。後續四個工具都會沿用這個狀態。
+
 ## 和 MCP server 的關係
 
 目前專案有兩種使用方式：

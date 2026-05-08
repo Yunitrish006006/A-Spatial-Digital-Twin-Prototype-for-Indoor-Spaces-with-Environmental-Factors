@@ -1,6 +1,10 @@
 __pycache__/
 *.pyc
 outputs/
+docs/papers/thesis/assets/.ql_tmp/
+docs/papers/thesis/assets/模型學習推論與推薦資料流.png
+docs/papers/thesis/*.aux
+docs/papers/thesis/*.out
 
 # Raw public datasets are large and should remain local-only.
 # Keep verification summaries small; do not commit downloaded raw data.
