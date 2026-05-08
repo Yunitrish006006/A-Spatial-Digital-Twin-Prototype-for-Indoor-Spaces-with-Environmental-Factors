@@ -37,14 +37,14 @@
 ## Slide 11: 模型學習、推論與推薦資料流
 - 學習資料流：raw data → 對齊 → scenario state → labels → coefficients/checkpoint
 - 推論資料流：runtime input → nominal field → correction/hybrid → 溫濕照度
-- 推薦資料流：候選動作反事實重跑 → comfort penalty reduction 排序
+- 推薦資料流：sample / cluster + T/H/L 目標 → 反事實重跑 → penalty reduction 排序
 
 ## Slide 12: 系統實作與介面
 - MCP 是工具化介面，不是預測模型本身
 - initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator
 - sample point：註冊環境後查指定座標三因子估計
 - learn impacts：以 before/after observations 建立可學習資料
-- window direct / rank actions：直接輸入窗戶外部資料，並針對指定座標排序註冊設備操作
+- window direct / rank actions：直接輸入窗戶外部資料；rank actions 需指定 sample 與 T/H/L 目標
 - Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示
 
 ## Slide 13: 驗證設計

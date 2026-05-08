@@ -121,7 +121,7 @@ def build_tool_selection_prompt(question: str) -> str:
 2. sample_point: 查指定座標在 elapsed_minutes 或 steady_state 下的溫度/濕度/照度。arguments={{"x":3,"y":2,"z":1.2,"elapsed_minutes":18}} 或 {{"x":3,"y":2,"z":1.2,"steady_state":true}}
 3. learn_impacts: 建立或完成 before/after impact learning record。start arguments={{"device_name":"ac_main","device_state":{{"activation":0.85,"kind":"ac","ac_mode":"cool"}},"before_observations":{{...}}}}；finish arguments={{"phase":"finish","learning_record_id":"...","after_observations":{{...}}}}
 4. run_window_direct: 直接提供窗戶外部條件。arguments={{"outdoor_temperature":35,"outdoor_humidity":82,"sunlight_illuminance":18000,"opening_ratio":0.45}}
-5. rank_actions: 輸入指定座標與目標，依註冊設備排序控制動作。arguments={{"x":3,"y":2,"z":1.2,"target":{{"temperature":25,"humidity":58,"illuminance":500}}}}
+5. rank_actions: 輸入指定座標 sample 與完整三因子目標後，依註冊設備排序控制動作。缺少 target.temperature、target.humidity 或 target.illuminance 時不可呼叫，改用 none 要求使用者補齊。arguments={{"x":3,"y":2,"z":1.2,"target":{{"temperature":25,"humidity":58,"illuminance":500}}}}
 6. none: 不需要工具。
 
 輸出格式範例：
@@ -143,10 +143,24 @@ def heuristic_tool_selection(question: str) -> Dict[str, Any]:
 
     if any(keyword in lowered for keyword in ["推薦", "排序", "action", "rank", "開冷氣", "開窗", "開燈"]):
         numbers = [float(item) for item in re.findall(r"[-+]?\d+(?:\.\d+)?", lowered)]
-        point = {"x": 3.0, "y": 2.0, "z": 1.2}
-        if len(numbers) >= 3:
-            point = {"x": numbers[0], "y": numbers[1], "z": numbers[2]}
-        return {"tool": "rank_actions", "arguments": point}
+        if len(numbers) >= 6:
+            return {
+                "tool": "rank_actions",
+                "arguments": {
+                    "x": numbers[0],
+                    "y": numbers[1],
+                    "z": numbers[2],
+                    "target": {
+                        "temperature": numbers[3],
+                        "humidity": numbers[4],
+                        "illuminance": numbers[5],
+                    },
+                },
+            }
+        return {
+            "tool": "none",
+            "answer": "推薦動作需要先提供指定座標 sample 或已定義的 cluster/zone sample，並提供 temperature、humidity、illuminance 三因子目標；資料不足時不產生推薦。",
+        }
 
     if any(keyword in lowered for keyword in ["座標", "point", "sample", "x=", "y=", "z="]):
         numbers = [float(item) for item in re.findall(r"[-+]?\d+(?:\.\d+)?", lowered)]

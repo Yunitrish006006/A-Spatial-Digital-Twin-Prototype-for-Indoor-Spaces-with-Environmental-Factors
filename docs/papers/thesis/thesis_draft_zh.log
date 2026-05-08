@@ -660,16 +660,15 @@ File: assets/fig_3_1_overall_architecture.png Graphic file (type bmp)
 <assets/fig_3_1_overall_architecture.png>
 File: assets/fig_3_2_execution_flow.png Graphic file (type bmp)
 <assets/fig_3_2_execution_flow.png>
- [8
-
-] [9]
 File: assets/fig_3_3_room_topology.png Graphic file (type bmp)
 <assets/fig_3_3_room_topology.png>
- [10] [11] [12] [13] [14] [15] [16] [17] [18] [19] [20]
-[21]
+ [8
+
+] [9] [10] [11] [12] [13] [14] [15] [16] [17] [18] [19]
 File: assets/fig_3_4_sensor_calibration_learning.png Graphic file (type bmp)
 <assets/fig_3_4_sensor_calibration_learning.png>
-
+ [20]
+[21]
 
 Package fontspec Warning: Font "Heiti TC" does not contain requested Script
 (fontspec)                "CJK".
@@ -695,49 +694,53 @@ Package fontspec Info: Font family 'HeitiTC(0)' created for font 'Heiti TC'
 (fontspec)             TC/BI/OT:language=dflt;"
 (fontspec)             - 'bold italic small caps'  (b/scit) with NFSS spec.: 
 
-[22] [23] [24]
+[22] [23]
 File: assets/fig_3_5_training_inference_flow.png Graphic file (type bmp)
 <assets/fig_3_5_training_inference_flow.png>
- [25] [26] [27] [28] [29]
+ [24] [25]
 
-LaTeX Warning: Float too large for page by 271.49268pt on input line 1588.
+LaTeX Warning: Float too large for page by 2.4927pt on input line 1434.
 
-[30] [31] [32] [33
+[26] [27] [28] [29] [30]
+
+LaTeX Warning: Float too large for page by 271.49268pt on input line 1619.
+
+[31] [32] [33
 
 ] [34] [35] [36]
 File: assets/fig_5_1_validation_flow.png Graphic file (type bmp)
 <assets/fig_5_1_validation_flow.png>
  [37
 
-] [38] [39]
+] [38]
 File: assets/fig_5_2_all_active_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_2_all_active_temp_3d.png>
 File: assets/fig_5_3_ac_only_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_3_ac_only_temp_3d.png>
 File: assets/fig_5_4_light_only_illum_3d.png Graphic file (type bmp)
 <assets/fig_5_4_light_only_illum_3d.png>
- [40] [41] [42] [43] [44]
+ [39] [40] [41] [42] [43] [44]
 File: assets/field_mae_comparison.png Graphic file (type bmp)
 <assets/field_mae_comparison.png>
+ [45]
+[46] [47]
 
-[45] [46] [47] [48]
+LaTeX Warning: Float too large for page by 55.09259pt on input line 2208.
 
-LaTeX Warning: Float too large for page by 55.09259pt on input line 2177.
-
-[49] [50] [51] [52]
+[48] [49] [50] [51]
 File: assets/fig_5_6_all_active_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_6_all_active_temp_3d.png>
 File: assets/fig_5_7_window_only_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_7_window_only_temp_3d.png>
 File: assets/fig_5_8_light_only_illum_3d.png Graphic file (type bmp)
 <assets/fig_5_8_light_only_illum_3d.png>
- [53] [54] [55] [56
+ [52] [53] [54] [55] [56
 
 ] [57] [58] [59
 
 ] [60] [61]
 
-LaTeX Warning: Float too large for page by 63.6926pt on input line 2478.
+LaTeX Warning: Float too large for page by 181.89258pt on input line 2515.
 
 [62
 
@@ -745,4 +748,4 @@ LaTeX Warning: Float too large for page by 63.6926pt on input line 2478.
 Package rerunfilecheck Info: File `thesis_draft_zh.out' has not changed.
 (rerunfilecheck)             Checksum: 2A44E2AEAAB92BBC3BC7D595909730DC;1783.
  )
-Output written on thesis_draft_zh.xdv (72 pages, 1055100 bytes).
+Output written on thesis_draft_zh.xdv (72 pages, 1079396 bytes).

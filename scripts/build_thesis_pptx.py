@@ -18,6 +18,7 @@ PAPERS = OUTPUTS / "papers"
 DATA = OUTPUTS / "data"
 FIGURES = OUTPUTS / "figures"
 ARCHITECTURE = FIGURES / "architecture"
+PUBLIC_BENCHMARK_FIGURES = FIGURES / "public_benchmarks"
 THESIS_PAPERS = ROOT / "docs" / "papers" / "thesis"
 PRESENTATION_PATH = PAPERS / "thesis_presentation_zh.pptx"
 STORED_PRESENTATION_PATH = THESIS_PAPERS / "thesis_presentation_zh.pptx"
@@ -973,7 +974,7 @@ def build_presentation() -> Presentation:
             "動態響應採一階收斂近似",
             "三個變數共用座標、設備與校正框架",
             "但 nominal model 不共用同一套物理公式",
-            "控制推薦在 target zone 上評分與排序",
+            "推薦必須先有 sample / cluster 與三因子目標",
         ],
     )
     add_footer(slide, 5)
@@ -1000,7 +1001,7 @@ def build_presentation() -> Presentation:
             "sample point：查指定座標在特定時間/穩定態的三因子",
             "learn impacts：建立 before/after 觀測紀錄再學係數",
             "window direct：直接輸入外部溫濕度、日照與開窗比例",
-            "rank actions：針對指定座標與目標排序註冊設備操作",
+            "rank actions：指定座標 sample + T/H/L 目標後才排序註冊設備操作",
         ],
     )
     add_card(
@@ -1126,6 +1127,26 @@ def build_presentation() -> Presentation:
 
     # Slide 11
     slide = new_slide(prs)
+    add_title(slide, "公開資料任務拆解：SML2010 / CU-BEMS")
+    add_picture(slide, PUBLIC_BENCHMARK_FIGURES / "sml2010_task_breakdown.svg", 0.6, 1.35, 6.0, 3.35)
+    add_picture(slide, PUBLIC_BENCHMARK_FIGURES / "cu_bems_task_breakdown.svg", 6.75, 1.35, 6.0, 3.35)
+    add_bullets(
+        slide,
+        0.9,
+        5.05,
+        11.6,
+        1.45,
+        [
+            "S3 是主要優勢：事件/邊界 delta 需要變化方向，structured prior 比 persistence 與 linear regression 更有用",
+            "S1 與 C2 是主要劣勢：短視窗照度高度自相關，且公開資料缺實際幾何、遮蔽與多燈具資訊",
+            "CU-BEMS C1/C3 可勝過 linear regression，但商辦 zone-level persistence 太強，不能宣稱全面勝出",
+        ],
+        level0_size=15,
+    )
+    add_footer(slide, 11)
+
+    # Slide 12
+    slide = new_slide(prs)
     add_title(slide, "研究貢獻與資料策略")
     add_bullets(
         slide,
@@ -1144,9 +1165,9 @@ def build_presentation() -> Presentation:
         ],
         level0_size=18,
     )
-    add_footer(slide, 11)
+    add_footer(slide, 12)
 
-    # Slide 12
+    # Slide 13
     slide = new_slide(prs)
     add_title(slide, "結論與未來工作")
     add_card(
@@ -1180,8 +1201,8 @@ def build_presentation() -> Presentation:
             "研究遠端 MCP 與閉環控制",
         ],
     )
-    add_footer(slide, 12)
-    add_formula_walkthrough(prs, 13, compact=True)
+    add_footer(slide, 13)
+    add_formula_walkthrough(prs, 14, compact=True)
     return prs
 
 
@@ -1279,7 +1300,7 @@ def build_presentation_30min() -> Presentation:
         [
             "重建全室三因子分布",
             "學習裝置對環境的影響",
-            "支援控制推薦與 AI 查詢",
+            "在 sample/cluster + 三因子目標下支援推薦",
         ],
     )
     add_footer(slide, 3)
@@ -1297,7 +1318,7 @@ def build_presentation_30min() -> Presentation:
         [
             "RQ1：8 顆角落感測器能否重建單房間三因子空間場？",
             "RQ2：能否從環境資料學習非連網裝置影響？",
-            "RQ3：學習後能否改善控制推薦？",
+            "RQ3：sample/cluster 與三因子目標下能否排序控制動作？",
             "RQ4：能否將模型封裝成 MCP 可查詢工具？",
         ],
     )
@@ -1507,7 +1528,7 @@ def build_presentation_30min() -> Presentation:
             "sample point：補足非感測點、可指定 elapsed/steady state",
             "learn impacts：start/finish before-after record",
             "window direct：輸入外部資料，不走 48 組 preset",
-            "rank actions：以指定座標目標評估註冊設備操作",
+            "rank actions：以指定座標 sample 與 T/H/L 目標評估註冊設備操作",
         ],
     )
     add_card(
@@ -1698,7 +1719,49 @@ def build_presentation_30min() -> Presentation:
     )
     add_footer(slide, 17)
 
-    # 18 conclusion and future
+    # 18 SML2010 public task breakdown
+    slide = new_slide(prs)
+    add_title(slide, "公開資料任務拆解：SML2010")
+    add_picture(slide, PUBLIC_BENCHMARK_FIGURES / "sml2010_task_breakdown.svg", 0.75, 1.3, 7.1, 4.0)
+    add_card(
+        slide,
+        8.15,
+        1.4,
+        4.35,
+        4.85,
+        "S1 / S2 / S3 判讀",
+        [
+            "S1：純照度短視窗，persistence 最強，是劣勢",
+            "S2：長視窗溫度有優勢，但濕度有尺度對齊問題",
+            "S3：事件 delta response 是主要優勢",
+            "SML2010 24 任務：12 lowest MAE、15 勝 LR、14 勝 persistence",
+            "不能宣稱公開資料等同 full 3D 場驗證",
+        ],
+    )
+    add_footer(slide, 18)
+
+    # 19 CU-BEMS public task breakdown
+    slide = new_slide(prs)
+    add_title(slide, "公開資料任務拆解：CU-BEMS")
+    add_picture(slide, PUBLIC_BENCHMARK_FIGURES / "cu_bems_task_breakdown.svg", 0.75, 1.3, 7.1, 4.0)
+    add_card(
+        slide,
+        8.15,
+        1.4,
+        4.35,
+        4.85,
+        "C1 / C2 / C3 判讀",
+        [
+            "C1：AC 溫濕度可補強 LR，但不勝 persistence",
+            "C2：商辦照度與單房間假設差距大，是劣勢",
+            "C3：compound event 可穩定勝過 LR",
+            "CU-BEMS 12 任務：9 勝 LR、0 勝 persistence",
+            "結果是 zone-level 外部壓力測試，不是 8 點房間拓樸驗證",
+        ],
+    )
+    add_footer(slide, 19)
+
+    # 20 conclusion and future
     slide = new_slide(prs)
     add_title(slide, "結論、限制與未來工作")
     add_card(
@@ -1748,8 +1811,8 @@ def build_presentation_30min() -> Presentation:
             "朝閉環控制與遠端 MCP 延伸",
         ],
     )
-    add_footer(slide, 18)
-    add_formula_walkthrough(prs, 19, compact=False)
+    add_footer(slide, 20)
+    add_formula_walkthrough(prs, 21, compact=False)
     return prs
 
 
@@ -1760,11 +1823,12 @@ def build_outline() -> str:
         ("系統架構", ["入口分成使用者互動層與 AI 工具呼叫層", "服務編排、主模型與 residual 修正的分工"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器", "三個主要區域與三個核心裝置"]),
         ("數學模型", ["變數專屬 nominal model", "trilinear correction", "裝置與家具模組化", "溫度、濕度、照度分別使用不同公式"]),
-        ("模型學習、推論與推薦資料流", ["學習端：raw records → 對齊 → scenario state → labels → coefficients/checkpoint", "推論端：runtime input → nominal field → correction / hybrid → point or zone prediction", "推薦端：候選動作反事實重跑 → comfort penalty reduction 排序"]),
-        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、室內 baseline、外部邊界、設備/家具、預設時間與 estimator", "sample point：查指定座標在特定時間或穩定態的溫濕照度", "learn impacts：start/finish before-after record", "window direct / rank actions：輸入外部窗戶資料，並針對指定座標排序註冊設備操作", "Gemma bridge 與 Web demo 分別負責 AI tool calling 與人機展示"]),
+        ("模型學習、推論與推薦資料流", ["學習端：raw records → 對齊 → scenario state → labels → coefficients/checkpoint", "推論端：runtime input → nominal field → correction / hybrid → point or zone prediction", "推薦端：sample / cluster + T/H/L 目標 → 反事實重跑 → penalty reduction 排序"]),
+        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、室內 baseline、外部邊界、設備/家具、預設時間與 estimator", "sample point：查指定座標在特定時間或穩定態的溫濕照度", "learn impacts：start/finish before-after record", "window direct / rank actions：輸入外部窗戶資料；rank actions 需指定 sample 與 T/H/L 目標", "Gemma bridge 與 Web demo 分別負責 AI tool calling 與人機展示"]),
         ("驗證流程與比較原則", ["E1-E3：synthetic full-field、IDW baseline、ablation", "E4：非連網裝置影響學習與推薦排序", "E5：48 組窗戶矩陣與 direct input", "E6：hybrid residual no-Fourier 與 LOO cross-validation", "E7：bedroom_01 7 天真實快照與 pillow hold-out", "E8 protocol、E9 public task-aligned benchmark；demo 不是量化實驗"]),
         ("主要結果", ["平均 field MAE", "IDW / Base / LOO Hybrid 誤差比較", "真實臥室 pillow MAE 比較", "推薦排序目前為 counterfactual simulation", "3D 視覺化案例"]),
         ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO MAE", "train/test sample count", "研究定位不是黑盒替代", "LOO 結果限標準情境 family"]),
+        ("公開資料任務拆解", ["SML2010：S1 純照度劣勢、S2 長視窗溫度部分優勢、S3 事件 delta 主要優勢", "CU-BEMS：C1/C3 勝 linear regression 但不勝 persistence，C2 照度劣勢", "明確說明 public benchmark 不是 full 3D 場驗證"]),
         ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets", "明確列出每種資料支援的 claim boundary"]),
         ("結論與未來工作", ["長期真實資料、dense real-room ground truth、更多因子、multi-zone、推薦動作介入驗證、閉環控制"]),
     ]
@@ -1798,13 +1862,15 @@ def build_outline_30min() -> str:
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器與三個區域"]),
         ("模組化裝置與家具阻擋", ["裝置模組化、家具自適應阻擋"]),
         ("數學模型", ["變數專屬 nominal model + residual correction", "早期純插值與 local-only 模型失敗後的調整", "避免把同一套公式套用到溫度、濕度、照度"]),
-        ("模型學習、推論與推薦資料流", ["學習資料流：raw data → 對齊 → scenario state → labels → coefficients/checkpoint", "推論資料流：runtime input → nominal field → correction/hybrid → 溫濕照度", "推薦資料流：候選動作反事實重跑 → comfort penalty reduction 排序"]),
-        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator", "sample point：註冊環境後查指定座標三因子估計", "learn impacts：以 before/after observations 建立可學習資料", "window direct / rank actions：直接輸入窗戶外部資料，並針對指定座標排序註冊設備操作", "Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示"]),
+        ("模型學習、推論與推薦資料流", ["學習資料流：raw data → 對齊 → scenario state → labels → coefficients/checkpoint", "推論資料流：runtime input → nominal field → correction/hybrid → 溫濕照度", "推薦資料流：sample / cluster + T/H/L 目標 → 反事實重跑 → penalty reduction 排序"]),
+        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator", "sample point：註冊環境後查指定座標三因子估計", "learn impacts：以 before/after observations 建立可學習資料", "window direct / rank actions：直接輸入窗戶外部資料；rank actions 需指定 sample 與 T/H/L 目標", "Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示"]),
         ("驗證設計", ["E1-E3：truth-adjusted simulation、IDW、synthetic ablation", "E4-E6：裝置影響學習、window matrix、hybrid no-Fourier/LOO", "E7：bedroom_01 7 天真實快照與 pillow 位置比較", "E8：推薦動作 before/after intervention protocol", "E9：public datasets 僅作 task-aligned benchmark", "Web demo 與 3D 展示是呈現層，不列為量化實驗"]),
         ("情境設計與輸入模式", ["8 組 scenario、48 組窗戶矩陣、direct input、timeline"]),
         ("主要量化結果", ["平均 MAE、IDW/Base/LOO Hybrid 誤差圖", "真實臥室 raw vs corrected pillow MAE", "推薦有效性以 actual comfort-penalty reduction 驗證", "實驗 E1-E7 與 E9 已有數值輸出；E8 僅為介入 protocol"]),
         ("3D 視覺化結果", ["溫度與照度熱區案例"]),
         ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO robustness checks", "train/test sample count 與 synthetic benchmark 限制", "LOO 結果限標準情境 family", "真實快照作為 sparse calibration 驗證"]),
+        ("公開資料任務拆解：SML2010", ["S1：純照度短視窗是劣勢", "S2：長視窗溫度有優勢但濕度有尺度對齊問題", "S3：事件 delta response 是主要優勢"]),
+        ("公開資料任務拆解：CU-BEMS", ["C1：AC 溫濕度可補強 linear regression", "C2：商辦照度與單房間假設差距大", "C3：compound event 可勝 linear regression 但不勝 persistence"]),
         ("結論、限制與未來工作", ["目前完成度、真實快照限制、hybrid 泛化限制、推薦動作尚需介入驗證、task-aligned benchmark 與後續方向"]),
     ]
     slides.extend(

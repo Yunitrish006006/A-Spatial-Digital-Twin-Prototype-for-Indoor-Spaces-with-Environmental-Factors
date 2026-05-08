@@ -25,14 +25,14 @@
 ## Slide 6: 模型學習、推論與推薦資料流
 - 學習端：raw records → 對齊 → scenario state → labels → coefficients/checkpoint
 - 推論端：runtime input → nominal field → correction / hybrid → point or zone prediction
-- 推薦端：候選動作反事實重跑 → comfort penalty reduction 排序
+- 推薦端：sample / cluster + T/H/L 目標 → 反事實重跑 → penalty reduction 排序
 
 ## Slide 7: 系統實作與介面
 - MCP 是工具化介面，不是預測模型本身
 - initialize：設定 scenario、室內 baseline、外部邊界、設備/家具、預設時間與 estimator
 - sample point：查指定座標在特定時間或穩定態的溫濕照度
 - learn impacts：start/finish before-after record
-- window direct / rank actions：輸入外部窗戶資料，並針對指定座標排序註冊設備操作
+- window direct / rank actions：輸入外部窗戶資料；rank actions 需指定 sample 與 T/H/L 目標
 - Gemma bridge 與 Web demo 分別負責 AI tool calling 與人機展示
 
 ## Slide 8: 驗證流程與比較原則

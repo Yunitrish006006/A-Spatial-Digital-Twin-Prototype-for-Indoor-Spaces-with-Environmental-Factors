@@ -39,6 +39,42 @@ DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
 FURNITURE_OVERRIDE_NAMES = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = ("cool", "dry", "heat", "fan")
 AC_SWING_OPTIONS = ("fixed", "swing")
+PUBLIC_TASK_GROUP_EXPLANATIONS = {
+    "SML2010": {
+        "S1": {
+            "label": "Pure daylight / illuminance",
+            "verdict": "Main weakness",
+            "reason": "Short-window illuminance strongly favors persistence, and the public data do not expose the actual window geometry, shading, or luminaire layout.",
+        },
+        "S2": {
+            "label": "Thermal-humidity boundary response",
+            "verdict": "Mixed",
+            "reason": "Longer-horizon temperature benefits from boundary features, but humidity has a measurement-scale and baseline-alignment mismatch.",
+        },
+        "S3": {
+            "label": "Facade event delta response",
+            "verdict": "Main advantage",
+            "reason": "Event-delta targets need change direction; structured boundary and response features help more than simply copying the previous value.",
+        },
+    },
+    "CU-BEMS": {
+        "C1": {
+            "label": "AC thermal-humidity zone response",
+            "verdict": "Beats linear only",
+            "reason": "AC power and plug-load features help the readout, but zone-level thermal inertia keeps persistence very strong.",
+        },
+        "C2": {
+            "label": "Lighting / illuminance response",
+            "verdict": "Main weakness",
+            "reason": "Commercial-office lighting depends on schedules, shading, daylight, and many luminaires, which do not match the single-room lighting assumptions.",
+        },
+        "C3": {
+            "label": "Compound event delta response",
+            "verdict": "Beats linear only",
+            "reason": "Device-power and response features improve over linear regression, but CU-BEMS zone-level persistence remains the best MAE baseline.",
+        },
+    },
+}
 WINDOW_PRESET_DATA = json.dumps(
     {
         "seasonOrder": list(WINDOW_SEASON_ORDER),
@@ -373,6 +409,44 @@ INDEX_HTML = """<!doctype html>
       padding: 16px;
       background: #fffdf7;
     }
+    .task-group-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 16px 0 20px;
+    }
+    .task-group-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: #fffdf7;
+      display: grid;
+      gap: 10px;
+    }
+    .task-score {
+      display: grid;
+      grid-template-columns: 96px 1fr 42px;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font: 800 0.72rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-transform: uppercase;
+    }
+    .task-score-track {
+      display: block;
+      height: 8px;
+      border-radius: 999px;
+      background: #e7ded0;
+      overflow: hidden;
+    }
+    .task-score-fill {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--forest);
+    }
+    .task-score-fill.linear { background: var(--blue); }
+    .task-score-fill.persistence { background: var(--clay); }
     .metric {
       color: var(--muted);
       font: 700 0.75rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -585,7 +659,7 @@ INDEX_HTML = """<!doctype html>
       }
       .sidebar-form-grid { grid-template-columns: 1fr; }
       .quick-start-grid { grid-template-columns: 1fr; }
-      .cards, .heatmaps, .timeline-grid { grid-template-columns: 1fr; }
+      .cards, .task-group-grid, .heatmaps, .timeline-grid { grid-template-columns: 1fr; }
       .volume-toolbar { display: block; }
       .volume-toolbar button { width: 100%; margin-top: 14px; }
       .volume-canvas { height: 420px; }
@@ -2273,7 +2347,14 @@ INDEX_HTML = """<!doctype html>
 
     function renderRecommendations(data) {
       const estimatorNote = data.estimator?.label ? `<p class="status">Ranking estimator: ${data.estimator.label}.</p>` : "";
-      document.getElementById("recommendations").innerHTML = estimatorNote + table(
+      const scope = data.sample_scope?.type === "zone_cluster"
+        ? `cluster sample: ${data.sample_scope.target_zone}`
+        : data.sample_scope?.type || "sample";
+      const target = data.target
+        ? `target T/H/L ${fmt(data.target.temperature)}°C / ${fmt(data.target.humidity)}% / ${fmt(data.target.illuminance)} lux`
+        : "target not supplied";
+      const preconditionNote = `<p class="status">Recommendation precondition: ${scope}, ${target}. No sample scope or complete three-factor target means no recommendation.</p>`;
+      document.getElementById("recommendations").innerHTML = estimatorNote + preconditionNote + table(
         ["Rank", "Action", "Improvement", "Resulting Zone Values"],
         data.recommendations.map((item, index) => [
           index + 1,
@@ -2368,10 +2449,42 @@ INDEX_HTML = """<!doctype html>
         <p class="status">${dataset.execution_note}</p>
         <p class="status">Data scale: ${dataset.count_summary}. Unsupported claims: ${dataset.unsupported.length ? dataset.unsupported.join(", ") : "none listed"}.</p>
         <p class="status">Mapping notes: ${dataset.mapping_notes.join(" ")}</p>
+        ${renderTaskGroupCards(dataset.task_groups || [])}
         ${table(
           ["Task", "Horizon", "Target", "Our MAE", "LinReg MAE", "Persist MAE", "Best MAE", "Interpretation"],
           rows
         )}
+      `;
+    }
+
+    function renderTaskGroupCards(groups) {
+      if (!groups.length) return "";
+      return `
+        <div class="task-group-grid">
+          ${groups.map(group => `
+            <div class="task-group-card">
+              <div>
+                <div class="metric">${group.task_id}: ${group.label}</div>
+                <div class="status">${group.verdict}</div>
+              </div>
+              ${scoreLine("Best MAE", group.model_best_count, group.total_targets, "")}
+              ${scoreLine("Beats LR", group.model_beats_linear_count, group.total_targets, "linear")}
+              ${scoreLine("Beats Persist", group.model_beats_persistence_count, group.total_targets, "persistence")}
+              <div class="status">${group.reason}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function scoreLine(label, count, total, className) {
+      const pct = total ? Math.max(0, Math.min(100, (Number(count) / Number(total)) * 100)) : 0;
+      return `
+        <div class="task-score">
+          <span>${label}</span>
+          <span class="task-score-track"><span class="task-score-fill ${className}" style="width:${pct}%"></span></span>
+          <span>${count}/${total}</span>
+        </div>
       `;
     }
 
@@ -3157,6 +3270,7 @@ def _summarize_public_benchmark_file(path: Path) -> Dict[str, Any]:
             "model_beats_linear_count": model_beats_linear_count,
             "model_beats_persistence_count": model_beats_persistence_count,
         },
+        "task_groups": _public_benchmark_task_groups(summary, rows, model_name),
         "rows": rows,
     }
 
@@ -3206,6 +3320,41 @@ def _public_benchmark_rows(summary: Dict[str, Any], model_name: str) -> List[Dic
                 }
             )
     return rows
+
+
+def _public_benchmark_task_groups(
+    summary: Dict[str, Any],
+    rows: List[Dict[str, Any]],
+    model_name: str,
+) -> List[Dict[str, Any]]:
+    dataset = str(summary.get("dataset", ""))
+    explanations = PUBLIC_TASK_GROUP_EXPLANATIONS.get(dataset, {})
+    task_ids = [task_id for task_id in explanations if any(row.get("task_id") == task_id for row in rows)]
+    groups: List[Dict[str, Any]] = []
+    for task_id in task_ids:
+        task_rows_only = [row for row in rows if row.get("task_id") == task_id]
+        total = len(task_rows_only)
+        groups.append(
+            {
+                "task_id": task_id,
+                "label": explanations[task_id]["label"],
+                "verdict": explanations[task_id]["verdict"],
+                "reason": explanations[task_id]["reason"],
+                "total_targets": total,
+                "model_best_count": sum(1 for row in task_rows_only if row.get("best_method") == model_name),
+                "model_beats_linear_count": sum(
+                    1
+                    for row in task_rows_only
+                    if _is_better(row.get("model_mae"), row.get("linear_regression_mae"))
+                ),
+                "model_beats_persistence_count": sum(
+                    1
+                    for row in task_rows_only
+                    if _is_better(row.get("model_mae"), row.get("persistence_mae"))
+                ),
+            }
+        )
+    return groups
 
 
 def _method_metrics(metrics_by_method: Dict[str, Any], method_name: str) -> Dict[str, Any]:

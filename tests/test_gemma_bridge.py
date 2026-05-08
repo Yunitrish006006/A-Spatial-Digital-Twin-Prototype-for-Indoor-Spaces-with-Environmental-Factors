@@ -34,9 +34,22 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(find_scenario_name("夏季晴天中午窗戶結果"), "window_summer_sunny_noon")
 
     def test_heuristic_selects_rank_actions(self) -> None:
-        selected = heuristic_tool_selection("座標 3 2 1.2 推薦什麼動作")
+        selected = heuristic_tool_selection("座標 3 2 1.2 目標溫度25 濕度58 照度500 推薦什麼動作")
         self.assertEqual(selected["tool"], "rank_actions")
-        self.assertEqual(selected["arguments"], {"x": 3.0, "y": 2.0, "z": 1.2})
+        self.assertEqual(
+            selected["arguments"],
+            {
+                "x": 3.0,
+                "y": 2.0,
+                "z": 1.2,
+                "target": {"temperature": 25.0, "humidity": 58.0, "illuminance": 500.0},
+            },
+        )
+
+    def test_heuristic_does_not_rank_without_target(self) -> None:
+        selected = heuristic_tool_selection("座標 3 2 1.2 推薦什麼動作")
+        self.assertEqual(selected["tool"], "none")
+        self.assertIn("三因子目標", selected["answer"])
 
     def test_heuristic_selects_initialize_environment(self) -> None:
         selected = heuristic_tool_selection("幫我初始化設備家具跟 baseline")
@@ -56,10 +69,18 @@ class GemmaBridgeTests(unittest.TestCase):
         self.assertEqual(selected["arguments"]["opening_ratio"], 0.45)
 
     def test_execute_rank_actions_tool(self) -> None:
-        result = execute_tool("rank_actions", {"x": 3.0, "y": 2.0, "z": 1.2})
+        result = execute_tool(
+            "rank_actions",
+            {"x": 3.0, "y": 2.0, "z": 1.2, "target": {"temperature": 25.0, "humidity": 58.0, "illuminance": 500.0}},
+        )
         self.assertEqual(result["scenario"], "idle")
         self.assertEqual(result["point"], {"x": 3.0, "y": 2.0, "z": 1.2})
+        self.assertEqual(result["sample_scope"]["type"], "point")
         self.assertGreater(len(result["recommendations"]), 0)
+
+    def test_execute_rank_actions_rejects_missing_target(self) -> None:
+        with self.assertRaises(ValueError):
+            execute_tool("rank_actions", {"x": 3.0, "y": 2.0, "z": 1.2})
 
     def test_execute_initialize_then_sample_tool(self) -> None:
         initialized = execute_tool(

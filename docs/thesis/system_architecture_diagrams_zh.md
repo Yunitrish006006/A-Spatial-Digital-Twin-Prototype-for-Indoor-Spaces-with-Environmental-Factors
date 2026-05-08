@@ -2,6 +2,8 @@
 
 本文件將目前單房間三因子空間數位孿生原型的實作架構整理成 GitHub 可直接顯示的 Mermaid 圖表，方便用於 README、論文方法章、口試簡報與系統說明。
 
+正式論文與簡報輸出的 SVG 由 `scripts/build_architecture_diagrams.py` 產生。該腳本目前使用統一的 16:9 local SVG renderer，讓圖 3-1、圖 3-2、圖 3-3、圖 3-4、圖 3-5 與圖 5-1 保持相同字級、色彩、框線與箭頭風格；下方 Mermaid 區塊保留作為語意草稿與 GitHub 預覽。
+
 ## 1. 整體分層架構
 
 ```mermaid
@@ -109,20 +111,21 @@ flowchart LR
 
     subgraph Runtime["B. Runtime inference and recommendation path"]
         direction TB
-        R0["Runtime input<br/>MCP / web demo / script / API"] --> R1["Scenario override and validation<br/>query point or target zone"]
+        R0["Runtime input<br/>MCP / web demo / script / API"] --> R1["Scenario override and validation<br/>baseline + devices + furniture + time"]
         R1 --> R2["Nominal T/H/L estimate<br/>variable-specific physical models"]
         R2 --> R3["Sparse correction<br/>registered sensors or calibration state"]
         R3 --> R4["Optional hybrid residual<br/>add learned residual if checkpoint exists"]
         R4 --> R5["Point or zone prediction<br/>temperature + humidity + illuminance"]
-        R5 --> R6{"Need action ranking?"}
-        R6 -- "No" --> R7["Return prediction"]
-        R6 -- "Yes" --> R8["Counterfactual action simulation<br/>rerun inference for each candidate"]
-        R8 --> R9["Rank by comfort penalty reduction<br/>recommended device operation"]
+        R5 --> R6["Recommendation precondition<br/>point sample or cluster sample + T/H/L target"]
+        R6 --> R7{"Complete scope + target?"}
+        R7 -- "No" --> R8["Return prediction<br/>or missing-target error"]
+        R7 -- "Yes" --> R9["Counterfactual action simulation<br/>rerun inference for each candidate"]
+        R9 --> R10["Rank by comfort penalty reduction<br/>recommended device operation"]
     end
 
     A1 -. "device impact coefficients" .-> R3
     A2 -. "optional residual model" .-> R4
-    A3 -. "reproducible evidence" .-> R9
+    A3 -. "reproducible evidence" .-> R10
 ```
 
 ## 5. 可模組化裝置與家具架構

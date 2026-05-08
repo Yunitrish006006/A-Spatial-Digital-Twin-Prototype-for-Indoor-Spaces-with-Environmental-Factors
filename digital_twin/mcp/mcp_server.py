@@ -225,13 +225,14 @@ TOOLS = [
     },
     {
         "name": "rank_actions",
-        "description": "Rank registered-device actions for reaching a target at a specified point.",
+        "description": "Rank registered-device actions only after a point sample and complete temperature/humidity/illuminance target are supplied.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 **POINT_PROPERTIES,
                 "target": {
                     "type": "object",
+                    "description": "Required three-factor target. Recommendations are not produced without temperature, humidity, and illuminance.",
                     "properties": {
                         "temperature": {"type": "number"},
                         "humidity": {"type": "number"},
@@ -240,13 +241,14 @@ TOOLS = [
                         "humidity_tolerance": {"type": "number"},
                         "illuminance_tolerance": {"type": "number"},
                     },
+                    "required": ["temperature", "humidity", "illuminance"],
                     "additionalProperties": False,
                 },
                 "elapsed_minutes": {"type": "number"},
                 "steady_state": {"type": "boolean"},
                 "use_hybrid_residual": {"type": "boolean"},
             },
-            "required": ["x", "y", "z"],
+            "required": ["x", "y", "z", "target"],
             "additionalProperties": False,
         },
     },
@@ -525,7 +527,7 @@ class LocalMCPServer:
 
     def _rank_actions(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         elapsed_minutes, mode = self._elapsed_minutes(arguments)
-        target = arguments.get("target") if isinstance(arguments.get("target"), dict) else {}
+        target = _required_rank_target(arguments)
         result = rank_scenario_point_actions(
             scenario_name=self.state.scenario_name,
             x=_required_number(arguments, "x"),
@@ -603,6 +605,23 @@ def _optional_mapping_number(mapping: Dict[str, Any], key: str) -> Optional[floa
     if not isinstance(value, (int, float)):
         raise ValueError(f"'{key}' must be a number.")
     return float(value)
+
+
+def _required_rank_target(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    target = arguments.get("target")
+    if not isinstance(target, dict):
+        raise ValueError(
+            "rank_actions requires a point sample and a complete three-factor target "
+            "(temperature, humidity, illuminance); without these inputs it does not produce recommendations."
+        )
+    missing = [key for key in ("temperature", "humidity", "illuminance") if key not in target]
+    if missing:
+        raise ValueError(
+            "rank_actions requires a complete three-factor target; missing "
+            + ", ".join(missing)
+            + "."
+        )
+    return target
 
 
 def _clean_number_map(payload: Any, defaults: Dict[str, float]) -> Dict[str, float]:

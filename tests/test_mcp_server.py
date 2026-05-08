@@ -367,6 +367,9 @@ class ServiceTests(unittest.TestCase):
     def test_rank_actions_supports_hybrid_estimator_flag(self) -> None:
         result = rank_scenario_actions("idle", use_hybrid_residual=True)
         self.assertTrue(result["estimator"]["requested"])
+        self.assertEqual(result["sample_scope"]["type"], "zone_cluster")
+        self.assertEqual(result["recommendation_preconditions"]["status"], "SATISFIED")
+        self.assertIn("temperature", result["target"])
 
     def test_learn_impacts_reports_estimator_note(self) -> None:
         result = learn_scenario_impacts("ac_only", use_hybrid_residual=True)
@@ -401,6 +404,12 @@ class MCPServerTests(unittest.TestCase):
         initialize = next(tool for tool in response["result"]["tools"] if tool["name"] == "initialize_environment")
         self.assertIn("devices", initialize["inputSchema"]["properties"])
         self.assertIn("furniture", initialize["inputSchema"]["properties"])
+        rank_actions = next(tool for tool in response["result"]["tools"] if tool["name"] == "rank_actions")
+        self.assertIn("target", rank_actions["inputSchema"]["required"])
+        self.assertEqual(
+            set(rank_actions["inputSchema"]["properties"]["target"]["required"]),
+            {"temperature", "humidity", "illuminance"},
+        )
 
     def test_initialize_environment_registers_baseline_devices_and_furniture(self) -> None:
         response = self.server.handle_message(
@@ -525,9 +534,27 @@ class MCPServerTests(unittest.TestCase):
         )
         payload = json.loads(response["result"]["content"][0]["text"])
         self.assertEqual(payload["point"], {"x": 3.0, "y": 2.0, "z": 1.3})
+        self.assertEqual(payload["sample_scope"]["type"], "point")
+        self.assertEqual(payload["recommendation_preconditions"]["status"], "SATISFIED")
+        self.assertEqual(payload["target"]["temperature"], 25.0)
         self.assertIn("current_values", payload)
         self.assertGreater(len(payload["recommendations"]), 0)
         self.assertIn("effects", payload["recommendations"][0])
+
+    def test_rank_actions_requires_complete_target(self) -> None:
+        response = self.server.handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 350,
+                "method": "tools/call",
+                "params": {
+                    "name": "rank_actions",
+                    "arguments": {"x": 3.0, "y": 2.0, "z": 1.3},
+                },
+            }
+        )
+        self.assertIn("error", response)
+        self.assertIn("three-factor target", response["error"]["message"])
 
     def test_learn_impacts_start_records_without_fake_coefficients(self) -> None:
         response = self.server.handle_message(

@@ -577,6 +577,11 @@ def rank_scenario_point_actions(
     sunlight_illuminance: Optional[float] = None,
     daylight_factor: Optional[float] = None,
 ) -> Dict:
+    _require_complete_point_target(
+        temperature=target_temperature,
+        humidity=target_humidity,
+        illuminance=target_illuminance,
+    )
     scenario = _scenario_with_overrides(
         _find_scenario(scenario_name),
         device_overrides,
@@ -860,7 +865,16 @@ def _rank_scenario_object_actions(scenario: Scenario, use_hybrid_residual: bool 
     return {
         "scenario": scenario.name,
         "estimator": bundle["estimator"],
+        "sample_scope": {
+            "type": "zone_cluster",
+            "target_zone": scenario.target_zone_name,
+            "description": "Ranking is evaluated on the scenario target zone as an aggregated cluster sample.",
+        },
         "target_zone": scenario.target_zone_name,
+        "target": _comfort_target_dict(scenario.comfort_target),
+        "current_values": _round_metric_dict(baseline_zone),
+        "current_penalty": round(baseline_score, 4),
+        "recommendation_preconditions": _recommendation_preconditions("zone_cluster"),
         "recommendations": recommendations,
     }
 
@@ -939,10 +953,16 @@ def _rank_scenario_object_point_actions(
     return {
         "scenario": scenario.name,
         "estimator": bundle["estimator"],
+        "sample_scope": {
+            "type": "point",
+            "point": _vector_to_dict(point),
+            "description": "Ranking is evaluated at the explicitly requested point sample.",
+        },
         "point": _vector_to_dict(point),
         "target": _comfort_target_dict(target),
         "current_values": _round_metric_dict(current_values),
         "current_penalty": round(current_penalty, 4),
+        "recommendation_preconditions": _recommendation_preconditions("point"),
         "registered_devices": [_device_dict(device, include_power=True) for device in calibrated_devices],
         "recommendations": recommendations,
     }
@@ -1221,6 +1241,37 @@ def _comfort_target_with_overrides(
         humidity_weight=base.humidity_weight,
         illuminance_weight=base.illuminance_weight,
     )
+
+
+def _require_complete_point_target(
+    temperature: Optional[float],
+    humidity: Optional[float],
+    illuminance: Optional[float],
+) -> None:
+    missing = []
+    if temperature is None:
+        missing.append("temperature")
+    if humidity is None:
+        missing.append("humidity")
+    if illuminance is None:
+        missing.append("illuminance")
+    if missing:
+        raise ValueError(
+            "Point action ranking requires an explicit three-factor target; missing "
+            + ", ".join(missing)
+            + "."
+        )
+
+
+def _recommendation_preconditions(scope_type: str) -> Dict[str, object]:
+    return {
+        "status": "SATISFIED",
+        "sample_scope_required": True,
+        "sample_scope_type": scope_type,
+        "three_factor_target_required": True,
+        "required_target_fields": ["temperature", "humidity", "illuminance"],
+        "message": "Recommendations are emitted only because a sample scope and complete T/H/L target are available.",
+    }
 
 
 def _comfort_target_dict(target: ComfortTarget) -> Dict[str, float]:

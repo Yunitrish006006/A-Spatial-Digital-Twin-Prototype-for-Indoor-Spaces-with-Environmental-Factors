@@ -367,7 +367,13 @@ File: assets/field_mae_comparison.png Graphic file (type bmp)
 <assets/field_mae_comparison.png>
 File: ../thesis/assets/fig_5_7_light_only_illum_3d.png Graphic file (type bmp)
 <../thesis/assets/fig_5_7_light_only_illum_3d.png>
-[4]
+
+Underfull \vbox (badness 3735) has occurred while \output is active []
+
+ [4]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
 Underfull \hbox (badness 1424) in paragraph at lines 220--221
 []\TU/pcr/m/n/10 For external comparison, we evaluate task-aligned
  []
@@ -401,12 +407,12 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 237.
 
-(paper.bbl
+(paper.bbl [6]
 Underfull \hbox (badness 4024) in paragraph at lines 91--93
 []\TU/ptm/m/sc/8 P. Romeu-Guallart and F. Zamora-Martinez, “SML2010
  []
 
-[6])
+)
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -425,4 +431,4 @@ Before submitting the final camera ready copy, remember to:
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (7 pages, 280328 bytes).
+Output written on paper.xdv (7 pages, 292064 bytes).

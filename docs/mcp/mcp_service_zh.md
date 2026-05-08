@@ -10,7 +10,7 @@
 2. 在已註冊環境中查詢任意座標的 temperature、humidity、illuminance。
 3. 對非連網裝置建立 before/after 觀測紀錄，並在資料足夠時學習影響係數。
 4. 對窗戶直接輸入外部溫度、濕度、日照與開窗比例。
-5. 對指定座標與目標值，根據目前註冊設備排序候選操作。
+5. 對指定座標 sample 與完整 temperature、humidity、illuminance 目標，根據目前註冊設備排序候選操作；缺少 sample 或任一目標因子時不產生推薦。
 
 `run_demo.py`、`run_window_matrix.py`、`compare_baseline` 等仍存在於 service 或實驗腳本中，但它們不再作為 MCP 對外 tools 暴露。這樣可以避免教授誤解 MCP 是在列出實驗結果；MCP 的重點是讓使用者或 AI client 操作同一個 digital twin runtime。
 
@@ -187,6 +187,8 @@ python3 scripts/run_mcp_server.py
 ### `rank_actions`
 
 輸入指定座標與目標三因子值，根據目前註冊設備產生候選操作，並依 comfort penalty 改善量排序。這已不再只針對預設 target zone，而是針對使用者指定的位置。
+
+`rank_actions` 有明確前置條件：必須同時具備 point sample（`x`, `y`, `z`）與完整 target（`temperature`, `humidity`, `illuminance`）。`temperature_tolerance`、`humidity_tolerance` 與 `illuminance_tolerance` 可省略，省略時使用內建 comfort target 的容許範圍；但三個 target 值不可省略。若缺少 sample 或任一 target 欄位，工具會回傳錯誤，不輸出候選動作推薦。
 
 輸入範例：
 

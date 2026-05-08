@@ -119,7 +119,8 @@ python3 scripts/run_all_thesis_experiments.py
 5. `scripts/run_submission_readiness_experiments.py`
 6. `scripts/run_bedroom_weekly_simulation.py`
 7. public benchmark scripts，如果 normalized public data 已存在
-8. `scripts/verify_thesis_results.py`
+8. `scripts/build_public_benchmark_figures.py`，如果 public comparison JSON 已存在
+9. `scripts/verify_thesis_results.py`
 
 如果 public dataset 不存在，總控腳本會跳過 public benchmark，不會讓整體流程崩潰；最後驗證報告會將 public rows 標示為 `MISSING` / `NEEDS_DATA`。
 
@@ -181,6 +182,23 @@ outputs/data/thesis_result_verification_report.json
 - real-bedroom pillow MAE before：`0.8967°C`、`4.1286%`、`358.6392 lux`
 - real-bedroom pillow MAE after：`0.1676°C`、`0.3939%`、`21.3753 lux`
 - SML2010：24 個 target-horizon tasks、12 個 lowest MAE、15 個勝過 linear regression、14 個勝過 persistence
+  - S1：0/4 lowest MAE、2/4 勝過 linear regression、0/4 勝過 persistence，屬短視窗純照度劣勢任務。
+  - S2：2/8 lowest MAE、2/8 勝過 linear regression、4/8 勝過 persistence，長視窗溫度有優勢但濕度有尺度對齊問題。
+  - S3：10/12 lowest MAE、11/12 勝過 linear regression、10/12 勝過 persistence，是事件/邊界 delta response 的主要優勢任務。
 - CU-BEMS：12 個 target-horizon tasks、9 個勝過 linear regression、0 個勝過 persistence
+  - C1：0/4 lowest MAE、3/4 勝過 linear regression、0/4 勝過 persistence，代表 AC 溫濕度 zone response 只能主張補強 LR。
+  - C2：0/2 lowest MAE、0/2 勝過 linear regression、0/2 勝過 persistence，是商辦照度外推劣勢任務。
+  - C3：0/6 lowest MAE、6/6 勝過 linear regression、0/6 勝過 persistence，代表 compound event 可補強 LR 但不勝高慣性的 persistence。
+
+可視覺化任務族群拆解：
+
+```bash
+python3 scripts/build_public_benchmark_figures.py
+```
+
+此命令會從 `outputs/data/public_benchmarks/*_hybrid_twin_comparison.json` 產生：
+
+- `outputs/figures/public_benchmarks/sml2010_task_breakdown.svg`
+- `outputs/figures/public_benchmarks/cu_bems_task_breakdown.svg`
 
 若任一數字 FAIL，不應直接改 JSON 或硬湊數字。正確流程是先確認是哪個實驗腳本、資料版本或論文文字過期，再決定是否重跑實驗或同步修正論文。

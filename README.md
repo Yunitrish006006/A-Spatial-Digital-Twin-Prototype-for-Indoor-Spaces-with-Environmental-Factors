@@ -103,6 +103,8 @@
   對正規化後的公開資料集執行 shared-task benchmark，輸出 persistence 與線性回歸 baseline 比較結果。
 - `scripts/run_public_dataset_model_comparison.py`
   將本研究的 hybrid digital twin 映射到相同 public tasks，並與 persistence / linear regression 做一對一比較。
+- `scripts/build_public_benchmark_figures.py`
+  從 public benchmark JSON 產生 SML2010 S1/S2/S3 與 CU-BEMS C1/C2/C3 任務族群拆解圖，供論文與簡報使用。
 
 ## 快速開始
 
@@ -172,6 +174,7 @@ python3 scripts/run_public_dataset_benchmark.py --dataset cu-bems --horizons 15,
 python3 scripts/run_public_dataset_benchmark.py --dataset sml2010 --horizons 15,60
 python3 scripts/run_public_dataset_model_comparison.py --dataset sml2010 --horizons 15,60
 python3 scripts/run_public_dataset_model_comparison.py --dataset cu-bems --horizons 15,60
+python3 scripts/build_public_benchmark_figures.py
 ```
 
 ## MCP Server
@@ -188,7 +191,7 @@ python3 scripts/run_mcp_server.py
 - `sample_point`：查詢指定座標在特定 elapsed minutes 或 steady state 下的三因子估計。
 - `learn_impacts`：建立或完成非連網裝置 before/after 觀測紀錄，用於學習 device impact。
 - `run_window_direct`：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬。
-- `rank_actions`：輸入指定座標與目標值，依目前註冊設備排序候選操作。
+- `rank_actions`：必須輸入指定座標 sample 與完整 temperature / humidity / illuminance 目標，才依目前註冊設備排序候選操作；缺少 sample 或任一目標因子時不產生推薦。
 
 詳細設定請見 `docs/mcp/mcp_service_zh.md`。
 

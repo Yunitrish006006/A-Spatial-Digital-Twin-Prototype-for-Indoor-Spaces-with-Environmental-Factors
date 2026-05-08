@@ -230,8 +230,9 @@ def build_blocks() -> List[Block]:
         paragraph("表 5-6 真實臥室快照 MAE 與分時舒適度…… 16"),
         paragraph("表 5-7 推薦動作介入驗證指標…… 17"),
         paragraph("表 5-8 公開資料集比較執行流程與 claim boundary…… 17"),
-        paragraph("表 5-9 SML2010 Benchmark 代表性結果…… 18"),
-        paragraph("表 5-10 CU-BEMS Benchmark 代表性結果…… 18"),
+        paragraph("表 5-9 公開資料集任務代號與比較目的…… 18"),
+        paragraph("表 5-10 SML2010 任務族群優劣勢拆解…… 18"),
+        paragraph("表 5-11 CU-BEMS 任務族群優劣勢拆解…… 18"),
         page_break(),
         heading("圖目錄", 1),
         paragraph("圖 3-1 系統整體分層架構…… 7"),
@@ -244,9 +245,11 @@ def build_blocks() -> List[Block]:
         paragraph("圖 5-3 僅冷氣作用溫度場 3D 點雲（ac_only）…… 14"),
         paragraph("圖 5-4 僅燈具作用照度場 3D 點雲（light_only）…… 14"),
         paragraph("圖 5-5 IDW、Base 與 LOO Hybrid field MAE 比較…… 15"),
-        paragraph("圖 5-6 三裝置全開溫度場 3D 點雲（5.11 節）…… 19"),
-        paragraph("圖 5-7 僅開窗溫度場 3D 點雲（window_only）…… 18"),
-        paragraph("圖 5-8 僅燈具照度場 3D 點雲（light_only，5.11 節）…… 19"),
+        paragraph("圖 5-6 SML2010 S1/S2/S3 任務族群拆解…… 18"),
+        paragraph("圖 5-7 CU-BEMS C1/C2/C3 任務族群拆解…… 18"),
+        paragraph("圖 5-8 三裝置全開溫度場 3D 點雲（5.11 節）…… 19"),
+        paragraph("圖 5-9 僅開窗溫度場 3D 點雲（window_only）…… 19"),
+        paragraph("圖 5-10 僅燈具照度場 3D 點雲（light_only，5.11 節）…… 19"),
         page_break(),
         raw_latex(r"\clearpage\pagenumbering{arabic}"),
         heading("第一章 緒論", 1),
@@ -266,7 +269,7 @@ def build_blocks() -> List[Block]:
                 "只知道角落感測器數值時，仍需要估計房間中央、靠窗區與門側區的三因子狀態。",
                 "裝置沒有連網時，仍希望從環境變化中推估它是否對空間造成影響。",
                 "新增或啟用冷氣、窗戶、照明後，系統應能估計其對不同區域造成的變化。",
-                "學習裝置影響後，模型應能支援開冷氣、開窗或開燈等候選控制動作排序。",
+                "學習裝置影響後，模型應能在已指定 point/cluster sample 與三因子目標時，支援開冷氣、開窗或開燈等候選控制動作排序。",
                 "將模型封裝為標準化工具介面後，AI client 或 agent 可查詢與使用數位孿生能力。",
             ]
         ),
@@ -275,7 +278,7 @@ def build_blocks() -> List[Block]:
             [
                 "RQ1：在只有 8 顆角落感測器的條件下，是否能建立單房間溫度、濕度與照度的空間估計模型？",
                 "RQ2：在家電或環境裝置沒有連網狀態回報的情況下，是否能從環境感測資料學習其對空間不同區域的影響？",
-                "RQ3：學習後的裝置影響模型，是否能依三因子偏差輸出候選控制動作排序，例如選擇開冷氣、開窗或開燈，且推薦動作的實際可行性應如何透過介入式 before/after 實驗驗證？",
+                "RQ3：學習後的裝置影響模型，是否能在明確 point/cluster sample 與溫度、濕度、照度目標下，依三因子偏差輸出候選控制動作排序，例如選擇開冷氣、開窗或開燈，且推薦動作的實際可行性應如何透過介入式 before/after 實驗驗證？",
                 "RQ4：將數位孿生模型封裝為標準化工具介面後，是否能讓 AI client 查詢、模擬與使用控制推薦能力？",
             ]
         ),
@@ -330,7 +333,7 @@ def build_blocks() -> List[Block]:
         ),
         heading("2.6 MCP 與 AI Agent Tool Interface", 2),
         paragraph(
-            "Model Context Protocol（MCP）提供一種標準化工具介面，使外部模型或 AI client 能以一致方式呼叫系統能力。本研究將數位孿生原型封裝為本地 MCP server，但其角色不是執行論文驗證實驗，而是提供實際互動流程：先初始化 MCP session 的 runtime state，包含 base scenario、室內 baseline、外部邊界條件、註冊設備、家具/遮蔽物、預設時間與 estimator 選擇，再查詢指定座標於特定時間或準穩態下的三因子估計，並可建立 before/after 裝置影響學習紀錄、直接輸入窗戶外部資料，以及針對指定座標目標排序控制候選動作。需要強調的是，MCP 在本研究中的角色屬於系統整合與工具化封裝，用以驗證數位孿生模型可被外部 AI 系統操作，而非針對 MCP 通訊協定本身提出新方法。"
+            "Model Context Protocol（MCP）提供一種標準化工具介面，使外部模型或 AI client 能以一致方式呼叫系統能力。本研究將數位孿生原型封裝為本地 MCP server，但其角色不是執行論文驗證實驗，而是提供實際互動流程：先初始化 MCP session 的 runtime state，包含 base scenario、室內 baseline、外部邊界條件、註冊設備、家具/遮蔽物、預設時間與 estimator 選擇，再查詢指定座標於特定時間或準穩態下的三因子估計，並可建立 before/after 裝置影響學習紀錄、直接輸入窗戶外部資料，以及在指定座標 sample 與完整溫度、濕度、照度目標都存在時排序控制候選動作。需要強調的是，MCP 在本研究中的角色屬於系統整合與工具化封裝，用以驗證數位孿生模型可被外部 AI 系統操作，而非針對 MCP 通訊協定本身提出新方法。"
         ),
         heading("2.7 與相似研究之差異定位", 2),
         paragraph(
@@ -387,7 +390,7 @@ def build_blocks() -> List[Block]:
         heading("第三章 系統架構與數學模型", 1),
         heading("3.1 系統架構", 2),
         paragraph(
-            "本研究系統由五個主要模組組成：房間與設備設定、三因子影響場模型、角落感測器校正、非連網裝置影響學習、以及控制動作排序與 MCP 工具介面。整體流程為：輸入房間幾何、設備位置與外部環境條件後，模型先建立背景場，再加入設備影響函數，接著使用 8 顆角落感測器觀測值校準 active device power scale 並建立 trilinear 校正場，最後輸出任意座標或目標區域的三因子估計與候選控制動作排序。"
+            "本研究系統由五個主要模組組成：房間與設備設定、三因子影響場模型、角落感測器校正、非連網裝置影響學習、以及控制動作排序與 MCP 工具介面。整體流程為：輸入房間幾何、設備位置與外部環境條件後，模型先建立背景場，再加入設備影響函數，接著使用 8 顆角落感測器觀測值校準 active device power scale 並建立 trilinear 校正場，最後輸出任意座標或目標區域的三因子估計；只有在已有 point/cluster sample 與完整三因子目標時，才進一步輸出候選控制動作排序。"
         ),
         image(
             "outputs/figures/architecture/整體分層架構.svg",
@@ -907,15 +910,17 @@ def build_blocks() -> List[Block]:
         ),
         heading("3.7.2 訓練完成後的推論與推薦資料流", 3),
         paragraph(
-            "模型訓練完成後，使用者或 MCP client 的輸入不會直接丟進神經網路得到答案，而是先被轉成與訓練階段一致的 scenario state，如圖 3-5 右側所示。接著系統先跑可解釋主模型，再視設定套用 sparse correction 與 hybrid residual，最後才輸出指定點或區域的三因子預測。若使用者要求推薦動作，系統會對每個候選動作建立反事實情境並重跑同一條推論流程，再依 comfort penalty 改善量排序。"
+            "模型訓練完成後，使用者或 MCP client 的輸入不會直接丟進神經網路得到答案，而是先被轉成與訓練階段一致的 scenario state，如圖 3-5 右側所示。接著系統先跑可解釋主模型，再視設定套用 sparse correction 與 hybrid residual，最後才輸出指定點或區域的三因子預測。推薦動作不是在只有房間狀態時自動產生；系統必須先取得一個決策採樣範圍，也就是單一指定座標的 point sample，或由多個採樣點、目標區域形成的 cluster sample。接著使用者必須給出 temperature、humidity 與 illuminance 三因子的要求與容許範圍。只有 sample scope 與完整三因子目標都存在時，系統才會對候選動作建立反事實情境並排序；若缺少任一項，流程應停在 point / zone prediction，或由工具回報缺少 sample / target，不產生推薦動作。"
         ),
         code(
-            "runtime input: baseline + outdoor conditions + devices + furniture + point/target\n"
+            "runtime input: baseline + outdoor conditions + devices + furniture + time\n"
             "→ scenario override and validation\n"
             "→ nominal temperature/humidity/illuminance estimate\n"
             "→ sparse correction and optional hybrid residual\n"
             "→ point or zone prediction\n"
-            "→ counterfactual actions\n"
+            "→ sample scope: point sample or cluster/zone sample\n"
+            "→ three-factor requirement: target + tolerances for T/H/L\n"
+            "→ if scope and target are complete: counterfactual actions\n"
             "→ comfort penalty reduction ranking"
         ),
         table(
@@ -923,7 +928,7 @@ def build_blocks() -> List[Block]:
             [
                 [
                     "1. Runtime input",
-                    "MCP initialize、web demo、script 或 API 傳入 baseline、外部環境、設備狀態、家具、elapsed/steady-state、查詢座標與目標值。",
+                    "MCP initialize、web demo、script 或 API 傳入 baseline、外部環境、設備狀態、家具與 elapsed/steady-state。",
                     "使用 `_scenario_with_overrides` 或 MCP registered state 建立目前房間狀態。",
                     "可推論的 scenario state。",
                 ],
@@ -946,19 +951,25 @@ def build_blocks() -> List[Block]:
                     "$F_v^{\\text{hybrid}}=F_v+R_v$。",
                 ],
                 [
-                    "5. Point / zone prediction",
-                    "指定座標或目標區域。",
-                    "若是 `sample_point`，直接回傳該點 temperature、humidity、illuminance；若是 zone summary，對區域內採樣點做平均或統計。",
-                    "預測溫度、濕度、照度與 estimator 狀態。",
+                    "5. Point / cluster sample",
+                    "指定座標、單點 sample，或由多點/目標區域形成的 cluster sample。",
+                    "若是 `sample_point`，直接回傳該點 temperature、humidity、illuminance；若是 zone / cluster summary，對範圍內採樣點做平均或統計。",
+                    "目前採樣範圍的 $\\mathbf{q}_{\\mathrm{base}}=(q_T,q_H,q_L)$ 與 estimator 狀態。",
                 ],
                 [
-                    "6. Candidate action simulation",
+                    "6. Recommendation precondition",
+                    "sample scope、三因子目標 $g_T,g_H,g_L$、容許範圍 $\\delta_T,\\delta_H,\\delta_L$ 與權重 $w_T,w_H,w_L$。",
+                    "檢查 sample scope 是否存在，且 temperature、humidity、illuminance 三個目標是否完整；缺少時只回傳估測，不輸出推薦。",
+                    "`READY_TO_RANK` 或明確缺項錯誤；缺項時沒有 recommendations 輸出。",
+                ],
+                [
+                    "7. Candidate action simulation",
                     "目前註冊設備與候選動作，例如開冷氣、調整冷氣模式、開窗或開燈。",
-                    "對每個候選動作建立反事實 scenario，把裝置 activation 或 metadata 改成候選狀態，重新執行同一條推論流程。",
+                    "只在 `READY_TO_RANK` 時，對每個候選動作建立反事實 scenario，把裝置 activation 或 metadata 改成候選狀態，重新執行同一條推論流程。",
                     "每個候選動作後的 $\\mathbf{q}_a=(q_T,q_H,q_L)$。",
                 ],
                 [
-                    "7. Recommendation ranking",
+                    "8. Recommendation ranking",
                     "目前狀態 $\\mathbf{q}_{\\mathrm{base}}$、動作後狀態 $\\mathbf{q}_a$、舒適目標 $g_m$、容許範圍 $\\delta_m$ 與權重 $w_m$。",
                     "先算目前 penalty，再算每個候選動作後的 penalty；排序分數為 $P(\\mathbf{q}_{\\mathrm{base}})-P(\\mathbf{q}_a)$。",
                     "依預測改善量排序的推薦動作清單、預測改善值與注意事項。",
@@ -966,7 +977,7 @@ def build_blocks() -> List[Block]:
             ],
         ),
         paragraph(
-            "這條推論流程也說明本研究的推薦動作不是規則表，也不是 LLM 直接猜測，而是由同一套數位孿生模型對候選動作做反事實模擬。若排名第一的動作是開冷氣，代表模型預測在目前 baseline、外部環境、家具遮蔽與設備狀態下，開冷氣後目標點或目標區域的 comfort penalty 下降最多；但它仍需 5.8 節的 before/after 介入實驗才能證明真實因果改善。"
+            "這條推論流程也說明本研究的推薦動作不是規則表，也不是 LLM 直接猜測，而是由同一套數位孿生模型對候選動作做反事實模擬。若排名第一的動作是開冷氣，代表模型預測在目前 baseline、外部環境、家具遮蔽、設備狀態、指定 sample scope 與三因子目標下，開冷氣後該目標點或目標區域的 comfort penalty 下降最多；但它仍需 5.8 節的 before/after 介入實驗才能證明真實因果改善。"
         ),
         heading("3.8 Hybrid Residual Neural Network 延伸", 2),
         paragraph(
@@ -997,32 +1008,41 @@ def build_blocks() -> List[Block]:
         ),
         heading("3.9 控制動作排序", 2),
         paragraph(
-            "本研究不做閉環控制，而是對候選控制動作進行排序。系統針對每個候選動作模擬目標區域的三因子值，並依舒適度目標計算改善分數。若房間偏熱，冷氣動作通常獲得較高排序；若照度不足，照明動作通常獲得較高排序。"
+            "本研究不做閉環控制，而是對候選控制動作進行排序。此排序不是無條件推薦，而是在明確的決策採樣範圍與三因子要求下才被定義。採樣範圍可是一個指定座標 point sample，也可是一組由目標區域或使用者選定點組成的 cluster sample；三因子要求則必須同時包含溫度、濕度與照度的目標值與容許範圍。若缺少採樣範圍或缺少任一環境因子的目標，系統只能回傳估測結果，不應輸出候選動作推薦。"
         ),
         paragraph(
-            "具體而言，系統先以目前感測資料校正模型，取得目標區域目前三因子估計值並計算 baseline comfort penalty。接著，對每一個候選動作建立反事實情境：例如將冷氣 activation 調至 0.85、開窗至 0.7，或將主要照明調至 0.8，再重新模擬目標區域的溫度、濕度與照度。候選動作分數定義為 baseline penalty 減去動作後預測 penalty，因此分數愈高代表模型預期改善愈大。"
+            "具體而言，系統先以目前感測資料校正模型，取得採樣範圍目前三因子估計值並計算 baseline comfort penalty。若採樣範圍是單點，$K=1$；若是 cluster 或 target zone，則以 $K$ 個空間採樣點的平均代表該範圍。接著，對每一個候選動作建立反事實情境：例如將冷氣 activation 調至 0.85、開窗至 0.7，或將主要照明調至 0.8，再重新模擬該採樣範圍的溫度、濕度與照度。候選動作分數定義為 baseline penalty 減去動作後預測 penalty，因此分數愈高代表模型預期改善愈大。"
         ),
+        paragraph("令決策採樣範圍為："),
+        math(r"S=\{\mathbf{p}_k\}_{k=1}^{K}"),
+        paragraph("在第 $m$ 個環境因素上，採樣範圍的估計值定義為："),
+        math(r"q_m(S)=\frac{1}{K}\sum_{k=1}^{K}F_m(\mathbf{p}_k,t)"),
+        paragraph("其中 point sample 是 $K=1$ 的特殊情況；cluster sample 或 target zone 則是 $K>1$ 的空間聚合。三因子目標向量與容許範圍分別寫成："),
+        math(r"\mathbf{g}=(g_T,g_H,g_L),\qquad \boldsymbol{\delta}=(\delta_T,\delta_H,\delta_L)"),
         paragraph("comfort penalty 對每個因子使用目標值與容許範圍計算，可寫成："),
-        math(r"P(\mathbf{q})=\sum_{m\in\{T,H,L\}} w_m \max\left(0,\frac{|q_m-g_m|-\delta_m}{\delta_m}\right)"),
+        math(r"P(\mathbf{q}(S))=\sum_{m\in\{T,H,L\}} w_m \max\left(0,\frac{|q_m(S)-g_m|-\delta_m}{\delta_m}\right)"),
         paragraph("候選動作 $a$ 的排序分數定義為："),
-        math(r"\mathrm{score}(a)=P(\mathbf{q}_{\mathrm{base}})-P(\mathbf{q}_{a})"),
+        math(r"\mathrm{score}(a)=P(\mathbf{q}_{\mathrm{base}}(S))-P(\mathbf{q}_{a}(S))"),
         table(
             ["控制排序符號", "詳細意義", "排序中的角色"],
             [
                 ["$m$", "comfort penalty 中的環境因素索引。", "$m\\in\\{T,H,L\\}$，分別對應溫度、濕度與照度。"],
-                ["$\\mathbf{q}$", "目標區域或指定座標的三因子估計向量。", "可寫成 $(q_T,q_H,q_L)$。"],
-                ["$q_m$", "目標點或目標區域中第 $m$ 個環境因素的估計值。", "由目前模型或反事實動作模擬得到。"],
+                ["$S$", "推薦排序使用的決策採樣範圍。", "可為單一 point sample，也可為 cluster sample 或 target zone。"],
+                ["$K$", "採樣範圍中的點數。", "$K=1$ 代表單點；$K>1$ 代表區域或群集平均。"],
+                ["$\\mathbf{p}_k$", "採樣範圍中的第 $k$ 個座標點。", "每個點都在同一個房間座標系中。"],
+                ["$\\mathbf{q}(S)$", "由採樣範圍 $S$ 聚合出的三因子估計向量。", "可寫成 $(q_T(S),q_H(S),q_L(S))$。"],
+                ["$q_m(S)$", "採樣範圍中第 $m$ 個環境因素的估計值。", "由目前模型或反事實動作模擬後對 $S$ 聚合得到。"],
                 ["$g_m$", "第 $m$ 個環境因素的舒適目標值。", "例如目標溫度、目標濕度或目標照度。"],
                 ["$\\delta_m$", "第 $m$ 個環境因素的可接受容許範圍。", "偏差小於此範圍時不產生 penalty。"],
                 ["$w_m$", "第 $m$ 個環境因素的權重。", "用來表示溫度、濕度與照度在決策中的重要程度。"],
-                ["$P(\\mathbf{q})$", "comfort penalty。", "值越小表示越接近舒適目標。"],
-                ["$\\mathbf{q}_{\\mathrm{base}}$", "尚未套用候選動作時的目前狀態估計。", "用來計算 baseline penalty。"],
-                ["$\\mathbf{q}_a$", "套用候選動作 $a$ 後的反事實估計。", "由模型重新模擬得到，不是實際控制後的量測值。"],
+                ["$P(\\mathbf{q}(S))$", "採樣範圍 $S$ 的 comfort penalty。", "值越小表示該點或群集越接近舒適目標。"],
+                ["$\\mathbf{q}_{\\mathrm{base}}(S)$", "尚未套用候選動作時，採樣範圍 $S$ 的目前狀態估計。", "用來計算 baseline penalty。"],
+                ["$\\mathbf{q}_a(S)$", "套用候選動作 $a$ 後，採樣範圍 $S$ 的反事實估計。", "由模型重新模擬得到，不是實際控制後的量測值。"],
                 ["$\\mathrm{score}(a)$", "候選動作 $a$ 的改善分數。", "分數越高，表示模型預期該動作越能降低 comfort penalty。"],
             ],
         ),
         paragraph(
-            "若預測值落在容許範圍內，該因子 penalty 為 0；若超出容許範圍，則以超出量除以容許範圍後乘上對應權重。此設計避免微小偏差被過度懲罰，也使不同量綱的溫度、濕度與照度可被加總。需要注意的是，這裡的推薦排序屬於 model-based counterfactual simulation，並不等同於已完成實際控制驗證。"
+            "若預測值落在容許範圍內，該因子 penalty 為 0；若超出容許範圍，則以超出量除以容許範圍後乘上對應權重。此設計避免微小偏差被過度懲罰，也使不同量綱的溫度、濕度與照度可被加總。需要注意的是，這裡的推薦排序屬於 model-based counterfactual simulation，並不等同於已完成實際控制驗證；而且在數學上只有當 $S$、$\\mathbf{g}$ 與 $\\boldsymbol{\\delta}$ 都完整時才有定義。"
         ),
         heading("3.10 方法選擇理由與限制", 2),
         paragraph(
@@ -1141,7 +1161,7 @@ def build_blocks() -> List[Block]:
                 "sample_point：估計指定座標在特定 elapsed minutes 或 steady state 下的 temperature、humidity 與 illuminance，用於補足非感測點狀態。",
                 "learn_impacts：針對某個非連網設備建立 before/after observation record；只有同時具備開啟前與開啟後的真實感測讀值時，才計算 learned impact coefficients。",
                 "run_window_direct：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬，並可更新目前 MCP session 的外部環境。",
-                "rank_actions：輸入指定座標與目標三因子值，根據目前註冊設備產生候選操作並依 comfort penalty 改善量排序。",
+                "rank_actions：輸入指定座標 sample 與完整目標三因子值，根據目前註冊設備產生候選操作並依 comfort penalty 改善量排序；缺少 sample 或任一三因子目標時不產生推薦。",
             ]
         ),
         paragraph(
@@ -1436,91 +1456,66 @@ def build_blocks() -> List[Block]:
         paragraph(
             "SML2010 在本研究中被映射為 two-point boundary-response benchmark。資料包含 dining room 與 room 兩個室內點位、室外溫濕度、日照與天氣相關欄位，適合評估窗邊或 facade 條件變化後的兩點時序響應；但它不包含完整單房間幾何、明確窗戶開關狀態、完整 3D 場真值，也不能支援非連網裝置影響係數的直接學習。CU-BEMS 則被映射為 single-zone device-response benchmark；每個 floor-zone 被視為一個 pseudo zone，AC power 與 lighting power 被轉換為 bounded device activations，用於評估 zone-level 溫度、濕度與照度響應。它的優點是資料量大且含裝置用電欄位，限制則是多區商辦資料不等於本研究的單房間 8 角落感測拓樸。"
         ),
-        paragraph("表 5-9 列出 SML2010 benchmark 代表性任務的三項指標對比。"),
+        heading("5.9.1 任務代號與圖表閱讀方式", 3),
+        paragraph(
+            "為避免把所有 benchmark row 混在同一張表中而難以判讀，本研究將公開資料集任務改以 task family 呈現。每個 task family 都獨立報告三個比例：本研究是否取得最低 MAE、是否勝過 linear regression、是否勝過 persistence。這三個比例分別回答不同問題：最低 MAE 代表該任務上三者中誤差最小；勝過 linear regression 表示 structured prior 是否比一般線性讀出更有幫助；勝過 persistence 則是最嚴格的短視窗時序檢查，因為 persistence 直接沿用上一時步值，常在高時間慣性的資料中非常強。"
+        ),
         table(
-            ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
+            ["任務", "資料集", "比較目的", "主要限制"],
             [
-                ["S1 照度", "15min", "dining_illuminance", "MAE",  "3.418", "4.023", "5.346"],
-                ["S1 照度", "15min", "dining_illuminance", "RMSE", "8.074", "8.194", "9.986"],
-                ["S1 照度", "15min", "dining_illuminance", "Corr", "0.963", "0.966", "0.957"],
-                ["S2 溫度", "15min", "dining_temperature", "MAE",  "0.118", "0.043", "0.073"],
-                ["S2 溫度", "15min", "dining_temperature", "RMSE", "0.135", "0.056", "0.089"],
-                ["S2 溫度", "15min", "dining_temperature", "Corr", "0.999", "1.000", "0.999"],
-                ["S2 濕度", "15min", "dining_humidity",    "MAE",  "0.198", "0.209", "0.832"],
-                ["S2 濕度", "15min", "dining_humidity",    "RMSE", "0.304", "0.316", "1.026"],
-                ["S2 濕度", "15min", "dining_humidity",    "Corr", "0.998", "0.998", "0.988"],
-                ["S3 複合溫度", "15min", "dining_temperature", "MAE",  "0.233", "0.093", "0.071"],
-                ["S3 複合溫度", "15min", "dining_temperature", "RMSE", "0.283", "0.115", "0.089"],
-                ["S3 複合溫度", "15min", "dining_temperature", "Corr", "0.000", "0.909", "0.950"],
-                ["S3 複合濕度", "15min", "dining_humidity",    "MAE",  "0.386", "0.393", "0.335"],
-                ["S3 複合濕度", "15min", "dining_humidity",    "RMSE", "0.595", "0.574", "0.475"],
-                ["S3 複合濕度", "15min", "dining_humidity",    "Corr", "0.000", "0.337", "0.612"],
-                ["S3 複合照度", "15min", "dining_illuminance", "MAE",  "8.473", "9.813", "9.437"],
-                ["S3 複合照度", "15min", "dining_illuminance", "RMSE", "14.449", "13.623", "13.552"],
-                ["S3 複合照度", "15min", "dining_illuminance", "Corr", "0.000", "0.526", "0.366"],
-                ["S3 複合溫度", "60min", "dining_temperature", "MAE",  "0.563", "0.212", "0.190"],
-                ["S3 複合溫度", "60min", "dining_temperature", "RMSE", "0.693", "0.256", "0.243"],
-                ["S3 複合溫度", "60min", "dining_temperature", "Corr", "0.000", "0.906", "0.937"],
-                ["S3 複合濕度", "60min", "dining_humidity",    "MAE",  "0.889", "0.809", "0.759"],
-                ["S3 複合濕度", "60min", "dining_humidity",    "RMSE", "1.281", "1.155", "1.059"],
-                ["S3 複合濕度", "60min", "dining_humidity",    "Corr", "0.000", "0.434", "0.569"],
-                ["S3 複合照度", "60min", "dining_illuminance", "MAE",  "15.209", "17.170", "14.460"],
-                ["S3 複合照度", "60min", "dining_illuminance", "RMSE", "21.931", "22.763", "19.344"],
-                ["S3 複合照度", "60min", "dining_illuminance", "Corr", "0.000", "0.715", "0.472"],
+                ["S1", "SML2010", "純日照/照度邊界響應；檢查 daylight mapping 是否能處理兩點照度預測", "短視窗照度慣性強，且公開資料缺實際窗戶幾何與遮蔽資訊"],
+                ["S2", "SML2010", "溫度與濕度邊界響應；檢查外氣與室內兩點的熱濕響應", "濕度量測尺度與本研究簡化濕度模型不完全對齊"],
+                ["S3", "SML2010", "facade event delta response；檢查邊界或日照事件後的變化方向與長視窗響應", "仍只是兩點時序任務，不是完整 3D 場驗證"],
+                ["C1", "CU-BEMS", "AC power 相關的 zone-level 溫濕度響應", "商辦 zone-level 資料時間慣性強，persistence 很難勝過"],
+                ["C2", "CU-BEMS", "lighting power 相關的 zone-level 照度響應", "大型商辦照度受排程、遮陽、自然光與多燈具共同影響"],
+                ["C3", "CU-BEMS", "compound event delta response；檢查裝置用電與環境變化的共同響應", "仍缺本研究所需的單房間幾何、8 點拓樸與 dense field truth"],
+            ],
+        ),
+        heading("5.9.2 SML2010：S1/S2/S3 任務族群拆解", 3),
+        image(
+            "outputs/figures/public_benchmarks/sml2010_task_breakdown.svg",
+            "圖 5-6 SML2010 S1/S2/S3 任務族群拆解。每個任務族群分別顯示本研究映射模型取得最低 MAE、勝過 linear regression 與勝過 persistence 的比例，並列出優勢或劣勢原因。",
+            width_inches=6.1,
+            asset_name="fig_5_6_sml2010_task_breakdown",
+        ),
+        table(
+            ["任務族群", "結果摘要", "為什麼表現較好或較差", "論文可宣稱範圍"],
+            [
+                ["S1 純照度", "4 個 target-horizon 任務中，最低 MAE 0/4，勝過 linear regression 2/4，勝過 persistence 0/4。代表案例為 15min dining_illuminance：本研究 MAE 5.346，高於 persistence 3.418。", "S1 是純日照/照度任務，15 分鐘內照度通常高度延續上一時步；公開資料又缺少實際窗戶、遮蔽與燈具幾何，因此模型 daylight mapping 會引入額外誤差。", "S1 是本研究在 public benchmark 的明確劣勢；不能宣稱本模型優於短視窗照度 persistence。"],
+                ["S2 溫濕度", "8 個任務中，最低 MAE 2/8，勝過 linear regression 2/8，勝過 persistence 4/8。優勢集中在長視窗溫度，例如 60min dining_temperature 本研究 MAE 0.156，低於 linear regression 0.192。", "溫度在 60 分鐘視窗受外氣與熱邊界條件影響，structured prior 較能提供方向；但濕度在 SML2010 中有量測尺度與基準偏移問題，簡化濕度模型容易高估。", "可主張長視窗溫度任務有優勢；不能把 S2 解讀成溫度、濕度都全面勝出。"],
+                ["S3 複合事件", "12 個任務中，最低 MAE 10/12，勝過 linear regression 11/12，勝過 persistence 10/12。60 分鐘 horizon 下 6 個 target 全部同時勝過兩個 baseline。", "S3 是 facade event delta response，任務重點是事件後的變化方向。persistence 只延續上一時步，對 delta 任務缺少方向資訊；本研究的邊界條件、日照與響應特徵提供較有效的事件先驗。", "S3 是本研究在公開資料上的主要優勢，可用來支持 structured prior 對事件/邊界變化與長視窗響應有幫助。"],
             ],
         ),
         paragraph(
-            "整體統計上，SML2010 共包含 24 個 target-horizon 任務，本研究映射模型在 12 項取得最低 MAE，15 項勝過 linear regression，14 項勝過 persistence。最明確的優勢集中在 S3 facade event delta：15 分鐘 horizon 下 6 個 target 中有 5 項勝過 linear regression、4 項勝過 persistence；60 分鐘 horizon 下 6 個 target 全部同時勝過兩個 baseline。這表示本研究的 structured prior 在邊界條件突變、長視窗熱響應與事件型變化量任務上最有幫助。"
+            "整體統計上，SML2010 共包含 24 個 target-horizon 任務，本研究映射模型在 12 項取得最低 MAE，15 項勝過 linear regression，14 項勝過 persistence。此結果不能簡化成「公開資料集全面勝出」；更精確的說法是：S3 這類事件/邊界變化任務是主要優勢，S2 的長視窗溫度有部分優勢，而 S1 短視窗純照度是明確劣勢。"
         ),
-        paragraph("表 5-10 列出 CU-BEMS benchmark 代表性任務的三項指標對比。"),
+        paragraph(
+            "從物理意義來看，這個結果與本研究模型設計一致。模型不是為了最佳化一般自回歸時序預測，而是把外部邊界、設備作用、空間位置與變數專屬響應拆開處理；因此當任務需要知道事件造成的方向與長視窗環境響應時較有利，當任務只需要複製上一時步照度時則不佔優勢。"
+        ),
+        heading("5.9.3 CU-BEMS：C1/C2/C3 任務族群拆解", 3),
+        image(
+            "outputs/figures/public_benchmarks/cu_bems_task_breakdown.svg",
+            "圖 5-7 CU-BEMS C1/C2/C3 任務族群拆解。CU-BEMS 呈現出與 SML2010 不同的型態：本研究常能勝過 linear regression，但在高時間慣性的商辦 zone-level 任務中未勝過 persistence。",
+            width_inches=6.1,
+            asset_name="fig_5_7_cu_bems_task_breakdown",
+        ),
         table(
-            ["任務", "視窗", "目標", "指標", "Persistence", "Linear Reg", "本研究"],
+            ["任務族群", "結果摘要", "為什麼表現較好或較差", "論文可宣稱範圍"],
             [
-                ["C1 溫濕度", "15min", "temperature", "MAE",  "0.262", "0.288", "0.282"],
-                ["C1 溫濕度", "15min", "temperature", "RMSE", "0.574", "0.534", "0.530"],
-                ["C1 溫濕度", "15min", "temperature", "Corr", "0.980", "0.983", "0.983"],
-                ["C1 溫濕度", "15min", "humidity",    "MAE",  "0.713", "0.778", "0.756"],
-                ["C1 溫濕度", "15min", "humidity",    "RMSE", "1.468", "1.452", "1.457"],
-                ["C1 溫濕度", "15min", "humidity",    "Corr", "0.978", "0.979", "0.979"],
-                ["C2 照度",   "15min", "illuminance", "MAE",  "1.363", "1.794", "7.700"],
-                ["C2 照度",   "15min", "illuminance", "RMSE", "6.344", "6.264", "11.938"],
-                ["C2 照度",   "15min", "illuminance", "Corr", "0.962", "0.963", "0.864"],
-                ["C3 複合溫度", "15min", "temperature", "MAE",  "0.571", "0.692", "0.626"],
-                ["C3 複合溫度", "15min", "temperature", "RMSE", "1.301", "1.124", "1.153"],
-                ["C3 複合溫度", "15min", "temperature", "Corr", "0.000", "0.503", "0.479"],
-                ["C3 複合照度", "60min", "illuminance", "MAE",  "4.509", "7.093", "5.728"],
-                ["C3 複合照度", "60min", "illuminance", "RMSE", "12.507", "12.162", "12.105"],
-                ["C3 複合照度", "60min", "illuminance", "Corr", "0.000", "0.263", "0.228"],
-                ["C2 照度",   "60min", "illuminance", "MAE",  "4.012", "5.646", "9.566"],
-                ["C2 照度",   "60min", "illuminance", "RMSE", "12.065", "11.575", "14.234"],
-                ["C2 照度",   "60min", "illuminance", "Corr", "0.864", "0.866", "0.792"],
+                ["C1 AC 溫濕度", "4 個 target-horizon 任務中，最低 MAE 0/4，勝過 linear regression 3/4，勝過 persistence 0/4。代表案例為 15min temperature：本研究 MAE 0.282，略低於 linear regression 0.288，但高於 persistence 0.262。", "AC power 與 plug load 可提供裝置狀態線索，因此 structured prior 能補強線性讀出；但 zone-level 溫濕度短時間自相關很強，上一時步觀測已是極強 baseline。", "可主張對 linear regression 有補強效果；不能宣稱優於 persistence。"],
+                ["C2 照度", "2 個任務中，最低 MAE 0/2，勝過 linear regression 0/2，勝過 persistence 0/2。15min illuminance 本研究 MAE 7.700，高於 linear regression 1.794 與 persistence 1.363。", "商辦照度受排程、遮陽、自然光、多燈具與區域平均方式共同影響，與本研究單房間照度幾何假設不一致；照度短視窗又容易被 persistence 捕捉。", "C2 是明確劣勢，提醒照度模型不能未經校正就外推到大型商辦區域。"],
+                ["C3 複合事件", "6 個任務中，最低 MAE 0/6，勝過 linear regression 6/6，勝過 persistence 0/6。代表案例為 60min illuminance：本研究 MAE 5.728，低於 linear regression 7.093，但高於 persistence 4.509。", "事件 delta 任務讓 device power 與環境響應特徵變得有用，因此能穩定勝過 linear regression；但 CU-BEMS zone-level 資料時間慣性非常強，persistence 仍在 MAE 上最佳。", "可宣稱本研究特徵對 compound event readout 有幫助；不能把 CU-BEMS 解讀為完整 3D spatial twin 驗證。"],
             ],
         ),
         paragraph(
             "CU-BEMS 呈現與 SML2010 不同的結果。12 個 target-horizon 任務中，本研究映射模型有 9 項 MAE 勝過 linear regression，但沒有任何一項勝過 persistence。這表示在大規模 zone-level building operation forecasting 中，資料本身的時間慣性非常強，上一時步觀測值往往已是極強 baseline；本研究模型的優勢較適合解讀為 structured prior 對 linear readout 的補強，而不是全面取代 persistence。"
         ),
-        heading("5.9.1 優勢分析", 3),
+        heading("5.9.4 綜合判讀與 Claim Boundary", 3),
         paragraph(
-            "第一項優勢是事件或邊界變化任務的趨勢追蹤能力。在 SML2010 S3 任務中，persistence 的 Correlation 值全為 0.000，原因是任務標的為 facade 條件變化後的 delta response，前一時步值無法提供變化方向。相較之下，本研究模型在 S3 15min dining_temperature 的 Correlation 達 0.950，S3 15min dining_humidity 達 0.612，S3 60min dining_temperature 達 0.937，均為三者最高。這說明物理結構與設備影響函數提供的先驗資訊，在環境條件快速變化時比純時序延續有更強的趨勢預測能力。"
+            "綜合兩個資料集，本研究在公開資料上的主要優勢不是「所有任務都比 baseline 好」，而是「當任務包含事件、邊界變化或長視窗響應時，變數專屬 structured prior 能提供比一般 linear regression 更有用的特徵」。最強證據是 SML2010 S3：15 分鐘 horizon 下 6 個 target 中有 5 項勝過 linear regression、4 項勝過 persistence；60 分鐘 horizon 下 6 個 target 全部同時勝過兩個 baseline。"
         ),
         paragraph(
-            "第二項優勢是長視窗溫度任務的 MAE 與 RMSE。以 S3 dining_temperature 為例，在 60 分鐘預測視窗下，本研究的 MAE 為 0.190、RMSE 為 0.243，均為三者最低；相較之下 persistence 為 0.563 與 0.693，linear regression 為 0.212 與 0.256。這說明當預測視窗拉長時，納入設備狀態與外部條件的結構性估計比單純延續前一時步更穩定。"
-        ),
-        paragraph(
-            "第三項優勢是複合任務的 RMSE 表現。以 S3 60min dining_illuminance 為例，本研究的 RMSE 為 19.344，低於 persistence 的 21.931 與 linear regression 的 22.763。RMSE 對離群誤差的放大效應更敏感，這表示本研究模型在極端照度事件的重建上較其他方法更為穩定。"
-        ),
-        heading("5.9.2 劣勢分析", 3),
-        paragraph(
-            "最明顯的劣勢出現在短視窗純照度任務。SML2010 S1 15min dining_illuminance 的 MAE 為 5.346，高於 persistence 的 3.418 與 linear regression 的 4.023；Correlation 為 0.957，略低於另外兩者的 0.963 與 0.966。CU-BEMS C2 15min illuminance 的差距更大，MAE 7.700 對比 persistence 1.363，RMSE 11.938 對比 persistence 6.344。主要原因是短視窗照度的最佳預測策略接近 persistence（照度在 15 分鐘內變化緩慢），而本研究在對應時段的日照估計引入了額外誤差，反而不如直接沿用上一時步值。"
-        ),
-        paragraph(
-            "第二個劣勢是 SML2010 濕度的系統性高估。S2 15min dining_humidity 的 MAE 為 0.832，遠高於 persistence 的 0.198 與 linear regression 的 0.209。這反映本研究的濕度特徵對齊方式與 SML2010 的量測尺度存在系統性偏差，即模型濕度估計值的基準點偏移，而非隨機誤差。此問題在 S3 複合任務中得到部分改善（S3 dining_humidity MAE 0.335，接近 persistence 0.386），推測是複合任務的外氣濕度特徵提供了更多修正訊號。"
-        ),
-        paragraph(
-            "第三個劣勢是 CU-BEMS C2 純照度任務在 60 分鐘視窗下的表現。MAE 9.566 遠高於 persistence 4.012，RMSE 14.234 也高於 persistence 12.065，且 Correlation 0.792 低於 persistence 0.864。CU-BEMS 的照度量測來自多區商辦建築，其照度動態特性（日光、遮蔽、人工照明切換）與本研究單房間物理假設差距較大，使得照度估計誤差在長視窗下難以收斂。"
-        ),
-        paragraph(
-            "綜合三項指標，本研究的設計優勢集中在「SML2010 S3 這類邊界/事件響應任務、長視窗溫度響應、以及相對 linear regression 的 structured prior 補強」，弱點則在「短視窗純照度預測」、「CU-BEMS 這類高時間慣性 zone-level forecasting 任務」與「與本研究感測拓樸不匹配之外部資料集的濕度估計」。這與本研究的設計定位一致：模型的核心目的是空間場估計與裝置影響學習，而非最小化單一時序預測指標。"
+            "公開資料上的主要劣勢也必須直接寫清楚。第一，短視窗純照度任務常由 persistence 佔優，因為照度在相鄰時間點高度相似，直接沿用上一時步即可得到低 MAE；若模型額外估計日照或燈具幾何，反而可能增加誤差。第二，CU-BEMS 這類商辦 zone-level forecasting 有很強的時間慣性，因此即使本研究能勝過 linear regression，也不代表能勝過 persistence。第三，SML2010 濕度任務存在量測尺度與本研究濕度模型基準對齊問題，因此不能把溫度上的優勢直接外推到濕度。"
         ),
         paragraph(
             "需要特別說明的是，task-aligned benchmark 採用的是「下一時步預測」框架（15min 或 60min 視窗），而本研究的核心使用情境並非短視窗自回歸預測，而是在設備達到準穩態後的空間場估計。實際應用中，使用者先啟動冷氣或開窗，系統再估計若干分鐘後整個房間的三因子空間分布，並據此輸出控制動作推薦。此類穩態導向估計不依賴前一時步值作為主要訊號，而是依賴設備配置、外部環境條件與物理影響函數。因此，persistence 在短視窗下的優勢屬於不同任務假設的產物，並不代表本研究模型在其實際設計目標上的劣勢。本研究進行 task-aligned benchmark 的目的，是為了在共同可比的框架下提供外部資料集的相對定位，而非宣稱本研究的主要評估對象是次步預測誤差。"
@@ -1534,22 +1529,22 @@ def build_blocks() -> List[Block]:
         ),
         heading("5.11 展示 D1：可旋轉 3D 展示（非量化實驗）", 2),
         paragraph(
-            "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。圖 5-6 至 5-8 為靜態輸出之三因子場 3D 點雲，展示三種代表情境：三裝置全開、單獨窗戶、單獨燈具。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
+            "Web demo 提供可旋轉 3D 預覽，使使用者可直接觀察三因子點雲、房間框線與設備幾何位置。冷氣以牆面橫條表示，窗戶以牆面矩形表示，照明以點狀標記表示。圖 5-8 至 5-10 為靜態輸出之三因子場 3D 點雲，展示三種代表情境：三裝置全開、單獨窗戶、單獨燈具。此展示有助於口試或公開展示時說明模型如何從設備位置與環境場估計區域影響。"
         ),
         image(
             "outputs/figures/all_active_temperature_3d.svg",
-            "圖 5-6 三裝置同時作用（all\\_active）溫度場 3D 點雲。顏色由藍綠至橙紅對映 26.02–27.16 °C 範圍；設備位置用帶邊框的標記表示。",
-            asset_name="fig_5_6_all_active_temp_3d",
+            "圖 5-8 三裝置同時作用（all\\_active）溫度場 3D 點雲。顏色由藍綠至橙紅對映 26.02–27.16 °C 範圍；設備位置用帶邊框的標記表示。",
+            asset_name="fig_5_8_all_active_temp_3d",
         ),
         image(
             "outputs/figures/window_only_temperature_3d.svg",
-            "圖 5-7 僅開窗（window\\_only）溫度場 3D 點雲。靠窗區域溫度最高，造成區域溫度梯度。可與 all\\_active 情境對比，觀察冷氣介入後對窗邊高溫的抑制效果。",
-            asset_name="fig_5_7_window_only_temp_3d",
+            "圖 5-9 僅開窗（window\\_only）溫度場 3D 點雲。靠窗區域溫度最高，造成區域溫度梯度。可與 all\\_active 情境對比，觀察冷氣介入後對窗邊高溫的抑制效果。",
+            asset_name="fig_5_9_window_only_temp_3d",
         ),
         image(
             "outputs/figures/light_only_illuminance_3d.svg",
-            "圖 5-8 僅燈具作用（light\\_only）照度場 3D 點雲。燈具正下方照度最高，遠端補有少量的 single-bounce diffuse 回填；此情境也是 5.7 節 held-out 測試集之一。",
-            asset_name="fig_5_8_light_only_illum_3d",
+            "圖 5-10 僅燈具作用（light\\_only）照度場 3D 點雲。燈具正下方照度最高，遠端補有少量的 single-bounce diffuse 回填；此情境也是 5.7 節 held-out 測試集之一。",
+            asset_name="fig_5_10_light_only_illum_3d",
         ),
         page_break(),
         heading("第六章 結論與未來工作", 1),
@@ -1558,7 +1553,7 @@ def build_blocks() -> List[Block]:
             "本研究建立一個面向非連網家電環境影響學習的單房間三因子空間數位孿生原型，針對 temperature、humidity 與 illuminance 的空間變化進行建模、校正與學習。透過 8 顆角落感測器、設備影響函數、active device power scale 校準、single-bounce diffuse reflection 與 trilinear 校正場，系統能估計房間內任意位置與指定區域的三因子狀態。模擬結果顯示，加入設備影響模型與照度反射近似後，在冷氣、窗戶與照明等情境下能提供較 IDW baseline 更可解釋且更精細的場估計；新增的消融實驗也說明反射、校準與 trilinear correction 在不同指標上扮演不同角色。進一步加入只作用於 temperature / humidity residual trace 的 Fourier low-pass denoising 與 hybrid residual neural correction 後，預設 held-out 與 leave-one-scenario-out 情境的場重建誤差皆可再顯著下降。"
         ),
         paragraph(
-            "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並用於更可解釋的控制動作推薦排序。"
+            "此外，本研究將模型封裝為 MCP server，並提供 Gemma/Ollama bridge 與 web demo，使數位孿生不只是離線模擬程式，而是可被 AI client 或使用者互動查詢的工具化系統。整體成果符合研究目標：在有限感測器與非連網裝置條件下，學習裝置對空間環境的影響，並在 sample scope 與三因子目標明確時用於更可解釋的控制動作推薦排序。"
         ),
         paragraph(
             "在公開資料集 task-aligned benchmark 方面，本研究以 MAE、RMSE 與 Pearson Correlation 三項指標，對比 persistence 與 linear regression 兩個 baseline。SML2010 共 24 個 target-horizon 任務中，本研究映射模型有 12 項取得最低 MAE，並在 S3 facade event delta 的 60 分鐘 horizon 中對 6 個 target 全部優於兩個 baseline；這說明物理結構與 boundary/event response 先驗在長視窗變化任務中具明確價值。CU-BEMS 則提供相反提醒：在 12 個 target-horizon 任務中，本研究映射模型有 9 項勝過 linear regression，但沒有任何一項勝過 persistence，表示高時間慣性的大規模 zone-level building forecasting 不一定能由本研究模型取代簡單時間延續策略。劣勢主要集中於短視窗純照度任務與外部資料濕度尺度不匹配。此分析說明本研究的優勢來自模型結構對裝置、邊界與空間響應的顯式建模，而非針對一般純時序預測最佳化。"
@@ -1570,7 +1565,7 @@ def build_blocks() -> List[Block]:
             "真實臥室快照驗證進一步補足了純模擬實驗的不足。7 天、28 筆快照結果顯示，當 8 顆角落感測器提供真實觀測時，校正後模型能將未參與校正的 pillow 位置估計誤差降至 0.1676°C、0.3939% 與 21.3753 lux。此結果不等同於完整 3D 場 ground truth，但已證明本研究的 sparse-sensor calibration pipeline 可直接接入真實房間資料。"
         ),
         paragraph(
-            "對推薦動作而言，本研究目前完成的是模型導向的反事實排序與驗證方法設計，而非真實閉環控制。實際因果驗證應以介入前後量測為準，檢查排名第一的動作是否帶來正的 actual improvement，並比較 predicted improvement 與 measured improvement 是否一致。"
+            "對推薦動作而言，本研究目前完成的是模型導向的反事實排序與驗證方法設計，而非真實閉環控制。推薦前必須先指定 point/cluster sample 與完整溫度、濕度、照度目標；實際因果驗證應以介入前後量測為準，檢查排名第一的動作是否帶來正的 actual improvement，並比較 predicted improvement 與 measured improvement 是否一致。"
         ),
         heading("6.2 研究限制", 2),
         bullets(
@@ -1582,7 +1577,7 @@ def build_blocks() -> List[Block]:
                 "短視窗（15min）純照度預測上，persistence baseline 因照度短期穩定性而具優勢，本研究的物理估計引入額外誤差。",
                 "公開資料集多缺乏完整單房間幾何與 dense ground truth，因此無法直接作為 full-field benchmark。",
                 "MCP server 目前為本地 stdio 版本，尚未包含遠端部署、OAuth 或多使用者管理。",
-                "控制功能目前為推薦排序，尚未完成真實介入式因果驗證，也尚未進入自動閉環控制。",
+                "控制功能目前為具前置條件的推薦排序：必須先有 point/cluster sample 與三因子目標，且尚未完成真實介入式因果驗證，也尚未進入自動閉環控制。",
             ]
         ),
         heading("6.3 未來工作", 2),
@@ -1593,7 +1588,7 @@ def build_blocks() -> List[Block]:
                 "為角落感測器加入照度量測通道（如光照感測元件），使角落光照資料可直接引入 trilinear residual correction，從而消除目前物理照度模型的系統性偏差，實現照度場的自我校正。",
                 "加入更多環境變數，例如 CO2、PM2.5 或人體熱源。",
                 "將 MCP server 擴充為遠端 HTTP MCP，並加入權限控管。",
-                "依 before/after 介入驗證方法實測推薦動作，量化 actual improvement、success rate 與 top-1 regret。",
+                "依 before/after 介入驗證方法實測推薦動作，先固定 point/cluster sample 與三因子目標，再量化 actual improvement、success rate 與 top-1 regret。",
                 "進一步研究閉環控制，將已驗證的推薦排序延伸為實際控制策略。",
                 "加入長時間資料以學習季節性與日夜週期變化。",
                 "以真實量測資料重新訓練與驗證 hybrid residual neural network，檢驗其在真實房間中的泛化能力。",
@@ -1680,6 +1675,9 @@ def build_blocks() -> List[Block]:
                 ["Linear Regression", "使用公開資料特徵訓練的線性迴歸 baseline。"],
                 ["MCP", "Model Context Protocol；本文用於將數位孿生能力封裝成 AI client 可呼叫的工具介面。"],
                 ["Direct Window Input", "不使用季節/天氣/時段 preset，而是直接輸入外部溫度、濕度、日照與開窗比例進行模擬。"],
+                ["Point Sample", "推薦或查詢使用的單一指定座標樣本；若只查估測值，不需要目標；若要推薦動作，還必須提供完整三因子目標。"],
+                ["Cluster Sample", "由多個座標點或 target zone 組成的採樣範圍；推薦排序會先聚合此範圍的溫度、濕度與照度，再計算 comfort penalty。"],
+                ["Recommendation Preconditions", "推薦動作的必要前置條件：sample scope 必須存在，且 temperature、humidity、illuminance 三因子的目標與容許範圍必須可定義；缺少時不產生推薦。"],
             ],
         ),
     ]

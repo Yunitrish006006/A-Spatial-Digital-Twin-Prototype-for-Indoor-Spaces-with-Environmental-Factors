@@ -11,6 +11,7 @@ from typing import List, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "outputs" / "data"
 NORMALIZED_PUBLIC = DATA / "normalized_public"
+PUBLIC_BENCHMARKS = DATA / "public_benchmarks"
 
 
 def main() -> None:
@@ -71,6 +72,11 @@ def main() -> None:
             "Verification will mark public benchmark rows as MISSING/NEEDS_DATA if evidence JSON is absent."
         )
 
+    if _public_comparison_outputs_ready():
+        _run(["python3", "scripts/build_public_benchmark_figures.py"], failures)
+    else:
+        print("Public comparison JSON is missing; skipping public benchmark figure generation.")
+
     _run(["python3", "scripts/verify_thesis_results.py"], failures)
 
     if failures:
@@ -96,6 +102,14 @@ def _public_normalized_data_ready() -> bool:
         NORMALIZED_PUBLIC / "sml2010" / "scenario_metadata.json",
         NORMALIZED_PUBLIC / "cu_bems" / "corner_sensor_timeseries.csv",
         NORMALIZED_PUBLIC / "cu_bems" / "scenario_metadata.json",
+    ]
+    return all(path.exists() for path in required)
+
+
+def _public_comparison_outputs_ready() -> bool:
+    required = [
+        PUBLIC_BENCHMARKS / "sml2010_hybrid_twin_comparison.json",
+        PUBLIC_BENCHMARKS / "cu_bems_hybrid_twin_comparison.json",
     ]
     return all(path.exists() for path in required)
 
