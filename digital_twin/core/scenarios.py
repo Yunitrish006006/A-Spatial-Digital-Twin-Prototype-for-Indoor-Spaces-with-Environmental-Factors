@@ -51,6 +51,9 @@ DEVICE_KIND_DEFAULTS: Dict[str, Dict[str, object]] = {
             "thermal_exchange": 0.35,
             "humidity_exchange": 0.26,
             "solar_gain": 0.02,
+            "daylight_model": "envelope",
+            "daylight_view_gain": 1.35,
+            "daylight_floor_fraction": 0.08,
             "direction_floor": 0.2,
             "surface_width": 1.55,
             "surface_height": 1.25,
@@ -61,9 +64,13 @@ DEVICE_KIND_DEFAULTS: Dict[str, Dict[str, object]] = {
         "influence_radius": 2.4,
         "response_time_minutes": 0.5,
         "metadata": {
+            "photometric_model": True,
             "illuminance_gain": 1050.0,
             "heat_gain": 0.8,
             "direction_floor": 0.08,
+            "beam_angle_deg": 110.0,
+            "photometric_reference_distance": 1.0,
+            "photometric_max_multiplier": 1.65,
         },
     },
 }

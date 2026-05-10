@@ -175,12 +175,12 @@ outputs/data/thesis_result_verification_report.json
 - 標準驗證規模：8 組標準情境、48 組窗戶矩陣
 - hybrid residual 訓練規模：default split `576 / 192` train/test samples、LOO `8` folds
 - real-bedroom snapshot 規模：7 天、`28` 筆快照
-- base model 平均 field MAE：temperature `0.0474`、humidity `0.1765`、illuminance `2.0835`
-- IDW baseline 平均 field MAE：temperature `0.1723`、humidity `0.4633`、illuminance `75.0516`
-- hybrid residual default split：temperature `0.0023`、humidity `0.0041`、illuminance `0.1675`
-- hybrid residual leave-one-scenario-out：temperature `0.0017`、humidity `0.0055`、illuminance `0.1581`
-- real-bedroom pillow MAE before：`0.8967°C`、`4.1286%`、`358.6392 lux`
-- real-bedroom pillow MAE after：`0.1676°C`、`0.3939%`、`21.3753 lux`
+- base model 平均 field MAE：temperature `0.0474`、humidity `0.1765`、illuminance `2.0269`
+- IDW baseline 平均 field MAE：temperature `0.1723`、humidity `0.4633`、illuminance `54.9052`
+- hybrid residual default split：temperature `0.0020`、humidity `0.0051`、illuminance `0.1370`
+- hybrid residual leave-one-scenario-out：temperature `0.0017`、humidity `0.0059`、illuminance `0.1407`
+- real-bedroom pillow MAE before：`0.8967°C`、`4.1286%`、`309.0142 lux`
+- real-bedroom pillow MAE after：`0.1676°C`、`0.3939%`、`16.6450 lux`
 - SML2010：24 個 target-horizon tasks、12 個 lowest MAE、15 個勝過 linear regression、14 個勝過 persistence
   - S1：0/4 lowest MAE、2/4 勝過 linear regression、0/4 勝過 persistence，屬短視窗純照度劣勢任務。
   - S2：2/8 lowest MAE、2/8 勝過 linear regression、4/8 勝過 persistence，長視窗溫度有優勢但濕度有尺度對齊問題。

@@ -35,7 +35,7 @@ Changhua, Taiwan}
 \maketitle
 
 \begin{abstract}
-Practical room-scale digital twins must often operate with sparse sensors and non-networked appliances that expose no telemetry. This paper presents a single-room spatial digital twin that estimates temperature, humidity, and illuminance fields from eight corner sensors while modeling conventional air conditioners, manual windows, and ordinary lights. The proposed design combines an appliance-aware bulk-plus-local field model, lightweight one-bounce diffuse illuminance reflection, active-device power calibration, trilinear residual correction, least-squares appliance-impact learning, and an optional hybrid residual neural layer. Across eight canonical scenarios, the base estimator achieves average field MAE of 0.0474/0.1765/2.0835 for temperature, humidity, and illuminance, compared with 0.1723/0.4633/75.0516 for IDW. A leave-one-scenario-out hybrid residual evaluation further reduces MAE to 0.0017/0.0055/0.1581. On a preliminary seven-day bedroom snapshot dataset, calibration reduces held-out pillow-point MAE from 0.8967/4.1286/358.6392 to 0.1676/0.3939/21.3753. The evaluation separates controlled full-field evidence, public task-aligned comparisons, and real sparse-calibration checks. These results indicate that sparse corner sensing can support an interpretable and trainable indoor twin when physical structure, calibration, and residual learning are assigned complementary roles.
+Practical room-scale digital twins must often operate with sparse sensors and non-networked appliances that expose no telemetry. This paper presents a single-room spatial digital twin that estimates temperature, humidity, and illuminance fields from eight corner sensors while modeling conventional air conditioners, manual windows, and ordinary lights. The proposed design combines an appliance-aware bulk-plus-local field model, photometric lamp falloff, lightweight one-bounce diffuse illuminance reflection, active-device power calibration, trilinear residual correction, least-squares appliance-impact learning, and an optional hybrid residual neural layer. Across eight canonical scenarios, the base estimator achieves average field MAE of 0.0474/0.1765/2.0269 for temperature, humidity, and illuminance, compared with 0.1723/0.4633/54.9052 for IDW. A leave-one-scenario-out hybrid residual evaluation further reduces MAE to 0.0017/0.0059/0.1407. On a preliminary seven-day bedroom snapshot dataset, calibration reduces held-out pillow-point MAE from 0.8967/4.1286/309.0142 to 0.1676/0.3939/16.6450. The evaluation separates controlled full-field evidence, public task-aligned comparisons, and real sparse-calibration checks. These results indicate that sparse corner sensing can support an interpretable and trainable indoor twin when physical structure, calibration, and residual learning are assigned complementary roles.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -47,7 +47,7 @@ Smart homes and smart buildings require indoor environmental awareness for comfo
 
 This work targets a common but under-instrumented digital-twin setting: the room contains influential physical assets, but those assets are not necessarily connected to a building management system. The twin must therefore infer appliance state effects from sparse environmental observations, support what-if queries, and keep its claim boundary clear. Pure interpolation ignores appliance geometry and directionality, while a purely local field model misses whole-room settling after air-conditioner activation. We therefore use a reduced-order appliance-aware model as the primary estimator, sensor residuals for calibration, and neural learning only for structured residual correction rather than for an end-to-end black-box field predictor.
 
-The contributions are: (i) a three-factor room digital twin with bulk-plus-local appliance influence functions and one-bounce diffuse illuminance reflection; (ii) a sparse-sensor calibration pipeline combining active-device power fitting, trilinear residual correction, and before/after impact learning; (iii) a hybrid residual pathway that preserves the reduced-order estimator while refining systematic error; and (iv) an implementation and validation hierarchy covering synthetic full-field scenarios, ablations, leave-one-scenario-out residual learning, window-condition cases, public task-aligned datasets, and preliminary real-bedroom snapshots.
+The contributions are: (i) a three-factor room digital twin with bulk-plus-local appliance influence functions, photometric lamp falloff, and one-bounce diffuse illuminance reflection; (ii) a sparse-sensor calibration pipeline combining active-device power fitting, trilinear residual correction, and before/after impact learning; (iii) a hybrid residual pathway that preserves the reduced-order estimator while refining systematic error; and (iv) an implementation and validation hierarchy covering synthetic full-field scenarios, ablations, leave-one-scenario-out residual learning, window-condition cases, public task-aligned datasets, and preliminary real-bedroom snapshots.
 
 \section{Related Work}
 Digital twins provide computational representations of physical systems and are increasingly used in manufacturing, infrastructure, and smart buildings \cite{tao2019digitaltwin,fuller2020digitaltwin}. Building-oriented reviews show strong attention to BIM/BMS connectivity and system architecture, but sparse-sensor spatial estimation in ordinary rooms remains less explored \cite{cespedes2024bdtreview}. For control-oriented indoor modeling, reduced-order and grey-box approaches remain attractive because they are interpretable and tractable compared with CFD \cite{bacher2011heatdynamics,hietaharju2018dynamicmodel,gokhale2022pinnthermal}. Zonal and hybrid indoor models preserve dominant spatial non-uniformity at lower cost \cite{teshome2004zonalreview,megri2022doma,huljak2025hybrid}, while data-assimilation studies show that finite observations can reconstruct indoor temperature and humidity fields and that sensor placement matters \cite{qian2025dafield,chen2007zonalnetwork}. The present work combines these strands by coupling sparse sensing with appliance-aware influence bases and residual calibration. IDW \cite{shepard1968two} is used as a geometry-free interpolation baseline. The service interface is secondary to the modeling contribution, but the same estimator is exposed through local APIs, a web demo, and an MCP-compatible tool layer \cite{mcp2025}.
@@ -78,7 +78,7 @@ The bulk term captures whole-room settling, local terms preserve spatial gradien
 \begin{equation}
 E_j(\mathbf{p},t)=a_j(1-e^{-t/\tau_j})D_j(\mathbf{p})G_j(\mathbf{p}),
 \end{equation}
-where $a_j$ is activation, $\tau_j$ is a response time constant, $D_j$ is distance attenuation, and $G_j$ is directional gain. The air conditioner lowers temperature and humidity, the window uses outdoor temperature, humidity, and sunlight, and the light primarily raises illuminance with a small heat gain.
+where $a_j$ is activation, $\tau_j$ is a response time constant, $D_j$ is distance attenuation, and $G_j$ is directional gain. The air conditioner lowers temperature and humidity, the window uses outdoor temperature, humidity, and sunlight, and the light primarily raises illuminance with a small heat gain. The lamp direct term uses a cosine beam weight derived from beam angle, an inverse-square distance scale with bounded gain, and line-of-sight obstruction. Window daylight remains an envelope-based daylight term in the reported experiments; an aperture view-factor option is implemented but not used as the default because it increased window-family illuminance error in the current canonical setup.
 
 Direct window and lamp terms underestimate indirect fill light near floors, walls, and furniture. Instead of full ray tracing, illuminance adds a lightweight one-bounce diffuse term
 \begin{equation}
@@ -148,7 +148,7 @@ E9 SML2010 and CU-BEMS task-aligned benchmarks & External positioning on compati
 
 \section{Evaluation}
 \subsection{E1--E4 Synthetic Reconstruction and Impact Checks}
-Across the eight canonical scenarios, the base estimator achieves average field MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0835 for illuminance. IDW gives 0.1723, 0.4633, and 75.0516, respectively. Table~\ref{tab:synthetic} summarizes the main comparisons and ablations. Removing appliance-aware feedback produces larger temperature and illuminance errors; removing one-bounce reflection or active-device calibration mainly hurts illuminance. The no-trilinear variant can be lower on dense synthetic humidity and illuminance because trilinear correction enforces sparse sensor consistency rather than guaranteed dense-field monotonic improvement.
+Across the eight canonical scenarios, the base estimator achieves average field MAE of 0.0474 for temperature, 0.1765 for humidity, and 2.0269 for illuminance. IDW gives 0.1723, 0.4633, and 54.9052, respectively. Table~\ref{tab:synthetic} summarizes the main comparisons and ablations. Removing appliance-aware feedback produces larger temperature and illuminance errors; removing one-bounce reflection or active-device calibration mainly hurts illuminance. The no-trilinear variant can be lower on dense synthetic humidity and illuminance because trilinear correction enforces sparse sensor consistency rather than guaranteed dense-field monotonic improvement.
 This last point is important for interpreting the ablation table. The trilinear correction is fitted from corner observations, so it is optimized for consistency with sparse sensors and for the real-bedroom calibration setting. It is not optimized directly against every dense grid point in the synthetic room. A lower dense-field MAE in the no-trilinear row therefore does not imply that sparse calibration is unnecessary; it indicates that sparse correction and dense synthetic truth are different objectives. For deployment, the estimator must respect measured corner observations first, then use the appliance-aware model to extrapolate the field between them.
 
 \begin{figure}[t]
@@ -174,13 +174,13 @@ This last point is important for interpreting the ablation table. The trilinear 
 \hline
 Setting & Temp. & Hum. & Illum.\\
 \hline
-IDW baseline & 0.1723 & 0.4633 & 75.0516\\
-Raw nominal & 0.1312 & 0.0842 & 4.4267\\
-No reflection & 0.0471 & 0.1761 & 3.6792\\
-No calibration & 0.0493 & 0.1772 & 3.7532\\
-No trilinear & 0.0448 & 0.0278 & 1.3586\\
-Full base & 0.0474 & 0.1765 & 2.0835\\
-LOO hybrid avg. & 0.0017 & 0.0055 & 0.1581\\
+IDW baseline & 0.1723 & 0.4633 & 54.9052\\
+Raw nominal & 0.1312 & 0.0842 & 3.5183\\
+No reflection & 0.0472 & 0.1762 & 2.4296\\
+No calibration & 0.0493 & 0.1772 & 3.3631\\
+No trilinear & 0.0446 & 0.0274 & 0.9849\\
+Full base & 0.0474 & 0.1765 & 2.0269\\
+LOO hybrid avg. & 0.0017 & 0.0059 & 0.1407\\
 \hline
 \end{tabular}
 \end{table}
@@ -188,12 +188,12 @@ LOO hybrid avg. & 0.0017 & 0.0055 & 0.1581\\
 For impact learning, the AC-only scenario learns negative coefficients for temperature and humidity and near-zero illuminance effect. The light-only scenario learns a strongly positive illuminance coefficient, weak positive heat gain, and near-zero humidity effect. These directions match the intended physical interpretation of the appliances.
 
 \subsection{E6 Hybrid Residual Correction}
-The default held-out residual experiment trains on six scenarios and tests on \texttt{light\_only} and \texttt{all\_active}, yielding 576 training and 192 test samples. With Fourier denoising for temperature and humidity residual traces, hybrid MAE is 0.0023/0.0041/0.1675, compared with base MAE of 0.0474/0.1765/2.3087 on the same split. Illuminance is intentionally left unfiltered because its fast changes can correspond to source switching, daylight boundary changes, shadows, and reflections rather than noise. Disabling Fourier gives 0.0022/0.0045/0.1675, showing that the illuminance improvement is not caused by frequency-domain smoothing. In leave-one-scenario-out evaluation, each fold trains on seven scenarios and tests on one scenario, with 672/96 train/test samples. The average LOO hybrid MAE is 0.0017/0.0055/0.1581, corresponding to 96.41\%, 96.88\%, and 92.41\% reductions relative to the base estimator.
+The default held-out residual experiment trains on six scenarios and tests on \texttt{light\_only} and \texttt{all\_active}, yielding 576 training and 192 test samples. With Fourier denoising for temperature and humidity residual traces, hybrid MAE is 0.0020/0.0051/0.1370, compared with base MAE of 0.0474/0.1765/2.1757 on the same split. Illuminance is intentionally left unfiltered because its fast changes can correspond to source switching, daylight boundary changes, shadows, and reflections rather than noise. Disabling Fourier gives 0.0021/0.0057/0.1370, showing that the illuminance improvement is not caused by frequency-domain smoothing. In leave-one-scenario-out evaluation, each fold trains on seven scenarios and tests on one scenario, with 672/96 train/test samples. The average LOO hybrid MAE is 0.0017/0.0059/0.1407, corresponding to approximately 96.41\%, 96.66\%, and 93.06\% reductions relative to the base estimator.
 
 \subsection{E7 Real-Bedroom Snapshot Validation and E8 Intervention Protocol}
 We further evaluate calibration on a user-supplied bedroom dataset. The room is a 4.0 m by 4.6 m by 3.2 m bedroom with wall-mounted AC, southeast-facing window, ceiling light, desk lamp, bed, desk, and cabinets. The dataset covers 2026-04-14 to 2026-04-20, with 09:00, 15:00, 22:00, and 02:00 snapshots each day, for 28 cases. Each case provides eight corner observations, appliance activations, outdoor boundary information, and a pillow-location reference observation. Corner sensors are used for active-device calibration and trilinear correction; the pillow point is held out.
 
-Table~\ref{tab:real} shows that calibration reduces pillow-point MAE from 0.8967$^\circ$C, 4.1286\% relative humidity, and 358.6392 lux to 0.1676$^\circ$C, 0.3939\%, and 21.3753 lux. Sleep snapshots use a 0 lux illuminance target with 5 lux tolerance so dark sleep conditions are not penalized. These snapshots validate sparse-sensor calibration and point-level estimation, not the causal efficacy of recommendations; physical recommendation validation requires before/after intervention trials comparing measured comfort-penalty reduction against predicted improvement.
+Table~\ref{tab:real} shows that calibration reduces pillow-point MAE from 0.8967$^\circ$C, 4.1286\% relative humidity, and 309.0142 lux to 0.1676$^\circ$C, 0.3939\%, and 16.6450 lux. Sleep snapshots use a 0 lux illuminance target with 5 lux tolerance so dark sleep conditions are not penalized. These snapshots validate sparse-sensor calibration and point-level estimation, not the causal efficacy of recommendations; physical recommendation validation requires before/after intervention trials comparing measured comfort-penalty reduction against predicted improvement.
 
 \begin{table}[t]
 \caption{Real-Bedroom Snapshot Comparison}
@@ -204,11 +204,11 @@ Table~\ref{tab:real} shows that calibration reduces pillow-point MAE from 0.8967
 \hline
 Case & Temp. & Hum. & Illum. & Penalty\\
 \hline
-Raw pillow MAE & 0.8967 & 4.1286 & 358.6392 & --\\
-Calib. pillow MAE & 0.1676 & 0.3939 & 21.3753 & 0.1052\\
+Raw pillow MAE & 0.8967 & 4.1286 & 309.0142 & --\\
+Calib. pillow MAE & 0.1676 & 0.3939 & 16.6450 & 0.0911\\
 Morning calib. & 0.2372 & 0.3695 & 8.6247 & 0.2371\\
 Afternoon calib. & 0.1358 & 0.4890 & 11.2235 & 0.0812\\
-Night calib. & 0.0913 & 0.2193 & 65.6203 & 0.1024\\
+Night calib. & 0.0913 & 0.2193 & 46.6993 & 0.0459\\
 Sleep calib. & 0.2060 & 0.4979 & 0.0326 & 0.0000\\
 \hline
 \end{tabular}

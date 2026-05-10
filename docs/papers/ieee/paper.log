@@ -282,6 +282,16 @@ LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 37.
 
 
+Underfull \hbox (badness 1365) in paragraph at lines 37--39
+\TU/ptm/bx/it/9 midity, and illuminance fields from eight corner sensors
+ []
+
+
+Underfull \hbox (badness 1629) in paragraph at lines 37--39
+\TU/ptm/bx/it/9 seven-day bedroom snapshot dataset, calibration reduces
+ []
+
+
 LaTeX Font Warning: Font shape `TU/ptm/b/n' undefined
 (Font)              using `TU/ptm/bx/n' instead on input line 41.
 
@@ -302,9 +312,6 @@ File: ../thesis/assets/fig_3_3_room_topology.png Graphic file (type bmp)
 File: ../thesis/assets/fig_3_5_training_inference_flow.png Graphic file (type b
 mp)
 <../thesis/assets/fig_3_5_training_inference_flow.png>
-
-Underfull \vbox (badness 1005) has occurred while \output is active []
-
  [3]
 LaTeX Font Info:    Trying to load font information for TU+pcr on input line 12
 1.
@@ -366,15 +373,15 @@ Underfull \hbox (badness 10000) in paragraph at lines 121--122
 \TU/pcr/m/n/10 run_bedroom_weekly_simulation.py, and
  []
 
+[4]
 File: assets/field_mae_comparison.png Graphic file (type bmp)
 <assets/field_mae_comparison.png>
 File: ../thesis/assets/fig_5_7_light_only_illum_3d.png Graphic file (type bmp)
 <../thesis/assets/fig_5_7_light_only_illum_3d.png>
 
-Underfull \vbox (badness 2142) has occurred while \output is active []
+Underfull \vbox (badness 1248) has occurred while \output is active []
 
- [4]
-[5]
+ [5]
 Underfull \hbox (badness 1424) in paragraph at lines 220--221
 []\TU/pcr/m/n/10 For external comparison, we evaluate task-aligned
  []
@@ -431,4 +438,4 @@ Before submitting the final camera ready copy, remember to:
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (7 pages, 301072 bytes).
+Output written on paper.xdv (7 pages, 305644 bytes).

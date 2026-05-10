@@ -481,7 +481,6 @@ class DigitalTwinModel:
         if device.kind == "window":
             thermal_exchange = device.metadata.get("thermal_exchange", 0.28)
             humidity_exchange = device.metadata.get("humidity_exchange", 0.24)
-            solar_gain = device.metadata.get("solar_gain", 0.018)
             local_share = float(device.metadata.get("local_exchange_share", 0.38))
             return {
                 "temperature": (
@@ -498,12 +497,15 @@ class DigitalTwinModel:
                     * device.power
                     * envelope
                 ),
-                "illuminance": (
-                    environment.sunlight_illuminance
-                    * environment.daylight_factor
-                    * solar_gain
-                    * device.power
-                    * envelope
+                "illuminance": self._window_daylight_illuminance(
+                    point=point,
+                    room=room,
+                    environment=environment,
+                    device=device,
+                    furniture=furniture,
+                    elapsed_minutes=elapsed_minutes,
+                    envelope=envelope,
+                    excluded_furniture_name=excluded_furniture_name,
                 ),
             }
 
@@ -514,10 +516,128 @@ class DigitalTwinModel:
             return {
                 "temperature": heat_gain * local_heat_share * device.power * envelope,
                 "humidity": 0.0,
-                "illuminance": illuminance_gain * device.power * envelope,
+                "illuminance": self._light_direct_illuminance(
+                    point=point,
+                    room=room,
+                    device=device,
+                    furniture=furniture,
+                    elapsed_minutes=elapsed_minutes,
+                    envelope=envelope,
+                    excluded_furniture_name=excluded_furniture_name,
+                    illuminance_gain=illuminance_gain,
+                ),
             }
 
         return {metric: 0.0 for metric in METRICS}
+
+    def _window_daylight_illuminance(
+        self,
+        point: Vector3,
+        room: Room,
+        environment: Environment,
+        device: Device,
+        furniture: Optional[List[Furniture]],
+        elapsed_minutes: float,
+        envelope: float,
+        excluded_furniture_name: Optional[str],
+    ) -> float:
+        dynamic_level = self._dynamic_activation(device, elapsed_minutes)
+        if dynamic_level <= 0.0:
+            return 0.0
+
+        solar_gain = float(device.metadata.get("solar_gain", 0.018))
+        if str(device.metadata.get("daylight_model", "envelope")).lower() != "view_factor":
+            return (
+                environment.sunlight_illuminance
+                * environment.daylight_factor
+                * solar_gain
+                * device.power
+                * envelope
+            )
+
+        orientation = normalize(device.orientation)
+        direction = subtract(point, device.position)
+        separation = max(distance(point, device.position), 0.12)
+        toward_point = normalize(direction)
+        aperture_alignment = 1.0 if orientation == Vector3(0.0, 0.0, 0.0) else max(0.0, dot(orientation, toward_point))
+        if aperture_alignment <= 1e-6:
+            return 0.0
+
+        width = max(float(device.metadata.get("surface_width", 1.2)), 0.05)
+        height = max(float(device.metadata.get("surface_height", 1.0)), 0.05)
+        aperture_area = width * height
+        view_factor = aperture_area * aperture_alignment / (aperture_area + separation * separation)
+        height_spread = max(height * 1.6, 0.4)
+        vertical_weight = math.exp(-abs(point.z - device.position.z) / height_spread)
+        daylight_floor = float(device.metadata.get("daylight_floor_fraction", 0.08)) * envelope
+        daylight_shape = clamp(
+            float(device.metadata.get("daylight_view_gain", 1.35)) * view_factor * vertical_weight + daylight_floor,
+            0.0,
+            1.25,
+        )
+        visibility = self._segment_obstruction_factor(
+            start=device.position,
+            end=point,
+            room=room,
+            furniture=furniture,
+            block_metadata_key="window_block",
+            excluded_furniture_name=excluded_furniture_name,
+        )
+        return (
+            environment.sunlight_illuminance
+            * environment.daylight_factor
+            * solar_gain
+            * device.power
+            * dynamic_level
+            * daylight_shape
+            * visibility
+        )
+
+    def _light_direct_illuminance(
+        self,
+        point: Vector3,
+        room: Room,
+        device: Device,
+        furniture: Optional[List[Furniture]],
+        elapsed_minutes: float,
+        envelope: float,
+        excluded_furniture_name: Optional[str],
+        illuminance_gain: float,
+    ) -> float:
+        dynamic_level = self._dynamic_activation(device, elapsed_minutes)
+        if dynamic_level <= 0.0:
+            return 0.0
+        if not bool(device.metadata.get("photometric_model", True)):
+            return illuminance_gain * device.power * envelope
+
+        orientation = normalize(device.orientation)
+        direction = subtract(point, device.position)
+        separation = max(distance(point, device.position), 0.12)
+        toward_point = normalize(direction)
+        emission_alignment = 1.0 if orientation == Vector3(0.0, 0.0, 0.0) else max(0.0, dot(orientation, toward_point))
+        if emission_alignment <= 1e-6:
+            return 0.0
+
+        beam_angle = clamp(float(device.metadata.get("beam_angle_deg", 110.0)), 20.0, 170.0)
+        half_angle_cos = max(math.cos(math.radians(beam_angle / 2.0)), 1e-3)
+        beam_exponent = clamp(math.log(0.5) / math.log(half_angle_cos), 0.35, 12.0)
+        direction_floor = clamp(float(device.metadata.get("direction_floor", 0.08)), 0.0, 0.35)
+        angular = direction_floor + (1.0 - direction_floor) * (emission_alignment ** beam_exponent)
+
+        reference_distance = max(float(device.metadata.get("photometric_reference_distance", 1.0)), 0.1)
+        distance_scale = (reference_distance * reference_distance) / (
+            separation * separation + 0.08 * reference_distance * reference_distance
+        )
+        distance_scale = clamp(distance_scale, 0.0, float(device.metadata.get("photometric_max_multiplier", 1.65)))
+        visibility = self._segment_obstruction_factor(
+            start=device.position,
+            end=point,
+            room=room,
+            furniture=furniture,
+            block_metadata_key="light_block",
+            excluded_furniture_name=excluded_furniture_name,
+        )
+        return illuminance_gain * device.power * dynamic_level * angular * distance_scale * visibility
 
     def _device_bulk_delta(
         self,

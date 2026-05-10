@@ -25,9 +25,9 @@ background field + appliance influence function + one-bounce diffuse reflection 
 | --- | ---: | ---: | ---: |
 | Temperature | 0.0470 | 0.1232 | 61.85% |
 | Humidity | 0.1762 | 0.4656 | 62.16% |
-| Illuminance | 2.5774 | 112.2559 | 97.70% |
+| Illuminance | 2.2990 | 69.7248 | 96.70% |
 
-此結果表示，對照明情境而言，只靠角落感測器做 IDW 插值難以重建中央照明影響；加入設備位置、影響函數與 single-bounce diffuse reflection 後，照度場重建誤差明顯下降。
+此結果表示，對照明情境而言，只靠角落感測器做 IDW 插值難以重建中央照明影響；加入設備位置、光束角與距離衰減、影響函數與 single-bounce diffuse reflection 後，照度場重建誤差明顯下降。
 
 以 `ac_only` 情境為例：
 

@@ -139,7 +139,7 @@ def _build_specs(tolerance_override: Optional[float]) -> List[ResultSpec]:
     for metric, value in {
         "temperature": 0.0474,
         "humidity": 0.1765,
-        "illuminance": 2.0835,
+        "illuminance": 2.0269,
     }.items():
         specs.append(
             ResultSpec(
@@ -157,7 +157,7 @@ def _build_specs(tolerance_override: Optional[float]) -> List[ResultSpec]:
     for metric, value in {
         "temperature": 0.1723,
         "humidity": 0.4633,
-        "illuminance": 75.0516,
+        "illuminance": 54.9052,
     }.items():
         specs.append(
             ResultSpec(
@@ -173,9 +173,9 @@ def _build_specs(tolerance_override: Optional[float]) -> List[ResultSpec]:
         )
 
     for metric, value in {
-        "temperature": 0.0023,
-        "humidity": 0.0041,
-        "illuminance": 0.1675,
+        "temperature": 0.0020,
+        "humidity": 0.0051,
+        "illuminance": 0.1370,
     }.items():
         specs.append(
             ResultSpec(
@@ -192,8 +192,8 @@ def _build_specs(tolerance_override: Optional[float]) -> List[ResultSpec]:
 
     for metric, value in {
         "temperature": 0.0017,
-        "humidity": 0.0055,
-        "illuminance": 0.1581,
+        "humidity": 0.0059,
+        "illuminance": 0.1407,
     }.items():
         specs.append(
             ResultSpec(
@@ -215,12 +215,12 @@ def _build_specs(tolerance_override: Optional[float]) -> List[ResultSpec]:
         (
             "real_bedroom_pillow_mae_before",
             "raw_pillow_mae",
-            {"temperature": 0.8967, "humidity": 4.1286, "illuminance": 358.6392},
+            {"temperature": 0.8967, "humidity": 4.1286, "illuminance": 309.0142},
         ),
         (
             "real_bedroom_pillow_mae_after",
             "estimated_pillow_mae",
-            {"temperature": 0.1676, "humidity": 0.3939, "illuminance": 21.3753},
+            {"temperature": 0.1676, "humidity": 0.3939, "illuminance": 16.6450},
         ),
     ]:
         for metric, value in values.items():
