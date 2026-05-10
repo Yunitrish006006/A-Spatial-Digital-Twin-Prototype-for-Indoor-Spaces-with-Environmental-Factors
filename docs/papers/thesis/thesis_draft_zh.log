@@ -699,11 +699,11 @@ File: assets/fig_3_5_training_inference_flow.png Graphic file (type bmp)
 <assets/fig_3_5_training_inference_flow.png>
  [24] [25]
 
-LaTeX Warning: Float too large for page by 2.4927pt on input line 1434.
+LaTeX Warning: Float too large for page by 2.4927pt on input line 1443.
 
 [26] [27] [28] [29] [30]
 
-LaTeX Warning: Float too large for page by 271.49268pt on input line 1619.
+LaTeX Warning: Float too large for page by 271.49268pt on input line 1628.
 
 [31] [32] [33
 
@@ -724,28 +724,31 @@ File: assets/field_mae_comparison.png Graphic file (type bmp)
 <assets/field_mae_comparison.png>
  [45]
 [46] [47]
+File: assets/fig_5_6_sml2010_task_breakdown.png Graphic file (type bmp)
+<assets/fig_5_6_sml2010_task_breakdown.png>
+ [48] [49] [50]
+File: assets/fig_5_7_cu_bems_task_breakdown.png Graphic file (type bmp)
+<assets/fig_5_7_cu_bems_task_breakdown.png>
+ [51] [52]
+File: assets/fig_5_8_all_active_temp_3d.png Graphic file (type bmp)
+<assets/fig_5_8_all_active_temp_3d.png>
+File: assets/fig_5_9_window_only_temp_3d.png Graphic file (type bmp)
+<assets/fig_5_9_window_only_temp_3d.png>
+File: assets/fig_5_10_light_only_illum_3d.png Graphic file (type bmp)
+<assets/fig_5_10_light_only_illum_3d.png>
+ [53] [54] [55] [56] [57
 
-LaTeX Warning: Float too large for page by 55.09259pt on input line 2208.
+] [58] [59] [60
 
-[48] [49] [50] [51]
-File: assets/fig_5_6_all_active_temp_3d.png Graphic file (type bmp)
-<assets/fig_5_6_all_active_temp_3d.png>
-File: assets/fig_5_7_window_only_temp_3d.png Graphic file (type bmp)
-<assets/fig_5_7_window_only_temp_3d.png>
-File: assets/fig_5_8_light_only_illum_3d.png Graphic file (type bmp)
-<assets/fig_5_8_light_only_illum_3d.png>
- [52] [53] [54] [55] [56
+]
+[61] [62]
 
-] [57] [58] [59
+LaTeX Warning: Float too large for page by 181.89258pt on input line 2472.
 
-] [60] [61]
+[63
 
-LaTeX Warning: Float too large for page by 181.89258pt on input line 2515.
-
-[62
-
-] [63] (thesis_draft_zh.aux)
+] [64] (thesis_draft_zh.aux)
 Package rerunfilecheck Info: File `thesis_draft_zh.out' has not changed.
-(rerunfilecheck)             Checksum: 2A44E2AEAAB92BBC3BC7D595909730DC;1783.
+(rerunfilecheck)             Checksum: 01CE5C810586E46DAEB18117EB74544E;1783.
  )
-Output written on thesis_draft_zh.xdv (72 pages, 1079396 bytes).
+Output written on thesis_draft_zh.xdv (73 pages, 1070452 bytes).
