@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Iterable, List, Sequence, Tuple
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
 from pptx.util import Inches, Pt
 
-from build_thesis_docx import ensure_image_asset
+from build_thesis_docx import ensure_image_asset, png_dimensions
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,16 +30,18 @@ STORED_LONG_PRESENTATION_PATH = THESIS_PAPERS / "thesis_presentation_zh_30min.pp
 LONG_OUTLINE_PATH = ROOT / "docs" / "thesis" / "presentation_outline_zh_30min.md"
 LONG_SPEAKER_NOTES_PATH = ROOT / "docs" / "thesis" / "presentation_speaker_notes_zh_30min.md"
 
-BACKGROUND_COLOR = RGBColor(238, 242, 247)
-HEADER_FILL = RGBColor(23, 37, 61)
+BACKGROUND_COLOR = RGBColor(244, 247, 251)
+HEADER_FILL = RGBColor(18, 32, 51)
 HEADER_TEXT = RGBColor(255, 255, 255)
 HEADER_SUBTITLE = RGBColor(211, 225, 241)
 TITLE_COLOR = HEADER_TEXT
-TEXT_COLOR = RGBColor(25, 32, 40)
-ACCENT_COLOR = RGBColor(0, 83, 130)
+TEXT_COLOR = RGBColor(30, 39, 51)
+ACCENT_COLOR = RGBColor(0, 97, 148)
+ACCENT_LIGHT = RGBColor(45, 155, 200)
 MUTED_COLOR = RGBColor(70, 80, 92)
 CARD_FILL = RGBColor(255, 255, 255)
-CARD_LINE = RGBColor(124, 143, 165)
+CARD_LINE = RGBColor(209, 219, 231)
+CARD_SHADOW = RGBColor(226, 232, 240)
 BODY_FONT = "Noto Sans TC"
 LATIN_FONT = "Arial"
 FORMULA_FONT = "Cambria Math"
@@ -89,31 +92,70 @@ def new_slide(prs: Presentation):
     return slide
 
 
+def set_frame_margins(frame, left: float, right: float, top: float, bottom: float) -> None:
+    frame.margin_left = Inches(left)
+    frame.margin_right = Inches(right)
+    frame.margin_top = Inches(top)
+    frame.margin_bottom = Inches(bottom)
+
+
+def fit_text_size(lines: Sequence[str], width: float, height: float, preferred: int, minimum: int = 10) -> int:
+    if not lines:
+        return preferred
+    longest = max(len(line) for line in lines)
+    wrapped_units = 0
+    for line in lines:
+        # Chinese glyphs are wider than Latin words in this deck; this keeps dense cards from overflowing.
+        chars_per_line = max(8, int(width * 5.8 * (13 / max(preferred, 1))))
+        wrapped_units += max(1, (len(line) + chars_per_line - 1) // chars_per_line)
+    line_capacity = max(1, int(height * 72 / (preferred * 1.42)))
+    size = preferred
+    if wrapped_units > line_capacity:
+        size -= min(3, wrapped_units - line_capacity)
+    if longest > width * 9.0:
+        size -= 1
+    return max(minimum, min(preferred, size))
+
+
+def bullet_text(text: str) -> str:
+    if re.match(r"^\d+[.．、]\s*", text):
+        return text
+    return f"• {text}"
+
+
 def add_title(slide, text: str, subtitle: str = "") -> None:
-    header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(13.333), Inches(1.16))
+    header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(13.333), Inches(0.98))
     header.fill.solid()
     header.fill.fore_color.rgb = HEADER_FILL
     header.line.color.rgb = HEADER_FILL
-    title_box = slide.shapes.add_textbox(Inches(0.58), Inches(0.17), Inches(12.2), Inches(0.62))
+    accent = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0.95), Inches(13.333), Inches(0.03))
+    accent.fill.solid()
+    accent.fill.fore_color.rgb = ACCENT_LIGHT
+    accent.line.color.rgb = ACCENT_LIGHT
+    title_box = slide.shapes.add_textbox(Inches(0.58), Inches(0.12), Inches(12.2), Inches(0.48))
     frame = title_box.text_frame
     frame.clear()
     frame.word_wrap = True
+    frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+    set_frame_margins(frame, 0, 0, 0, 0)
     p = frame.paragraphs[0]
     run = p.add_run()
     run.text = text
     run.font.name = BODY_FONT
-    run.font.size = Pt(22 if len(text) > 24 else 24)
+    run.font.size = Pt(20 if len(text) > 24 else 22)
     run.font.bold = True
     run.font.color.rgb = TITLE_COLOR
     if subtitle:
-        sub_box = slide.shapes.add_textbox(Inches(0.6), Inches(0.75), Inches(12.1), Inches(0.34))
+        sub_box = slide.shapes.add_textbox(Inches(0.6), Inches(0.62), Inches(12.1), Inches(0.26))
         sub_frame = sub_box.text_frame
         sub_frame.clear()
+        sub_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+        set_frame_margins(sub_frame, 0, 0, 0, 0)
         sub_p = sub_frame.paragraphs[0]
         sub_run = sub_p.add_run()
         sub_run.text = subtitle
         sub_run.font.name = BODY_FONT
-        sub_run.font.size = Pt(11)
+        sub_run.font.size = Pt(10)
         sub_run.font.color.rgb = HEADER_SUBTITLE
 
 
@@ -246,14 +288,18 @@ def add_bullets(slide, left: float, top: float, width: float, height: float, ite
     frame = box.text_frame
     frame.clear()
     frame.word_wrap = True
+    frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+    set_frame_margins(frame, 0.02, 0.02, 0.02, 0.02)
+    effective_size = fit_text_size(items, width, height, level0_size, minimum=12)
     for index, item in enumerate(items):
         p = frame.paragraphs[0] if index == 0 else frame.add_paragraph()
         p.level = 0
-        p.space_after = Pt(8)
+        p.space_after = Pt(max(4, effective_size * 0.45))
+        p.line_spacing = 1.12
         p.font.name = BODY_FONT
-        p.font.size = Pt(level0_size)
+        p.font.size = Pt(effective_size)
         p.font.color.rgb = TEXT_COLOR
-        add_styled_run(p, item, level0_size, TEXT_COLOR)
+        add_styled_run(p, bullet_text(item), effective_size, TEXT_COLOR)
 
 
 def add_card(
@@ -268,32 +314,70 @@ def add_card(
     body_size: int = 12,
     formula_size: int = 14,
 ) -> None:
+    shadow = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(left + 0.03),
+        Inches(top + 0.04),
+        Inches(width),
+        Inches(height),
+    )
+    shadow.fill.solid()
+    shadow.fill.fore_color.rgb = CARD_SHADOW
+    shadow.line.color.rgb = CARD_SHADOW
     shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
     shape.fill.solid()
     shape.fill.fore_color.rgb = CARD_FILL
     shape.line.color.rgb = CARD_LINE
-    shape.line.width = Pt(1.2)
-    frame = shape.text_frame
+    shape.line.width = Pt(0.8)
+
+    accent = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(left),
+        Inches(top),
+        Inches(width),
+        Inches(0.08),
+    )
+    accent.fill.solid()
+    accent.fill.fore_color.rgb = ACCENT_LIGHT
+    accent.line.color.rgb = ACCENT_LIGHT
+
+    title_box = slide.shapes.add_textbox(Inches(left + 0.2), Inches(top + 0.18), Inches(width - 0.4), Inches(0.36))
+    title_frame = title_box.text_frame
+    title_frame.clear()
+    title_frame.word_wrap = True
+    title_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+    set_frame_margins(title_frame, 0, 0, 0, 0)
+    title_para = title_frame.paragraphs[0]
+    title_para.font.name = BODY_FONT
+    title_para.font.size = Pt(title_size)
+    title_para.font.bold = True
+    title_para.font.color.rgb = ACCENT_COLOR
+    add_styled_run(title_para, title, title_size, ACCENT_COLOR, bold=True)
+
+    body_top = top + 0.66
+    body_height = max(0.2, height - 0.84)
+    body_width = max(0.4, width - 0.42)
+    body_box = slide.shapes.add_textbox(Inches(left + 0.21), Inches(body_top), Inches(body_width), Inches(body_height))
+    frame = body_box.text_frame
     frame.clear()
+    frame.word_wrap = True
     frame.vertical_anchor = MSO_ANCHOR.TOP
-    p = frame.paragraphs[0]
-    p.font.name = BODY_FONT
-    p.font.size = Pt(title_size)
-    p.font.bold = True
-    p.font.color.rgb = ACCENT_COLOR
-    p.space_after = Pt(8)
-    add_styled_run(p, title, title_size, ACCENT_COLOR, bold=True)
+    frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+    set_frame_margins(frame, 0, 0, 0, 0)
+    non_formula_lines = [line for line in body_lines if not is_formula_line(line)]
+    effective_body_size = fit_text_size(non_formula_lines or body_lines, body_width, body_height, body_size, minimum=10)
     for line in body_lines:
-        para = frame.add_paragraph()
+        para = frame.paragraphs[0] if frame.paragraphs[0].text == "" else frame.add_paragraph()
         is_formula = is_formula_line(line)
         para.font.name = FORMULA_FONT if is_formula else BODY_FONT
-        para.font.size = Pt(formula_size if is_formula else body_size)
+        para.font.size = Pt(formula_size if is_formula else effective_body_size)
         para.font.color.rgb = TEXT_COLOR
-        para.space_after = Pt(3)
+        para.space_after = Pt(2 if is_formula else 4)
+        para.line_spacing = 1.08 if is_formula else 1.14
         add_styled_run(
             para,
-            line,
-            formula_size if is_formula else body_size,
+            line if is_formula else bullet_text(line),
+            formula_size if is_formula else effective_body_size,
             TEXT_COLOR,
             font_name=FORMULA_FONT if is_formula else BODY_FONT,
         )
@@ -301,7 +385,24 @@ def add_card(
 
 def add_picture(slide, source: Path, left: float, top: float, width: float, height: float) -> None:
     png = ensure_image_asset({"path": str(source.relative_to(ROOT)), "asset_name": source.stem})
-    slide.shapes.add_picture(str(png), Inches(left), Inches(top), width=Inches(width), height=Inches(height))
+    image_width_px, image_height_px = png_dimensions(png)
+    image_ratio = image_width_px / image_height_px
+    box_ratio = width / height
+    if image_ratio >= box_ratio:
+        fitted_width = width
+        fitted_height = width / image_ratio
+    else:
+        fitted_height = height
+        fitted_width = height * image_ratio
+    fitted_left = left + (width - fitted_width) / 2
+    fitted_top = top + (height - fitted_height) / 2
+    slide.shapes.add_picture(
+        str(png),
+        Inches(fitted_left),
+        Inches(fitted_top),
+        width=Inches(fitted_width),
+        height=Inches(fitted_height),
+    )
 
 
 def add_two_column_title_body(slide, title: str, left_items: Sequence[str], right_image: Path, subtitle: str = "") -> None:
