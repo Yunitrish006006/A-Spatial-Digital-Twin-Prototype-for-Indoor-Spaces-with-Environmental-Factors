@@ -15,6 +15,7 @@ DEVICE_OVERRIDE_KEYS = ("ac_main", "window_main", "light_main")
 FURNITURE_OVERRIDE_KEYS = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = {"cool", "dry", "heat", "fan"}
 AC_SWING_OPTIONS = {"fixed", "swing"}
+AC_FAN_SPEED_OPTIONS = {"quiet", "low", "medium", "mid", "high", "auto", "turbo"}
 MCP_TOOL_NAMES = {tool["name"] for tool in MCP_TOOLS}
 _BRIDGE_SERVER = LocalMCPServer()
 
@@ -117,7 +118,7 @@ def build_tool_selection_prompt(question: str) -> str:
 只能輸出 JSON，不要輸出 Markdown，不要加解釋。
 
 可用工具：
-1. initialize_environment: 初始化 MCP session，可設定 scenario_name、室內 baseline、室外溫濕度/日照/daylight_factor、設備、家具、elapsed/steady-state 時間與 use_hybrid_residual。arguments={{"scenario_name":"idle","baseline":{{"indoor_temperature":29,"indoor_humidity":67,"base_illuminance":90}},"environment":{{"outdoor_temperature":33,"outdoor_humidity":74,"sunlight_illuminance":32000,"daylight_factor":0.95}},"devices":[{{"name":"ac_main","kind":"ac","activation":0.0,"ac_mode":"cool","target_temperature":24}}],"furniture":[{{"name":"cabinet_window","activation":1.0}}],"elapsed_minutes":18,"steady_state_minutes":120}}
+1. initialize_environment: 初始化 MCP session，可設定 scenario_name、室內 baseline、室外溫濕度/日照/daylight_factor、設備、家具、elapsed/steady-state 時間與 use_hybrid_residual。AC 可指定 ac_mode、target_temperature、fan_speed/fan_strength、左右/上下角度與 fixed/swing。arguments={{"scenario_name":"idle","baseline":{{"indoor_temperature":29,"indoor_humidity":67,"base_illuminance":90}},"environment":{{"outdoor_temperature":33,"outdoor_humidity":74,"sunlight_illuminance":32000,"daylight_factor":0.95}},"devices":[{{"name":"ac_main","kind":"ac","activation":0.0,"ac_mode":"cool","target_temperature":24,"fan_speed":"high","horizontal_mode":"swing","vertical_mode":"fixed","vertical_angle_deg":20}}],"furniture":[{{"name":"cabinet_window","activation":1.0}}],"elapsed_minutes":18,"steady_state_minutes":120}}
 2. sample_point: 查指定座標在 elapsed_minutes 或 steady_state 下的溫度/濕度/照度。arguments={{"x":3,"y":2,"z":1.2,"elapsed_minutes":18}} 或 {{"x":3,"y":2,"z":1.2,"steady_state":true}}
 3. learn_impacts: 建立或完成 before/after impact learning record。start arguments={{"device_name":"ac_main","device_state":{{"activation":0.85,"kind":"ac","ac_mode":"cool"}},"before_observations":{{...}}}}；finish arguments={{"phase":"finish","learning_record_id":"...","after_observations":{{...}}}}
 4. run_window_direct: 直接提供窗戶外部條件。arguments={{"outdoor_temperature":35,"outdoor_humidity":82,"sunlight_illuminance":18000,"opening_ratio":0.45}}
@@ -261,6 +262,13 @@ def _device_metadata_overrides(arguments: Dict[str, Any]) -> Dict[str, Dict[str,
 
     if "ac_target_temperature" in arguments:
         ac_metadata["target_temperature"] = max(20.0, min(33.0, _required_number(arguments, "ac_target_temperature")))
+    fan_speed = arguments.get("ac_fan_speed")
+    if fan_speed is not None:
+        if not isinstance(fan_speed, str) or fan_speed not in AC_FAN_SPEED_OPTIONS:
+            raise ValueError("'ac_fan_speed' must be one of quiet, low, medium, high, auto, or turbo.")
+        ac_metadata["fan_speed"] = fan_speed
+    if "ac_fan_strength" in arguments:
+        ac_metadata["fan_strength"] = max(0.2, min(1.2, _required_number(arguments, "ac_fan_strength")))
     if "ac_horizontal_angle_deg" in arguments:
         ac_metadata["horizontal_angle_deg"] = max(
             -60.0,

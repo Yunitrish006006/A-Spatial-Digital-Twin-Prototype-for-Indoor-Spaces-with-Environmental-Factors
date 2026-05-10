@@ -206,6 +206,29 @@ def add_styled_run(
     run.font.color.rgb = color
 
 
+def add_markup_runs(
+    paragraph,
+    text: str,
+    size: int,
+    color: RGBColor,
+    font_name: str = BODY_FONT,
+) -> None:
+    """Render simple LaTeX-style subscript markup like t_{ref} in PowerPoint text."""
+    cursor = 0
+    for match in re.finditer(r"_\{([^}]+)\}", text):
+        if match.start() > cursor:
+            add_styled_run(paragraph, text[cursor : match.start()], size, color, font_name=font_name)
+        run = paragraph.add_run()
+        run.text = match.group(1)
+        run.font.name = font_name
+        run.font.size = Pt(max(size - 4, 8))
+        run.font.color.rgb = color
+        run._r.get_or_add_rPr().set("baseline", "-25000")
+        cursor = match.end()
+    if cursor < len(text):
+        add_styled_run(paragraph, text[cursor:], size, color, font_name=font_name)
+
+
 def metric_triplet(values: dict, decimals: int = 4) -> str:
     return (
         f"T={values['temperature']:.{decimals}f}, "
@@ -374,13 +397,66 @@ def add_card(
         para.font.color.rgb = TEXT_COLOR
         para.space_after = Pt(2 if is_formula else 4)
         para.line_spacing = 1.08 if is_formula else 1.14
-        add_styled_run(
+        add_markup_runs(
             para,
             line if is_formula else bullet_text(line),
             formula_size if is_formula else effective_body_size,
             TEXT_COLOR,
             font_name=FORMULA_FONT if is_formula else BODY_FONT,
         )
+
+
+def add_learning_record_slide(prs: Presentation, footer_number: int) -> None:
+    slide = new_slide(prs)
+    add_title(slide, "learn_impacts：動作如何成為資料記錄")
+    add_card(
+        slide,
+        0.7,
+        1.35,
+        3.85,
+        5.0,
+        "1. start：操作狀態",
+        [
+            "device_name：ac_main / window_main / light_main",
+            "device_state：activation、kind、power",
+            "AC state：mode、setpoint、fan、風向、swing",
+            "合併成 device_specs 並更新 runtime state",
+        ],
+        body_size=12,
+    )
+    add_card(
+        slide,
+        4.75,
+        1.35,
+        3.85,
+        5.0,
+        "2. record：情境快照",
+        [
+            "learning_record_id + status=RECORDING",
+            "baseline、outdoor boundary、elapsed time",
+            "furniture / obstruction state",
+            "before_observations：sensor -> T/H/L",
+            "optional note 與 sample point 預測",
+        ],
+        body_size=12,
+    )
+    add_card(
+        slide,
+        8.8,
+        1.35,
+        3.8,
+        5.0,
+        "3. finish：轉成係數",
+        [
+            "after_observations：同一批 sensors",
+            "Delta y = after - before",
+            "influence envelope 作為 X",
+            "least squares 解 metric coefficients",
+            "輸出 learned_device_impacts 與 sensor MAE",
+        ],
+        body_size=12,
+    )
+    add_footer(slide, footer_number)
 
 
 def add_picture(slide, source: Path, left: float, top: float, width: float, height: float) -> None:
@@ -473,11 +549,11 @@ FORMULA_WALKTHROUGH = [
         "公式說明 4：baseline 的取得方式",
         "有啟動前觀測時",
         [
-            "T₀ = (1/|S|)Σ_{s∈S} O_T(p_s,t_ref)",
-            "H₀ = (1/|S|)Σ_{s∈S} O_H(p_s,t_ref)",
-            "L₀ = (1/|S|)Σ_{s∈S} O_L(p_s,t_ref)",
+            "T₀ = (1/|S|) ∑ₛ∈S Oₜ(pₛ, t_{ref})",
+            "H₀ = (1/|S|) ∑ₛ∈S Oₕ(pₛ, t_{ref})",
+            "L₀ = (1/|S|) ∑ₛ∈S Oₗ(pₛ, t_{ref})",
             "S 是 8 顆角落感測器集合",
-            "t_ref 是設備尚未加入作用的參考時間",
+            "t_{ref} 是設備尚未加入作用的參考時間",
         ],
         "沒有啟動前觀測時",
         [
@@ -1168,6 +1244,8 @@ def build_presentation() -> Presentation:
     )
     add_footer(slide, 7)
 
+    add_learning_record_slide(prs, 8)
+
     # Slide 8
     slide = new_slide(prs)
     add_title(slide, "驗證流程與比較原則")
@@ -1772,6 +1850,7 @@ def build_presentation_30min() -> Presentation:
         [
             "MCP 不做預測；核心模型負責場估計、校正與排序",
             "initialize：註冊 scenario、baseline、外部邊界、設備/家具、時間與 estimator",
+            "AC state：模式、目標溫度、風量、水平/垂直角度與擺動",
             "sample point：補足非感測點、可指定 elapsed/steady state",
             "learn impacts：start/finish before-after record",
             "window direct：輸入外部資料，不走 48 組 preset",
@@ -1806,6 +1885,8 @@ def build_presentation_30min() -> Presentation:
         ],
     )
     add_footer(slide, 12)
+
+    add_learning_record_slide(prs, 13)
 
     # 13 validation design
     slide = new_slide(prs)
@@ -2222,7 +2303,8 @@ def build_outline() -> str:
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器", "三個主要區域與三個核心裝置"]),
         ("數學模型", ["變數專屬 nominal model", "trilinear correction", "裝置與家具模組化", "溫度、濕度、照度分別使用不同公式"]),
         ("模型學習、推論與推薦資料流", ["學習端：raw records → 對齊 → scenario state → labels → coefficients/checkpoint", "推論端：runtime input → nominal field → correction / hybrid → point or zone prediction", "推薦端：sample / cluster + T/H/L 目標 → 反事實重跑 → penalty reduction 排序"]),
-        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、室內 baseline、外部邊界、設備/家具、預設時間與 estimator", "sample point：查指定座標在特定時間或穩定態的溫濕照度", "learn impacts：start/finish before-after record", "window direct / rank actions：輸入外部窗戶資料；rank actions 需指定 sample 與 T/H/L 目標", "Gemma bridge 與 Web demo 分別負責 AI tool calling 與人機展示"]),
+        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、室內 baseline、外部邊界、設備/家具、預設時間與 estimator", "AC state：模式、目標溫度、風量、水平/垂直角度與固定/擺動", "sample point：查指定座標在特定時間或穩定態的溫濕照度", "learn impacts：start/finish before-after record", "window direct / rank actions：輸入外部窗戶資料；rank actions 需指定 sample 與 T/H/L 目標", "Gemma bridge 與 Web demo 分別負責 AI tool calling 與人機展示"]),
+        ("learn_impacts：動作如何成為資料記錄", ["start：device_name + device_state 記錄實際操作狀態", "record：儲存 learning_record_id、baseline、外部邊界、家具、elapsed time 與 before observations", "finish：用同一批感測器 after observations 計算 after-before delta", "least squares：由 influence envelope 與 delta 求 learned_device_impacts"]),
         ("驗證流程與比較原則", ["E1-E3：synthetic full-field、IDW baseline、ablation", "E4：非連網裝置影響學習與推薦排序", "E5：48 組窗戶矩陣與 direct input", "E6：hybrid residual no-Fourier 與 LOO cross-validation", "E7：bedroom_01 7 天真實快照與 pillow hold-out", "E8 protocol、E9 public task-aligned benchmark；demo 不是量化實驗"]),
         ("主要結果", ["平均 field MAE", "IDW / Base / LOO Hybrid 誤差比較", "真實臥室 pillow MAE 比較", "推薦排序目前為 counterfactual simulation", "3D 視覺化案例"]),
         ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO MAE", "train/test sample count", "研究定位不是黑盒替代", "LOO 結果限標準情境 family"]),
@@ -2263,7 +2345,8 @@ def build_outline_30min() -> str:
         ("數學模型", ["變數專屬 nominal model + residual correction", "早期純插值與 local-only 模型失敗後的調整", "避免把同一套公式套用到溫度、濕度、照度"]),
         ("方法選擇：為什麼不是純插值、純物理或純黑盒", ["IDW 適合作 baseline 但缺設備與方向資訊", "完整 CFD/ray tracing 對低成本即時服務太重", "hybrid residual 只學剩餘誤差，不取代可解釋主模型"]),
         ("模型學習、推論與推薦資料流", ["學習資料流：raw data → 對齊 → scenario state → labels → coefficients/checkpoint", "推論資料流：runtime input → nominal field → correction/hybrid → 溫濕照度", "推薦資料流：sample / cluster + T/H/L 目標 → 反事實重跑 → penalty reduction 排序"]),
-        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator", "sample point：註冊環境後查指定座標三因子估計", "learn impacts：以 before/after observations 建立可學習資料", "window direct / rank actions：直接輸入窗戶外部資料；rank actions 需指定 sample 與 T/H/L 目標", "Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示"]),
+        ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator", "AC state：模式、目標溫度、風量、水平/垂直角度與固定/擺動", "sample point：註冊環境後查指定座標三因子估計", "learn impacts：以 before/after observations 建立可學習資料", "window direct / rank actions：直接輸入窗戶外部資料；rank actions 需指定 sample 與 T/H/L 目標", "Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示"]),
+        ("learn_impacts：動作如何成為資料記錄", ["start：device_name + device_state 記錄實際操作狀態", "record：儲存 learning_record_id、baseline、外部邊界、家具、elapsed time 與 before observations", "finish：用同一批感測器 after observations 計算 after-before delta", "least squares：由 influence envelope 與 delta 求 learned_device_impacts"]),
         ("驗證設計", ["E1-E3：truth-adjusted simulation、IDW、synthetic ablation", "E4-E6：裝置影響學習、window matrix、hybrid no-Fourier/LOO", "E7：bedroom_01 7 天真實快照與 pillow 位置比較", "E8：推薦動作 before/after intervention protocol", "E9：public datasets 僅作 task-aligned benchmark", "Web demo 與 3D 展示是呈現層，不列為量化實驗"]),
         ("證據鏈與 Claim Boundary", ["Synthetic full-field 支援完整 3D 場比較，但不等同長期真實場", "Real-bedroom snapshot 支援稀疏校正的 held-out 點位檢查，但不是 dense truth", "Public datasets 僅支援相容子任務，不是單房間 8 點拓樸驗證", "Recommendation 目前是反事實排序，仍需 before/after 介入驗證"]),
         ("情境設計與輸入模式", ["8 組 scenario、48 組窗戶矩陣、direct input、timeline"]),
@@ -2316,6 +2399,12 @@ SPEAKER_NOTE_GLOSSARY: List[Tuple[str, Tuple[str, ...], str]] = [
     ("Residual correction", ("residual correction", "校正場", "感測器校正"), "利用感測器 residual 修正 nominal model，使估計更貼近觀測。"),
     ("Trilinear correction", ("trilinear", "三線性", "三線性補間", "三線性校正"), "用 X/Y/Z 三個座標方向的一階補間，由 8 個角點 residual 推估室內 residual 場。"),
     ("Power calibration", ("power calibration", "power scale", "P_ac", "P_win", "P_light"), "依觀測差異調整設備影響強度，避免裝置作用尺度只依預設值決定。"),
+    ("AC operating state", ("AC state", "ac_mode", "target_temperature", "fan_speed", "fan_strength", "出風角度", "擺動"), "冷氣操作狀態包含模式、設定溫度、風速/風量、水平與垂直出風角度，以及 fixed/swing 擺動設定。"),
+    ("device_state", ("device_state",), "learn_impacts start 階段輸入的裝置操作狀態，包含 activation、kind、power 與冷氣模式、設定溫度、風速、風向等欄位。"),
+    ("device_specs", ("device_specs",), "系統把 device_state 合併進目前註冊設備後形成的完整設備清單，是後續 sample、learning 與 ranking 使用的 runtime 裝置狀態。"),
+    ("learning_record_id", ("learning_record_id",), "每一次 learn_impacts start 產生的唯一紀錄編號，用來在 finish 階段把 after observations 接回同一筆事件。"),
+    ("before_observations / after_observations", ("before_observations", "after_observations"), "同一批感測器在裝置操作前後的真實讀值，格式通常是 sensor name 對應 temperature、humidity 與 illuminance。"),
+    ("learned_device_impacts", ("learned_device_impacts", "metric coefficients"), "由 before/after 差值與設備 influence envelope 解出的裝置影響係數，描述該操作對三因子的方向與大小。"),
     ("Hybrid residual", ("hybrid residual", "F_hybrid", "hybrid"), "在可解釋 base estimator 後面再加一個資料驅動 residual 模型，不直接取代主模型。"),
     ("MCP", ("MCP", "Model Context Protocol"), "Model Context Protocol，是讓 LLM application 以標準化方式連接外部資料與工具的 open protocol；本研究用它封裝數位孿生工具。"),
     ("MCP host/client/server", ("MCP host", "MCP client", "MCP server", "client-server", "server"), "MCP 採 client-server 概念；host/client 是使用工具的 AI 應用端，server 則暴露工具、資源或 prompt。"),
@@ -2531,9 +2620,19 @@ def build_speaker_notes_30min() -> str:
                 "如果老師問 std 或 standard，我會回答：MCP 本身是標準化的 protocol；官方規格用 JSON-RPC 2.0 表示 request、response 與 notification。它的標準 transport 包含 stdio 和 Streamable HTTP。",
                 "stdio 是 standard input/output 的意思，適合本機工具。client 會啟動 MCP server subprocess，server 從 stdin 讀 newline-delimited JSON-RPC message，再把 response 寫到 stdout；stderr 只用於 log。",
                 "在我的系統裡，數位孿生核心服務被包成本地 MCP server，主要暴露 tools/list 與 tools/call。工具包含 initialize_environment、sample_point、learn_impacts、run_window_direct 和 rank_actions。",
-                "initialize 負責註冊 scenario、baseline、外部邊界、設備、家具、時間與 estimator。sample_point 查詢指定座標的溫濕照度估計；rank_actions 則在給定 sample 與三因子目標後做反事實排序。",
+                "initialize 負責註冊 scenario、baseline、外部邊界、設備、家具、時間與 estimator。冷氣設備狀態不是只有模式，也包含目標溫度、風速或 fan strength、水平與垂直出風角度，以及 fixed/swing 擺動設定。sample_point 查詢指定座標的溫濕照度估計；rank_actions 則在給定 sample 與三因子目標後，用包含這些 AC 操作參數的候選動作做反事實排序。",
                 "所以本研究對 MCP 的定位是系統整合與工具化封裝：證明這個數位孿生模型可以被 AI client 操作。我的研究貢獻不是提出新的 MCP protocol，也不是宣稱模型權重原生支援 MCP。",
                 "Web demo 負責人機互動展示，Gemma/Ollama bridge 負責把自然語言轉成 tool calling。兩者底層都呼叫同一個模型服務，因此結果可以保持一致。",
+            ],
+        ),
+        (
+            "learn_impacts：動作如何成為資料記錄",
+            [
+                "這一頁回答「學習時記錄的動作是什麼」。系統不是只記錄一個開關，也不是記錄 rank_actions 的推薦名稱，而是把實際要套用到裝置上的 device_state 記錄下來。",
+                "在 start 階段，client 會送 device_name 與 device_state。以冷氣為例，device_state 可以包含 activation、kind、power、ac_mode、target_temperature、fan_speed、fan_strength、horizontal_mode、horizontal_angle_deg、vertical_mode、vertical_angle_deg，以及 swing 相關欄位。系統會把這些欄位合併到目前註冊設備，形成新的 device_specs，並更新 runtime state。",
+                "同一筆 learning record 會得到 learning_record_id，狀態先是 RECORDING。紀錄裡會保存 device_name、device_state、合併後的 device_specs、當時的室內 baseline、外部邊界、家具遮蔽、elapsed time、sampling mode、before_observations，以及 optional note。before_observations 的格式是 sensor name 對應 temperature、humidity、illuminance，例如 floor_sw 對應一組 T/H/L。",
+                "finish 階段必須提供同一批感測器的 after_observations。系統用 after minus before 得到每顆感測器的 ΔT、ΔH、ΔL，再用模型中的 influence envelope 當作 X 矩陣，對每個 metric 解 least-squares 係數。輸出 learned_device_impacts 裡會包含 metric_coefficients、sensor_mae 與 sensor_observation_delta。",
+                "所以口試時可以說：學習資料是「操作狀態 + 環境快照 + 前後感測讀值」形成的事件紀錄；只有 before 和 after 都存在時才會計算係數。若想追蹤這筆資料來自哪一個推薦動作，目前可寫在 note，或未來新增 action_name 欄位。",
             ],
         ),
         (

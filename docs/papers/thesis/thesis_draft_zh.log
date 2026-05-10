@@ -697,58 +697,58 @@ Package fontspec Info: Font family 'HeitiTC(0)' created for font 'Heiti TC'
 [22] [23]
 File: assets/fig_3_5_training_inference_flow.png Graphic file (type bmp)
 <assets/fig_3_5_training_inference_flow.png>
- [24] [25]
+ [24] [25] [26]
 
-LaTeX Warning: Float too large for page by 2.4927pt on input line 1443.
+LaTeX Warning: Float too large for page by 2.4927pt on input line 1449.
 
-[26] [27] [28] [29] [30]
+[27] [28] [29]
 
-LaTeX Warning: Float too large for page by 271.49268pt on input line 1628.
+LaTeX Warning: Float too large for page by 271.49268pt on input line 1634.
 
-[31] [32] [33
+[30] [31] [32] [33
 
-] [34] [35] [36]
+] [34] [35] [36] [37]
 File: assets/fig_5_1_validation_flow.png Graphic file (type bmp)
 <assets/fig_5_1_validation_flow.png>
- [37
+ [38
 
-] [38]
+] [39]
 File: assets/fig_5_2_all_active_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_2_all_active_temp_3d.png>
 File: assets/fig_5_3_ac_only_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_3_ac_only_temp_3d.png>
 File: assets/fig_5_4_light_only_illum_3d.png Graphic file (type bmp)
 <assets/fig_5_4_light_only_illum_3d.png>
- [39] [40] [41] [42] [43] [44]
+ [40] [41] [42] [43] [44]
+[45]
 File: assets/field_mae_comparison.png Graphic file (type bmp)
 <assets/field_mae_comparison.png>
- [45]
-[46] [47]
+ [46] [47] [48]
 File: assets/fig_5_6_sml2010_task_breakdown.png Graphic file (type bmp)
 <assets/fig_5_6_sml2010_task_breakdown.png>
- [48] [49] [50]
+ [49] [50] [51]
 File: assets/fig_5_7_cu_bems_task_breakdown.png Graphic file (type bmp)
 <assets/fig_5_7_cu_bems_task_breakdown.png>
- [51] [52]
+ [52] [53]
 File: assets/fig_5_8_all_active_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_8_all_active_temp_3d.png>
 File: assets/fig_5_9_window_only_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_9_window_only_temp_3d.png>
 File: assets/fig_5_10_light_only_illum_3d.png Graphic file (type bmp)
 <assets/fig_5_10_light_only_illum_3d.png>
- [53] [54] [55] [56] [57
+ [54] [55] [56] [57] [58
 
-] [58] [59] [60
+] [59]
+[60] [61
 
-]
-[61] [62]
+] [62] [63]
 
-LaTeX Warning: Float too large for page by 181.89258pt on input line 2472.
+LaTeX Warning: Float too large for page by 181.89258pt on input line 2513.
 
-[63
+[64
 
-] [64] (thesis_draft_zh.aux)
+] [65] (thesis_draft_zh.aux)
 Package rerunfilecheck Info: File `thesis_draft_zh.out' has not changed.
 (rerunfilecheck)             Checksum: 01CE5C810586E46DAEB18117EB74544E;1783.
  )
-Output written on thesis_draft_zh.xdv (73 pages, 1070452 bytes).
+Output written on thesis_draft_zh.xdv (74 pages, 1094128 bytes).

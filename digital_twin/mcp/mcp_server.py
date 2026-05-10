@@ -90,10 +90,16 @@ DEVICE_SCHEMA = {
         "power": {"type": "number", "description": "Device power scale, clamped to 0-4."},
         "ac_mode": {"type": "string", "description": "AC mode, for example cool, dry, heat, or fan."},
         "target_temperature": {"type": "number", "description": "AC target temperature in °C."},
+        "fan_speed": {"type": "string", "description": "AC fan speed label, for example quiet, low, medium, high, auto, or turbo."},
+        "fan_strength": {"type": "number", "description": "Numeric AC fan strength multiplier, clamped to 0.2-1.2."},
         "horizontal_mode": {"type": "string", "description": "AC horizontal sweep mode."},
         "horizontal_angle_deg": {"type": "number", "description": "AC horizontal outlet angle in degrees."},
+        "horizontal_swing_range_deg": {"type": "number", "description": "AC left-right swing range in degrees."},
+        "horizontal_swing_period_minutes": {"type": "number", "description": "AC left-right swing cycle time in minutes."},
         "vertical_mode": {"type": "string", "description": "AC vertical sweep mode."},
         "vertical_angle_deg": {"type": "number", "description": "AC vertical outlet angle in degrees."},
+        "vertical_swing_angles_deg": {"type": "array", "items": {"type": "number"}, "description": "AC up-down swing angle sequence in degrees."},
+        "vertical_swing_period_minutes": {"type": "number", "description": "AC up-down swing cycle time in minutes."},
         "illuminance_gain": {"type": "number", "description": "Light output gain for light devices."},
         "surface_width": {"type": "number", "description": "Display or emitting surface width in meters."},
         "surface_height": {"type": "number", "description": "Display or emitting surface height in meters."},
@@ -681,10 +687,16 @@ def _device_specs_with_state(
     for key in (
         "ac_mode",
         "target_temperature",
+        "fan_speed",
+        "fan_strength",
         "horizontal_mode",
         "horizontal_angle_deg",
+        "horizontal_swing_range_deg",
+        "horizontal_swing_period_minutes",
         "vertical_mode",
         "vertical_angle_deg",
+        "vertical_swing_angles_deg",
+        "vertical_swing_period_minutes",
     ):
         if key in update:
             metadata[key] = update[key]

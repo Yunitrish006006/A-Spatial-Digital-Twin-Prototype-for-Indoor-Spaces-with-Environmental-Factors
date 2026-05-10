@@ -236,7 +236,11 @@ Abstract……II
 
 表 4-1 核心模組一覽…… 11
 
-表 4-2 Web demo 展示輔助區塊…… 12
+表 4-2 learn_impacts 事件記錄欄位…… 11
+
+表 4-3 initialize_environment 可設定內容…… 11
+
+表 4-4 Web demo 展示輔助區塊…… 12
 
 表 5-1 標準情境結果摘要…… 13
 
@@ -742,12 +746,12 @@ before sensor observations
 
 ## 3.7 訓練資料組裝流程
 
-為了讓模型不只停留在手動指定參數，本研究將資料流程拆成原始紀錄層、對齊整併層、樣本建構層與模型訓練層。原始資料至少包含四類：角落感測器時序、裝置事件紀錄、室外環境時序，以及情境描述或額外空間量測。角落感測器時序紀錄 8 顆節點在各時間點的 temperature、humidity 與 illuminance；裝置事件紀錄保存冷氣、窗戶與燈的啟用狀態、模式、設定溫度與開窗比例；室外環境時序提供 outdoor temperature、outdoor humidity 與 sunlight；情境描述則記錄房間尺寸、目標區域、家具配置與採樣設定。
+為了讓模型不只停留在手動指定參數，本研究將資料流程拆成原始紀錄層、對齊整併層、樣本建構層與模型訓練層。原始資料至少包含四類：角落感測器時序、裝置事件紀錄、室外環境時序，以及情境描述或額外空間量測。角落感測器時序紀錄 8 顆節點在各時間點的 temperature、humidity 與 illuminance；裝置事件紀錄保存冷氣、窗戶與燈的啟用狀態、模式、設定溫度、風量、左右/上下出風角度、固定或擺動設定與開窗比例；室外環境時序提供 outdoor temperature、outdoor humidity 與 sunlight；情境描述則記錄房間尺寸、目標區域、家具配置與採樣設定。
 
 | 資料表 | 主要欄位 | 角色 |
 | --- | --- | --- |
 | corner_sensor_timeseries | timestamp, sensor_name, x, y, z, temperature, humidity, illuminance | 提供 8 顆角落感測器觀測值，用於校正、裝置影響學習與真實資料 fine-tune |
-| device_event_log | timestamp, device_name, device_kind, activation, mode, target_temperature, opening_ratio | 還原各時間點裝置狀態，並作為特徵與影響學習依據 |
+| device_event_log | timestamp, device_name, device_kind, activation, mode, target_temperature, fan_speed, fan_strength, horizontal_mode, horizontal_angle_deg, vertical_mode, vertical_angle_deg, opening_ratio | 還原各時間點裝置狀態，並作為特徵與影響學習依據 |
 | outdoor_environment | timestamp, outdoor_temperature, outdoor_humidity, sunlight_illuminance, daylight_factor | 提供窗戶影響函數與時間條件所需的外部邊界 |
 | scenario_metadata / spatial_probe_ground_truth | 房間尺寸、家具配置、目標區域、額外空間量測 | 定義情境與提供較密集的監督標籤 |
 
@@ -766,7 +770,7 @@ $$\begin{aligned}\boldsymbol{\varphi}_i = [&x_i,\, y_i,\, z_i,\, t_i,\, \text{in
 | indoor baseline | $T_0,H_0,L_0$ 等室內起始狀態。 | 由情境設定或設備啟用前感測器平均值取得。 |
 | outdoor conditions | $T_{\mathrm{out}},H_{\mathrm{out}},S_{\mathrm{out}}$ 等外部邊界條件。 | 由情境、天氣 preset 或外部資料取得。 |
 | $F_{\text{temp}},F_{\text{hum}},F_{\text{illum}}$ | 主模型對三個環境因素的估計值。 | 由 nominal model 加校正流程產生。 |
-| device activations | 冷氣、窗戶、照明等裝置的啟用狀態或控制比例。 | 來自 device event log 或 scenario state。 |
+| device activations / control state | 冷氣、窗戶、照明等裝置的啟用狀態或控制比例；冷氣另包含模式、設定溫度、風量與出風方向。 | 來自 device event log 或 scenario state。 |
 | device powers | 各裝置的 power scale 或校正後作用強度。 | 由預設參數或 active-device calibration 取得。 |
 | influence envelopes | 各裝置在採樣點的 $E_j(\mathbf{p}_i,t_i)$。 | 由距離、方向與遮蔽模型計算。 |
 
@@ -841,7 +845,7 @@ runtime input: baseline + outdoor conditions + devices + furniture + time
 | 4. Optional hybrid residual | 若 `use_hybrid_residual=true` 且 checkpoint 存在，使用與訓練相同的特徵欄位。 | 對查詢點建立 $\boldsymbol{\varphi}$，由 $R_v(\mathbf{p},t;\boldsymbol{\theta}_v)$ 預測 residual，並加回主模型。 | $F_v^{\text{hybrid}}=F_v+R_v$。 |
 | 5. Point / cluster sample | 指定座標、單點 sample，或由多點/目標區域形成的 cluster sample。 | 若是 `sample_point`，直接回傳該點 temperature、humidity、illuminance；若是 zone / cluster summary，對範圍內採樣點做平均或統計。 | 目前採樣範圍的 $\mathbf{q}_{\mathrm{base}}=(q_T,q_H,q_L)$ 與 estimator 狀態。 |
 | 6. Recommendation precondition | sample scope、三因子目標 $g_T,g_H,g_L$、容許範圍 $\delta_T,\delta_H,\delta_L$ 與權重 $w_T,w_H,w_L$。 | 檢查 sample scope 是否存在，且 temperature、humidity、illuminance 三個目標是否完整；缺少時只回傳估測，不輸出推薦。 | `READY_TO_RANK` 或明確缺項錯誤；缺項時沒有 recommendations 輸出。 |
-| 7. Candidate action simulation | 目前註冊設備與候選動作，例如開冷氣、調整冷氣模式、開窗或開燈。 | 只在 `READY_TO_RANK` 時，對每個候選動作建立反事實 scenario，把裝置 activation 或 metadata 改成候選狀態，重新執行同一條推論流程。 | 每個候選動作後的 $\mathbf{q}_a=(q_T,q_H,q_L)$。 |
+| 7. Candidate action simulation | 目前註冊設備與候選動作，例如冷氣冷房/除濕/暖房/送風、設定溫度、風量、左右/上下風向、固定或擺動、開窗或開燈。 | 只在 `READY_TO_RANK` 時，對每個候選動作建立反事實 scenario，把裝置 activation 或 metadata 改成候選狀態，重新執行同一條推論流程。 | 每個候選動作後的 $\mathbf{q}_a=(q_T,q_H,q_L)$。 |
 | 8. Recommendation ranking | 目前狀態 $\mathbf{q}_{\mathrm{base}}$、動作後狀態 $\mathbf{q}_a$、舒適目標 $g_m$、容許範圍 $\delta_m$ 與權重 $w_m$。 | 先算目前 penalty，再算每個候選動作後的 penalty；排序分數為 $P(\mathbf{q}_{\mathrm{base}})-P(\mathbf{q}_a)$。 | 依預測改善量排序的推薦動作清單、預測改善值與注意事項。 |
 
 這條推論流程也說明本研究的推薦動作不是規則表，也不是 LLM 直接猜測，而是由同一套數位孿生模型對候選動作做反事實模擬。若排名第一的動作是開冷氣，代表模型預測在目前 baseline、外部環境、家具遮蔽、設備狀態、指定 sample scope 與三因子目標下，開冷氣後該目標點或目標區域的 comfort penalty 下降最多；但它仍需 5.8 節的 before/after 介入實驗才能證明真實因果改善。
@@ -879,7 +883,7 @@ $$\mathcal{L}(\boldsymbol{\theta}_v) = \frac{1}{N}\sum_{i=1}^{N}\bigl\|R_v^*(\ma
 
 本研究不做閉環控制，而是對候選控制動作進行排序。此排序不是無條件推薦，而是在明確的決策採樣範圍與三因子要求下才被定義。採樣範圍可是一個指定座標 point sample，也可是一組由目標區域或使用者選定點組成的 cluster sample；三因子要求則必須同時包含溫度、濕度與照度的目標值與容許範圍。若缺少採樣範圍或缺少任一環境因子的目標，系統只能回傳估測結果，不應輸出候選動作推薦。
 
-具體而言，系統先以目前感測資料校正模型，取得採樣範圍目前三因子估計值並計算 baseline comfort penalty。若採樣範圍是單點，$K=1$；若是 cluster 或 target zone，則以 $K$ 個空間採樣點的平均代表該範圍。接著，對每一個候選動作建立反事實情境：例如將冷氣 activation 調至 0.85、開窗至 0.7，或將主要照明調至 0.8，再重新模擬該採樣範圍的溫度、濕度與照度。候選動作分數定義為 baseline penalty 減去動作後預測 penalty，因此分數愈高代表模型預期改善愈大。
+具體而言，系統先以目前感測資料校正模型，取得採樣範圍目前三因子估計值並計算 baseline comfort penalty。若採樣範圍是單點，$K=1$；若是 cluster 或 target zone，則以 $K$ 個空間採樣點的平均代表該範圍。接著，對每一個候選動作建立反事實情境：例如將冷氣 activation 調至 0.85，同時設定冷房/除濕/暖房/送風模式、目標溫度、fan speed / fan strength、左右與上下出風角度及 fixed/swing 狀態；或將窗戶開啟至 0.7、主要照明調至 0.8，再重新模擬該採樣範圍的溫度、濕度與照度。候選動作分數定義為 baseline penalty 減去動作後預測 penalty，因此分數愈高代表模型預期改善愈大。
 
 令決策採樣範圍為：
 
@@ -972,9 +976,25 @@ $$\mathrm{score}(a)=P(\mathbf{q}_{\mathrm{base}}(S))-P(\mathbf{q}_{a}(S))$$
 - run_window_direct：直接輸入外部溫度、濕度、日照與開窗比例，執行窗戶影響模擬，並可更新目前 MCP session 的外部環境。
 - rank_actions：輸入指定座標 sample 與完整目標三因子值，根據目前註冊設備產生候選操作並依 comfort penalty 改善量排序；缺少 sample 或任一三因子目標時不產生推薦。
 
-其中 initialize_environment 是 MCP runtime 的起點，不是單純把場景名稱設為 idle。它會建立後續工具共用的 session state，因此必須清楚區分哪些項目是在初始化時註冊，哪些是後續查詢才輸入。表 4-2 列出目前初始化可設定的內容。
+其中 learn_impacts 的資料化流程可分為 start、record 與 finish 三步。start 階段輸入的動作不是單純的 action name，而是要套用到裝置上的 `device_state`；例如冷氣可包含 activation、模式、設定溫度、風速或風量、水平/垂直出風角度與 fixed/swing 擺動設定。系統會把 `device_state` 合併到目前註冊設備，形成新的 `device_specs`，並以 `learning_record_id` 建立一筆 `RECORDING` 狀態的事件紀錄。record 內容保存當時的 device_name、device_state、device_specs、室內 baseline、外部邊界、家具遮蔽、elapsed time、sampling mode、before_observations 與 optional note。finish 階段再輸入同一批感測器的 after_observations，系統以 after minus before 取得各感測器的 $\Delta T,\Delta H,\Delta L$，並以設備 influence envelope 作為設計矩陣估計 learned_device_impacts。若缺少 before 或 after readings，工具只保留事件紀錄，不輸出係數。
 
-表 4-2 initialize_environment 可設定內容
+表 4-2 learn_impacts 事件記錄欄位
+
+| 欄位 | 資料內容 | 用途 |
+| --- | --- | --- |
+| learning_record_id | 每次 start 產生的唯一編號 | finish 時把 after observations 接回同一筆事件 |
+| device_name | 被操作的設備名稱，例如 ac_main | 指定要學習哪個非連網裝置 |
+| device_state | activation、kind、power 與 AC mode/setpoint/fan/airflow 等操作狀態 | 描述這次實際套用的裝置動作 |
+| device_specs | 合併 device_state 後的完整設備清單 | 後續 sample 與 impact learning 使用的 runtime device state |
+| baseline / environment | 室內溫濕照度基準與室外溫濕度、日照 | 保留事件發生時的環境條件 |
+| furniture / furniture_overrides | 家具與遮蔽物狀態 | 保留當時的空間遮蔽條件 |
+| elapsed_minutes / sampling_mode | 裝置作用時間或 steady-state 設定 | 決定 dynamic activation 與 influence envelope |
+| before_observations / after_observations | 同一批感測器前後的 temperature、humidity、illuminance | 計算 $\Delta y = y_{\mathrm{after}}-y_{\mathrm{before}}$ |
+| result | metric_coefficients、sensor_mae、sensor_observation_delta | 儲存學到的裝置影響係數與誤差摘要 |
+
+其中 initialize_environment 是 MCP runtime 的起點，不是單純把場景名稱設為 idle。它會建立後續工具共用的 session state，因此必須清楚區分哪些項目是在初始化時註冊，哪些是後續查詢才輸入。表 4-3 列出目前初始化可設定的內容。
+
+表 4-3 initialize_environment 可設定內容
 
 | 欄位 | 可設定內容 | 後續影響 |
 | --- | --- | --- |
@@ -986,7 +1006,7 @@ $$\mathrm{score}(a)=P(\mathbf{q}_{\mathrm{base}}(S))-P(\mathbf{q}_{a}(S))$$
 | environment.outdoor_humidity | 室外相對濕度，預設 74.0%。 | 影響開窗後室內濕度上升或下降。 |
 | environment.sunlight_illuminance | 室外日照照度，預設 32000 lux。 | 影響窗戶直射光與 single-bounce reflection 的光源強度。 |
 | environment.daylight_factor | 日光進入室內的比例係數，預設 0.95。 | 調整外部日照轉成室內照度的強度。 |
-| devices | 註冊或覆寫 ac_main、window_main、light_main，也可新增 custom ac/window/light。常用欄位包含 name、kind、activation、position、orientation、influence_radius、response_time_minutes、power、metadata；冷氣可加 ac_mode、target_temperature 與出風角度。 | 後續 sample_point、learn_impacts 與 rank_actions 會依目前註冊設備計算。 |
+| devices | 註冊或覆寫 ac_main、window_main、light_main，也可新增 custom ac/window/light。常用欄位包含 name、kind、activation、position、orientation、influence_radius、response_time_minutes、power、metadata；冷氣可加 ac_mode、target_temperature、fan_speed、fan_strength、horizontal_mode、horizontal_angle_deg、vertical_mode、vertical_angle_deg 與 swing 週期/角度序列。 | 後續 sample_point、learn_impacts 與 rank_actions 會依目前註冊設備計算。 |
 | replace_existing_devices | 若為 true，未列入 devices 的內建設備會被標記移除。 | 可建立只包含指定設備的 runtime 環境。 |
 | furniture | 註冊或覆寫 cabinet_window、sofa_main、table_center，也可用 min_corner/max_corner 新增自訂家具或遮蔽物。 | 影響照度遮蔽、單次反射、冷氣/窗戶可見性與混合懲罰。 |
 | elapsed_minutes | 後續工具未指定時間時使用的預設 elapsed time，預設 18 分鐘。 | 影響 dynamic activation 與指定時間點的 point sample。 |
@@ -1009,7 +1029,7 @@ Web demo 以 idle 房間背景為基礎，透過 ac_main、window_main 與 light
 
 Web demo 也新增 Public Dataset Comparison 區塊。此區塊讀取 outputs/data/public_benchmarks/sml2010_hybrid_twin_comparison.json 與 outputs/data/public_benchmarks/cu_bems_hybrid_twin_comparison.json，不重新計算論文數字；後端路由為 /api/public_benchmarks。頁面會依資料集列出 benchmark mode、資料量、unsupported claims、執行流程說明，以及每個 task/horizon/target 的 MAE 對比與最佳方法。展示時應強調：公開資料集比較只支援 shared observable tasks，不能被解讀為 full 3D dense-field validation。
 
-表 4-2 列出 Web demo 最新展示輔助區塊。
+表 4-4 列出 Web demo 最新展示輔助區塊。
 
 | 區塊 | 呈現內容 | 展示用途 |
 | --- | --- | --- |

@@ -346,6 +346,8 @@ class ServiceTests(unittest.TestCase):
                 "ac_main": {
                     "ac_mode": "dry",
                     "target_temperature": 22.0,
+                    "fan_speed": "medium",
+                    "fan_strength": 0.78,
                     "horizontal_mode": "swing",
                     "vertical_mode": "fixed",
                     "vertical_angle_deg": 25.0,
@@ -355,6 +357,8 @@ class ServiceTests(unittest.TestCase):
         ac = next(device for device in result["devices"] if device["name"] == "ac_main")
         self.assertEqual(ac["metadata"]["ac_mode"], "dry")
         self.assertEqual(ac["metadata"]["target_temperature"], 22.0)
+        self.assertEqual(ac["metadata"]["fan_speed"], "medium")
+        self.assertEqual(ac["metadata"]["fan_strength"], 0.78)
         self.assertEqual(ac["metadata"]["horizontal_mode"], "swing")
         self.assertEqual(ac["metadata"]["vertical_mode"], "fixed")
         self.assertEqual(ac["metadata"]["vertical_angle_deg"], 25.0)
@@ -540,6 +544,14 @@ class MCPServerTests(unittest.TestCase):
         self.assertIn("current_values", payload)
         self.assertGreater(len(payload["recommendations"]), 0)
         self.assertIn("effects", payload["recommendations"][0])
+        ac_recommendations = [item for item in payload["recommendations"] if item["name"].startswith("ac_main_")]
+        self.assertTrue(ac_recommendations)
+        ac_metadata = ac_recommendations[0]["effects"][0]["metadata_updates"]
+        self.assertIn("target_temperature", ac_metadata)
+        self.assertIn("fan_speed", ac_metadata)
+        self.assertIn("fan_strength", ac_metadata)
+        self.assertIn("horizontal_mode", ac_metadata)
+        self.assertIn("vertical_mode", ac_metadata)
 
     def test_rank_actions_requires_complete_target(self) -> None:
         response = self.server.handle_message(

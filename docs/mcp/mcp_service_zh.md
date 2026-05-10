@@ -10,7 +10,7 @@
 2. 在已註冊環境中查詢任意座標的 temperature、humidity、illuminance。
 3. 對非連網裝置建立 before/after 觀測紀錄，並在資料足夠時學習影響係數。
 4. 對窗戶直接輸入外部溫度、濕度、日照與開窗比例。
-5. 對指定座標 sample 與完整 temperature、humidity、illuminance 目標，根據目前註冊設備排序候選操作；缺少 sample 或任一目標因子時不產生推薦。
+5. 對指定座標 sample 與完整 temperature、humidity、illuminance 目標，根據目前註冊設備排序候選操作；AC 候選操作包含模式、設定溫度、風速/風量、左右/上下出風角度與固定/擺動設定；缺少 sample 或任一目標因子時不產生推薦。
 
 `run_demo.py`、`run_window_matrix.py`、`compare_baseline` 等仍存在於 service 或實驗腳本中，但它們不再作為 MCP 對外 tools 暴露。這樣可以避免教授誤解 MCP 是在列出實驗結果；MCP 的重點是讓使用者或 AI client 操作同一個 digital twin runtime。
 
@@ -49,7 +49,7 @@ python3 scripts/run_mcp_server.py
 | `steady_state_minutes` | 後續 `steady_state: true` 時使用的時間。 | 預設 120.0 分鐘，最小為 0。 | 代表接近準穩態的查詢時間。 |
 | `use_hybrid_residual` | 後續工具是否預設使用 hybrid residual corrected field。 | 預設 `false`；只有存在 checkpoint 時才會套用。 | 影響 `sample_point` 與 `rank_actions` 的估計器選擇。 |
 
-`devices` 中常用的設備欄位包括：`name`、`kind`、`activation`、`position`、`orientation`、`influence_radius`、`response_time_minutes`、`power`、`metadata`。冷氣可額外設定 `ac_mode`、`target_temperature`、`horizontal_angle_deg`、`vertical_angle_deg`；照明可設定 `illuminance_gain`；窗戶主要透過 `activation` 表示開窗比例。若要移除內建設備，可設定 `{"name": "light_main", "removed": true}`。
+`devices` 中常用的設備欄位包括：`name`、`kind`、`activation`、`position`、`orientation`、`influence_radius`、`response_time_minutes`、`power`、`metadata`。冷氣可額外設定 `ac_mode`、`target_temperature`、`fan_speed`、`fan_strength`、`horizontal_mode`、`horizontal_angle_deg`、`horizontal_swing_range_deg`、`horizontal_swing_period_minutes`、`vertical_mode`、`vertical_angle_deg`、`vertical_swing_angles_deg` 與 `vertical_swing_period_minutes`；照明可設定 `illuminance_gain`；窗戶主要透過 `activation` 表示開窗比例。若要移除內建設備，可設定 `{"name": "light_main", "removed": true}`。
 
 `furniture` 中常用的遮蔽物欄位包括：`name`、`kind`、`activation`、`min_corner`、`max_corner`、`block_strength`、`metadata`。若只要開關內建家具，只需提供 `name` 與 `activation`；若要新增自訂家具，則需提供 bounding box，例如 `min_corner: {"x": 1, "y": 1, "z": 0}` 與 `max_corner: {"x": 2, "y": 2, "z": 1}`。
 
@@ -76,7 +76,13 @@ python3 scripts/run_mcp_server.py
       "activation": 0.0,
       "metadata": {
         "ac_mode": "cool",
-        "target_temperature": 24.0
+        "target_temperature": 24.0,
+        "fan_speed": "high",
+        "fan_strength": 1.0,
+        "horizontal_mode": "swing",
+        "horizontal_swing_range_deg": 45.0,
+        "vertical_mode": "fixed",
+        "vertical_angle_deg": 20.0
       }
     },
     {
@@ -137,7 +143,13 @@ python3 scripts/run_mcp_server.py
     "activation": 0.85,
     "kind": "ac",
     "ac_mode": "cool",
-    "target_temperature": 22.0
+    "target_temperature": 22.0,
+    "fan_speed": "high",
+    "fan_strength": 1.0,
+    "horizontal_mode": "fixed",
+    "horizontal_angle_deg": 0.0,
+    "vertical_mode": "fixed",
+    "vertical_angle_deg": 20.0
   },
   "before_observations": {
     "floor_sw": {"temperature": 29.1, "humidity": 67.0, "illuminance": 90.0}
@@ -150,7 +162,7 @@ python3 scripts/run_mcp_server.py
 }
 ```
 
-回傳會包含 `learning_record_id`。若尚未提供 `after_observations`，狀態會是 `RECORDING`，不會產生 learned coefficients。
+回傳會包含 `learning_record_id`。若尚未提供 `after_observations`，狀態會是 `RECORDING`，不會產生 learned coefficients。此時 server 內部會把 `device_state` 合併成完整 `device_specs`，並記錄 `device_name`、`device_state`、`device_specs`、baseline、environment、furniture、elapsed time、sampling mode、`before_observations` 與 optional `note`。
 
 第二步 `finish`：輸入同一批感測器在設備作用後的觀測值。
 
@@ -164,7 +176,7 @@ python3 scripts/run_mcp_server.py
 }
 ```
 
-只有同時具備 before/after observations 時，工具才會回傳 `learned_device_impacts`。若資料不足，回傳 `NEEDS_DATA`。
+只有同時具備 before/after observations 時，工具才會回傳 `learned_device_impacts`。計算時會對同一批 sensors 取 $\Delta y = y_{\mathrm{after}}-y_{\mathrm{before}}$，並用設備對各 sensor 的 influence envelope 作為 least-squares 設計矩陣，輸出 `metric_coefficients`、`sensor_mae` 與 `sensor_observation_delta`。若資料不足，回傳 `NEEDS_DATA`。
 
 ### `run_window_direct`
 
@@ -186,7 +198,7 @@ python3 scripts/run_mcp_server.py
 
 ### `rank_actions`
 
-輸入指定座標與目標三因子值，根據目前註冊設備產生候選操作，並依 comfort penalty 改善量排序。這已不再只針對預設 target zone，而是針對使用者指定的位置。
+輸入指定座標與目標三因子值，根據目前註冊設備產生候選操作，並依 comfort penalty 改善量排序。這已不再只針對預設 target zone，而是針對使用者指定的位置。若註冊冷氣設備，候選動作會覆寫包含冷房、除濕、暖房、送風、關閉、設定溫度、風速/風量、左右/上下風向與 fixed/swing 的操作狀態，並重新模擬該座標的三因子變化。
 
 `rank_actions` 有明確前置條件：必須同時具備 point sample（`x`, `y`, `z`）與完整 target（`temperature`, `humidity`, `illuminance`）。`temperature_tolerance`、`humidity_tolerance` 與 `illuminance_tolerance` 可省略，省略時使用內建 comfort target 的容許範圍；但三個 target 值不可省略。若缺少 sample 或任一 target 欄位，工具會回傳錯誤，不輸出候選動作推薦。
 
@@ -214,7 +226,7 @@ python3 scripts/run_mcp_server.py
 printf '%s\n' \
 '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual","version":"0.1"}}}' \
 '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"initialize_environment","arguments":{"baseline":{"indoor_temperature":28,"indoor_humidity":64,"base_illuminance":120},"devices":[{"name":"ac_main","kind":"ac","activation":0.85,"metadata":{"ac_mode":"cool","target_temperature":22}}]}}}' \
+'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"initialize_environment","arguments":{"baseline":{"indoor_temperature":28,"indoor_humidity":64,"base_illuminance":120},"devices":[{"name":"ac_main","kind":"ac","activation":0.85,"metadata":{"ac_mode":"cool","target_temperature":22,"fan_speed":"high","fan_strength":1.0,"horizontal_mode":"fixed","horizontal_angle_deg":0,"vertical_mode":"fixed","vertical_angle_deg":20}}]}}}' \
 '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"sample_point","arguments":{"x":5,"y":2,"z":1.5,"steady_state":true}}}' \
 '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"rank_actions","arguments":{"x":3,"y":2,"z":1.2,"target":{"temperature":25,"humidity":58,"illuminance":500}}}}' \
 '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"run_window_direct","arguments":{"outdoor_temperature":35,"outdoor_humidity":82,"sunlight_illuminance":18000,"opening_ratio":0.45,"update_environment":true}}}' \

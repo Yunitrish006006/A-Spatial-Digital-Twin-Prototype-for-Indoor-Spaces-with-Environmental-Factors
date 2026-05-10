@@ -143,10 +143,13 @@ class WebDemoTests(unittest.TestCase):
     def test_query_device_metadata_overrides(self) -> None:
         overrides = _query_device_metadata_overrides(
             "name=idle&ac_mode=heat&ac_target_temperature=40&ac_horizontal_mode=swing"
-            "&ac_horizontal_angle_deg=90&ac_vertical_mode=fixed&ac_vertical_angle_deg=-10"
+            "&ac_fan_speed=turbo&ac_fan_strength=2&ac_horizontal_angle_deg=90"
+            "&ac_vertical_mode=fixed&ac_vertical_angle_deg=-10"
         )
         self.assertEqual(overrides["ac_main"]["ac_mode"], "heat")
         self.assertEqual(overrides["ac_main"]["target_temperature"], 33.0)
+        self.assertEqual(overrides["ac_main"]["fan_speed"], "turbo")
+        self.assertEqual(overrides["ac_main"]["fan_strength"], 1.2)
         self.assertEqual(overrides["ac_main"]["horizontal_mode"], "swing")
         self.assertEqual(overrides["ac_main"]["horizontal_angle_deg"], 60.0)
         self.assertEqual(overrides["ac_main"]["vertical_mode"], "fixed")

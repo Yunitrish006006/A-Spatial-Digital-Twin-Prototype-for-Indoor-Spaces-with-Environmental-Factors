@@ -31,6 +31,8 @@ DEVICE_KIND_DEFAULTS: Dict[str, Dict[str, object]] = {
             "surface_height": 0.32,
             "ac_mode": "cool",
             "target_temperature": 24.0,
+            "fan_speed": "high",
+            "fan_strength": 1.0,
             "horizontal_mode": "fixed",
             "horizontal_angle_deg": 0.0,
             "horizontal_swing_range_deg": 45.0,

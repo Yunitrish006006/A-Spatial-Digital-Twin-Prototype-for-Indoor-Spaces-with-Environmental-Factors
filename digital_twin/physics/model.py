@@ -643,7 +643,7 @@ class DigitalTwinModel:
             if device.kind == "ac":
                 mode = str(device.metadata.get("ac_mode", "cool")).lower()
                 mode_boost = 1.15 if mode == "fan" else 1.0
-                mixing_level += 0.7 * mode_boost * dynamic_level * device.power
+                mixing_level += 0.7 * mode_boost * self._ac_fan_strength(device) * dynamic_level * device.power
             elif device.kind == "window":
                 mixing_level += 0.22 * dynamic_level * device.power
         obstacle_penalty = self._furniture_mixing_penalty(room, furniture)
@@ -1062,6 +1062,8 @@ class DigitalTwinModel:
     ) -> Dict[str, float]:
         mode = str(device.metadata.get("ac_mode", "cool")).lower()
         setpoint = clamp(float(device.metadata.get("target_temperature", 24.0)), 20.0, 33.0)
+        fan_strength = self._ac_fan_strength(device)
+        bulk_flow = 0.72 + 0.28 * fan_strength
         cooling_delta = float(device.metadata.get("cooling_delta", 8.0))
         drying_delta = float(device.metadata.get("drying_delta", 4.0))
         bulk_cooling_gain = float(device.metadata.get("bulk_cooling_gain", 0.72))
@@ -1071,15 +1073,15 @@ class DigitalTwinModel:
         if mode == "dry":
             demand = clamp((room.base_temperature - setpoint + 2.0) / 10.0, 0.15, 1.0)
             return {
-                "temperature": -0.58 * cooling_delta * bulk_cooling_gain * demand * device.power * dynamic_level,
-                "humidity": -1.2 * drying_delta * bulk_drying_gain * demand * device.power * dynamic_level,
+                "temperature": -0.58 * cooling_delta * bulk_cooling_gain * demand * device.power * dynamic_level * bulk_flow,
+                "humidity": -1.2 * drying_delta * bulk_drying_gain * demand * device.power * dynamic_level * bulk_flow,
                 "illuminance": 0.0,
             }
         if mode == "heat":
             demand = clamp((setpoint - room.base_temperature + 3.0) / 12.0, 0.0, 1.0)
             return {
-                "temperature": cooling_delta * bulk_heating_gain * demand * device.power * dynamic_level,
-                "humidity": -0.28 * drying_delta * max(demand, 0.2) * device.power * dynamic_level,
+                "temperature": cooling_delta * bulk_heating_gain * demand * device.power * dynamic_level * bulk_flow,
+                "humidity": -0.28 * drying_delta * max(demand, 0.2) * device.power * dynamic_level * bulk_flow,
                 "illuminance": 0.0,
             }
         if mode == "fan":
@@ -1091,8 +1093,8 @@ class DigitalTwinModel:
 
         demand = clamp((room.base_temperature - setpoint + 3.0) / 12.0, 0.05, 1.0)
         return {
-            "temperature": -cooling_delta * bulk_cooling_gain * demand * device.power * dynamic_level,
-            "humidity": -drying_delta * bulk_drying_gain * (0.55 + 0.45 * demand) * device.power * dynamic_level,
+            "temperature": -cooling_delta * bulk_cooling_gain * demand * device.power * dynamic_level * bulk_flow,
+            "humidity": -drying_delta * bulk_drying_gain * (0.55 + 0.45 * demand) * device.power * dynamic_level * bulk_flow,
             "illuminance": 0.0,
         }
 
@@ -1106,6 +1108,7 @@ class DigitalTwinModel:
     ) -> Dict[str, float]:
         mode = str(device.metadata.get("ac_mode", "cool")).lower()
         setpoint = clamp(float(device.metadata.get("target_temperature", 24.0)), 20.0, 33.0)
+        fan_strength = self._ac_fan_strength(device)
         cooling_delta = float(device.metadata.get("cooling_delta", 8.0))
         drying_delta = float(device.metadata.get("drying_delta", 4.0))
         local_cooling_gain = float(device.metadata.get("local_cooling_gain", 0.44))
@@ -1113,31 +1116,47 @@ class DigitalTwinModel:
         if mode == "dry":
             demand = clamp((room.base_temperature - setpoint + 2.0) / 10.0, 0.15, 1.0)
             return {
-                "temperature": -0.52 * cooling_delta * local_cooling_gain * demand * device.power * envelope,
-                "humidity": -1.35 * drying_delta * local_drying_gain * demand * device.power * envelope,
+                "temperature": -0.52 * cooling_delta * local_cooling_gain * demand * device.power * envelope * fan_strength,
+                "humidity": -1.35 * drying_delta * local_drying_gain * demand * device.power * envelope * fan_strength,
                 "illuminance": 0.0,
             }
         if mode == "heat":
             demand = clamp((setpoint - room.base_temperature + 3.0) / 12.0, 0.0, 1.0)
             return {
-                "temperature": 0.92 * cooling_delta * local_cooling_gain * demand * device.power * envelope,
-                "humidity": -0.32 * drying_delta * max(demand, 0.2) * device.power * envelope,
+                "temperature": 0.92 * cooling_delta * local_cooling_gain * demand * device.power * envelope * fan_strength,
+                "humidity": -0.32 * drying_delta * max(demand, 0.2) * device.power * envelope * fan_strength,
                 "illuminance": 0.0,
             }
         if mode == "fan":
             normalized_height = 0.0 if room.height <= 0.0 else (point.z / room.height) - 0.5
             return {
-                "temperature": -0.42 * normalized_height * device.power * envelope,
-                "humidity": 1.45 * normalized_height * device.power * envelope,
+                "temperature": -0.42 * normalized_height * device.power * envelope * fan_strength,
+                "humidity": 1.45 * normalized_height * device.power * envelope * fan_strength,
                 "illuminance": 0.0,
             }
 
         demand = clamp((room.base_temperature - setpoint + 3.0) / 12.0, 0.05, 1.0)
         return {
-            "temperature": -cooling_delta * local_cooling_gain * demand * device.power * envelope,
-            "humidity": -drying_delta * local_drying_gain * (0.55 + 0.45 * demand) * device.power * envelope,
+            "temperature": -cooling_delta * local_cooling_gain * demand * device.power * envelope * fan_strength,
+            "humidity": -drying_delta * local_drying_gain * (0.55 + 0.45 * demand) * device.power * envelope * fan_strength,
             "illuminance": 0.0,
         }
+
+    def _ac_fan_strength(self, device: Device) -> float:
+        raw_strength = device.metadata.get("fan_strength")
+        if isinstance(raw_strength, (int, float)):
+            return clamp(float(raw_strength), 0.2, 1.2)
+        speed = str(device.metadata.get("fan_speed", "high")).lower()
+        speed_map = {
+            "quiet": 0.35,
+            "low": 0.55,
+            "medium": 0.78,
+            "mid": 0.78,
+            "high": 1.0,
+            "auto": 0.9,
+            "turbo": 1.15,
+        }
+        return speed_map.get(speed, 1.0)
 
     def _effective_device_orientation(self, device: Device, elapsed_minutes: float) -> Vector3:
         if device.kind != "ac":

@@ -39,6 +39,7 @@ DEVICE_OVERRIDE_NAMES = ("ac_main", "window_main", "light_main")
 FURNITURE_OVERRIDE_NAMES = ("cabinet_window", "sofa_main", "table_center")
 AC_MODE_OPTIONS = ("cool", "dry", "heat", "fan")
 AC_SWING_OPTIONS = ("fixed", "swing")
+AC_FAN_SPEED_OPTIONS = ("quiet", "low", "medium", "high", "auto", "turbo")
 PUBLIC_TASK_GROUP_EXPLANATIONS = {
     "SML2010": {
         "S1": {
@@ -751,6 +752,10 @@ INDEX_HTML = """<!doctype html>
           </div>
         </div>
         <div class="control-group">
+          <label>AC Fan Speed</label>
+          <div class="metric-controls" id="acFanSpeedControls"></div>
+        </div>
+        <div class="control-group">
           <label>Left / Right Swing</label>
           <div class="metric-controls" id="acHorizontalModeControls"></div>
           <div class="metric-controls" id="acHorizontalAngleControls"></div>
@@ -1034,6 +1039,8 @@ INDEX_HTML = """<!doctype html>
         ac_settings: {
           ac_mode: "cool",
           target_temperature: 22,
+          fan_speed: "turbo",
+          fan_strength: 1.15,
           horizontal_mode: "fixed",
           horizontal_angle_deg: -10,
           vertical_mode: "fixed",
@@ -1058,6 +1065,8 @@ INDEX_HTML = """<!doctype html>
         ac_settings: {
           ac_mode: "fan",
           target_temperature: 26,
+          fan_speed: "medium",
+          fan_strength: 0.78,
           horizontal_mode: "swing",
           horizontal_angle_deg: 0,
           vertical_mode: "swing",
@@ -1082,6 +1091,8 @@ INDEX_HTML = """<!doctype html>
         ac_settings: {
           ac_mode: "cool",
           target_temperature: 24,
+          fan_speed: "medium",
+          fan_strength: 0.78,
           horizontal_mode: "fixed",
           horizontal_angle_deg: 15,
           vertical_mode: "fixed",
@@ -1106,6 +1117,8 @@ INDEX_HTML = """<!doctype html>
         ac_settings: {
           ac_mode: "fan",
           target_temperature: 26,
+          fan_speed: "quiet",
+          fan_strength: 0.35,
           horizontal_mode: "fixed",
           horizontal_angle_deg: 0,
           vertical_mode: "fixed",
@@ -1116,6 +1129,7 @@ INDEX_HTML = """<!doctype html>
     ];
     const acModeLabels = { cool: "Cool", dry: "Dry", heat: "Heat", fan: "Fan" };
     const acSwingLabels = { fixed: "Fixed", swing: "Swing" };
+    const acFanSpeedLabels = { quiet: "Quiet", low: "Low", medium: "Medium", high: "High", auto: "Auto", turbo: "Turbo" };
     const acHorizontalAngles = [-45, -20, 0, 20, 45];
     const acVerticalAngles = [5, 15, 25, 35];
     const windowPresetData = __WINDOW_PRESET_DATA__;
@@ -1409,6 +1423,7 @@ INDEX_HTML = """<!doctype html>
 
       if (preset.ac_settings) {
         setRadioChoice("acMode", preset.ac_settings.ac_mode || "cool");
+        setRadioChoice("acFanSpeed", preset.ac_settings.fan_speed || "high");
         setRadioChoice("acHorizontalMode", preset.ac_settings.horizontal_mode || "fixed");
         setRadioChoice("acHorizontalAngle", String(preset.ac_settings.horizontal_angle_deg ?? 0));
         setRadioChoice("acVerticalMode", preset.ac_settings.vertical_mode || "fixed");
@@ -1942,6 +1957,7 @@ INDEX_HTML = """<!doctype html>
       const metadata = acDevice?.metadata || {};
 
       renderRadioGroup("acModeControls", "acMode", Object.keys(acModeLabels), metadata.ac_mode || "cool", acModeLabels);
+      renderRadioGroup("acFanSpeedControls", "acFanSpeed", Object.keys(acFanSpeedLabels), metadata.fan_speed || "high", acFanSpeedLabels);
       renderRadioGroup("acHorizontalModeControls", "acHorizontalMode", ["fixed", "swing"], metadata.horizontal_mode || "fixed", acSwingLabels);
       renderRadioGroup(
         "acHorizontalAngleControls",
@@ -1965,7 +1981,7 @@ INDEX_HTML = """<!doctype html>
       slider.value = String(Math.round(Number(metadata.target_temperature ?? 24)));
       syncAcTemperatureReadout();
 
-      document.querySelectorAll("#acModeControls input, #acHorizontalModeControls input, #acHorizontalAngleControls input, #acVerticalModeControls input, #acVerticalAngleControls input")
+      document.querySelectorAll("#acModeControls input, #acFanSpeedControls input, #acHorizontalModeControls input, #acHorizontalAngleControls input, #acVerticalModeControls input, #acVerticalAngleControls input")
         .forEach(input => input.addEventListener("change", () => {
           syncAcAngleControlState();
           loadScenario();
@@ -2169,9 +2185,13 @@ INDEX_HTML = """<!doctype html>
     }
 
     function acSettings() {
+      const fanSpeed = selectedChoice("acFanSpeed", "high");
+      const fanStrengthMap = { quiet: 0.35, low: 0.55, medium: 0.78, high: 1.0, auto: 0.9, turbo: 1.15 };
       return {
         ac_mode: selectedChoice("acMode", "cool"),
         target_temperature: Number(document.getElementById("acTargetTemperature").value || "24"),
+        fan_speed: fanSpeed,
+        fan_strength: fanStrengthMap[fanSpeed] || 1.0,
         horizontal_mode: selectedChoice("acHorizontalMode", "fixed"),
         horizontal_angle_deg: Number(selectedChoice("acHorizontalAngle", "0")),
         vertical_mode: selectedChoice("acVerticalMode", "fixed"),
@@ -3809,6 +3829,11 @@ def _query_device_metadata_overrides(query_string: str) -> Dict[str, Dict[str, o
 
     if "ac_target_temperature" in query:
         ac_metadata["target_temperature"] = max(20.0, min(33.0, _query_float(query, "ac_target_temperature", 24.0)))
+    fan_speed = query.get("ac_fan_speed", [None])[0]
+    if fan_speed in AC_FAN_SPEED_OPTIONS:
+        ac_metadata["fan_speed"] = fan_speed
+    if "ac_fan_strength" in query:
+        ac_metadata["fan_strength"] = max(0.2, min(1.2, _query_float(query, "ac_fan_strength", 1.0)))
     if "ac_horizontal_angle_deg" in query:
         ac_metadata["horizontal_angle_deg"] = max(-60.0, min(60.0, _query_float(query, "ac_horizontal_angle_deg", 0.0)))
     if "ac_vertical_angle_deg" in query:

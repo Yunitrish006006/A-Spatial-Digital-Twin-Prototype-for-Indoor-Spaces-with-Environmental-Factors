@@ -1126,46 +1126,111 @@ def _registered_device_actions(devices: List[Device], target: ComfortTarget) -> 
     actions: List[Action] = []
     for device in devices:
         if device.kind == "ac":
+            cool_target = clamp(target.temperature, 20.0, 33.0)
+            heat_target = clamp(max(target.temperature, 24.0), 20.0, 33.0)
             actions.extend(
                 [
                     Action(
-                        name=f"{device.name}_cool",
-                        description=f"開啟 {device.name} 冷房至 {target.temperature:.1f}°C",
+                        name=f"{device.name}_cool_direct_high",
+                        description=f"冷房 {cool_target:.1f}°C，高風量，固定水平 0° / 垂直 20°",
                         effects=[
                             ActionEffect(
                                 device_name=device.name,
                                 activation=0.85,
                                 metadata_updates={
                                     "ac_mode": "cool",
-                                    "target_temperature": target.temperature,
+                                    "target_temperature": cool_target,
+                                    "fan_speed": "high",
+                                    "fan_strength": 1.0,
+                                    "horizontal_mode": "fixed",
+                                    "horizontal_angle_deg": 0.0,
+                                    "vertical_mode": "fixed",
+                                    "vertical_angle_deg": 20.0,
                                 },
                             )
                         ],
                     ),
                     Action(
-                        name=f"{device.name}_dry",
-                        description=f"開啟 {device.name} 除濕並維持 {target.temperature:.1f}°C",
+                        name=f"{device.name}_cool_swing_high",
+                        description=f"冷房 {cool_target:.1f}°C，高風量，左右與上下擺動",
+                        effects=[
+                            ActionEffect(
+                                device_name=device.name,
+                                activation=0.85,
+                                metadata_updates={
+                                    "ac_mode": "cool",
+                                    "target_temperature": cool_target,
+                                    "fan_speed": "high",
+                                    "fan_strength": 1.0,
+                                    "horizontal_mode": "swing",
+                                    "horizontal_swing_range_deg": 45.0,
+                                    "horizontal_swing_period_minutes": 0.8,
+                                    "vertical_mode": "swing",
+                                    "vertical_swing_angles_deg": [5.0, 15.0, 25.0, 35.0],
+                                    "vertical_swing_period_minutes": 1.2,
+                                },
+                            )
+                        ],
+                    ),
+                    Action(
+                        name=f"{device.name}_dry_swing_medium",
+                        description=f"除濕並維持 {cool_target:.1f}°C，中風量，左右擺動",
                         effects=[
                             ActionEffect(
                                 device_name=device.name,
                                 activation=0.75,
                                 metadata_updates={
                                     "ac_mode": "dry",
-                                    "target_temperature": target.temperature,
+                                    "target_temperature": cool_target,
+                                    "fan_speed": "medium",
+                                    "fan_strength": 0.78,
+                                    "horizontal_mode": "swing",
+                                    "horizontal_swing_range_deg": 40.0,
+                                    "horizontal_swing_period_minutes": 1.0,
+                                    "vertical_mode": "fixed",
+                                    "vertical_angle_deg": 25.0,
                                 },
                             )
                         ],
                     ),
                     Action(
-                        name=f"{device.name}_heat",
-                        description=f"開啟 {device.name} 暖房至 {target.temperature:.1f}°C",
+                        name=f"{device.name}_fan_swing_medium",
+                        description="送風中風量，左右與上下擺動，不主動改變冷暖設定",
+                        effects=[
+                            ActionEffect(
+                                device_name=device.name,
+                                activation=0.65,
+                                metadata_updates={
+                                    "ac_mode": "fan",
+                                    "target_temperature": cool_target,
+                                    "fan_speed": "medium",
+                                    "fan_strength": 0.78,
+                                    "horizontal_mode": "swing",
+                                    "horizontal_swing_range_deg": 45.0,
+                                    "horizontal_swing_period_minutes": 0.8,
+                                    "vertical_mode": "swing",
+                                    "vertical_swing_angles_deg": [10.0, 20.0, 30.0],
+                                    "vertical_swing_period_minutes": 1.0,
+                                },
+                            )
+                        ],
+                    ),
+                    Action(
+                        name=f"{device.name}_heat_direct_high",
+                        description=f"暖房 {heat_target:.1f}°C，高風量，固定水平 0° / 垂直 15°",
                         effects=[
                             ActionEffect(
                                 device_name=device.name,
                                 activation=0.85,
                                 metadata_updates={
                                     "ac_mode": "heat",
-                                    "target_temperature": target.temperature,
+                                    "target_temperature": heat_target,
+                                    "fan_speed": "high",
+                                    "fan_strength": 1.0,
+                                    "horizontal_mode": "fixed",
+                                    "horizontal_angle_deg": 0.0,
+                                    "vertical_mode": "fixed",
+                                    "vertical_angle_deg": 15.0,
                                 },
                             )
                         ],
@@ -1710,10 +1775,16 @@ def _merge_device_specs(
                 "surface_height",
                 "ac_mode",
                 "target_temperature",
+                "fan_speed",
+                "fan_strength",
                 "horizontal_mode",
                 "horizontal_angle_deg",
+                "horizontal_swing_range_deg",
+                "horizontal_swing_period_minutes",
                 "vertical_mode",
                 "vertical_angle_deg",
+                "vertical_swing_angles_deg",
+                "vertical_swing_period_minutes",
                 "illuminance_gain",
             ):
                 if key in spec:
@@ -1786,6 +1857,22 @@ def _extra_devices_from_specs(
                     metadata["ac_mode"] = str(spec["ac_mode"])
                 if "target_temperature" in spec:
                     metadata["target_temperature"] = clamp(float(spec["target_temperature"]), 20.0, 33.0)
+                if "fan_speed" in spec:
+                    metadata["fan_speed"] = str(spec["fan_speed"])
+                if "fan_strength" in spec:
+                    metadata["fan_strength"] = clamp(float(spec["fan_strength"]), 0.2, 1.2)
+                for key in (
+                    "horizontal_mode",
+                    "horizontal_angle_deg",
+                    "horizontal_swing_range_deg",
+                    "horizontal_swing_period_minutes",
+                    "vertical_mode",
+                    "vertical_angle_deg",
+                    "vertical_swing_angles_deg",
+                    "vertical_swing_period_minutes",
+                ):
+                    if key in spec:
+                        metadata[key] = spec[key]
             if kind == "light" and "illuminance_gain" in spec:
                 metadata["illuminance_gain"] = max(0.0, float(spec["illuminance_gain"]))
             created.append(
