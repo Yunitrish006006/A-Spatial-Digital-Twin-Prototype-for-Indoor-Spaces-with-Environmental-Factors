@@ -71,14 +71,14 @@
 ## Slide 13: 研究貢獻與資料策略
 - 三因子、有限感測器、非連網裝置、服務化
 - canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets
-- 明確列出每種資料支援的 claim boundary
+- 明確列出每種資料支援的驗證範圍
 
 ## Slide 14: 結論與未來工作
 - 長期真實資料、dense real-room ground truth、更多因子、multi-zone、推薦動作介入驗證、閉環控制
 
 ## Slide 15: 公式說明 1：三因子場與查詢點
 - 場的定義
-- 主張邊界
+- 適用範圍
 
 ## Slide 16: 公式說明 2：總估計式
 - 主公式
@@ -138,7 +138,7 @@
 
 ## Slide 30: 公式說明 16：一次漫反射
 - 反射公式
-- 限制與說法
+- 模型限制
 
 ## Slide 31: 公式說明 17：8 參數校正多項式
 - 三線性形式
@@ -154,19 +154,19 @@
 
 ## Slide 34: 公式說明 20：校正後估計值
 - 回到主公式
-- 主張邊界
+- 適用範圍
 
 ## Slide 35: 公式說明 21：可完全表示的 residual 空間
 - 函數空間
-- 嚴謹主張
+- 適用範圍
 
 ## Slide 36: 公式說明 22：平滑 residual 的誤差界
-- 誤差上界
-- 如何解釋「接近」
+- 這個上界在衡量什麼
+- 為什麼會這樣
 
 ## Slide 37: 公式說明 23：非連網裝置影響學習
-- 特徵向量
-- 標籤定義
+- before/after delta
+- least-squares 估計
 
 ## Slide 38: 公式說明 24：Hybrid residual
 - 第二層修正
@@ -182,8 +182,8 @@
 
 ## Slide 41: 公式說明 27：IDW baseline
 - IDW 插值
-- 為什麼拿它比較
+- 比較基準理由
 
 ## Slide 42: 公式說明 28：推薦排序與驗證
 - 推薦分數
-- 必須說清楚的限制
+- 驗證限制

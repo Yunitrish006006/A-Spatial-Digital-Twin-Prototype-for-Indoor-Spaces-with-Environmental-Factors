@@ -73,7 +73,7 @@
 - E9：public datasets 僅作 task-aligned benchmark
 - Web demo 與 3D 展示是呈現層，不列為量化實驗
 
-## Slide 17: 證據鏈與 Claim Boundary
+## Slide 17: 證據鏈與驗證範圍
 - Synthetic full-field 支援完整 3D 場比較，但不等同長期真實場
 - Real-bedroom snapshot 支援稀疏校正的 held-out 點位檢查，但不是 dense truth
 - Public datasets 僅支援相容子任務，不是單房間 8 點拓樸驗證
@@ -83,7 +83,8 @@
 - 8 組 scenario、48 組窗戶矩陣、direct input、timeline
 
 ## Slide 19: 主要量化結果
-- 平均 MAE、IDW/Base/LOO Hybrid 誤差圖
+- 圖表資料：8 組標準情境、full 3D grid Field MAE、log-scale y 軸
+- 三種柱狀結果：IDW、Base、LOO Hybrid
 - 真實臥室 raw vs corrected pillow MAE
 - 推薦有效性以 actual comfort-penalty reduction 驗證
 - 實驗 E1-E7 與 E9 已有數值輸出；E8 僅為介入 protocol
@@ -121,7 +122,7 @@
 
 ## Slide 27: 公式說明 1：三因子場與查詢點
 - 場的定義
-- 主張邊界
+- 適用範圍
 
 ## Slide 28: 公式說明 2：總估計式
 - 主公式
@@ -181,7 +182,7 @@
 
 ## Slide 42: 公式說明 16：一次漫反射
 - 反射公式
-- 限制與說法
+- 模型限制
 
 ## Slide 43: 公式說明 17：8 參數校正多項式
 - 三線性形式
@@ -197,19 +198,19 @@
 
 ## Slide 46: 公式說明 20：校正後估計值
 - 回到主公式
-- 主張邊界
+- 適用範圍
 
 ## Slide 47: 公式說明 21：可完全表示的 residual 空間
 - 函數空間
-- 嚴謹主張
+- 適用範圍
 
 ## Slide 48: 公式說明 22：平滑 residual 的誤差界
-- 誤差上界
-- 如何解釋「接近」
+- 這個上界在衡量什麼
+- 為什麼會這樣
 
 ## Slide 49: 公式說明 23：非連網裝置影響學習
-- 特徵向量
-- 標籤定義
+- before/after delta
+- least-squares 估計
 
 ## Slide 50: 公式說明 24：Hybrid residual
 - 第二層修正
@@ -225,8 +226,8 @@
 
 ## Slide 53: 公式說明 27：IDW baseline
 - IDW 插值
-- 為什麼拿它比較
+- 比較基準理由
 
 ## Slide 54: 公式說明 28：推薦排序與驗證
 - 推薦分數
-- 必須說清楚的限制
+- 驗證限制

@@ -212,14 +212,17 @@ def add_markup_runs(
     size: int,
     color: RGBColor,
     font_name: str = BODY_FONT,
+    render_simple_subscripts: bool = False,
 ) -> None:
-    """Render simple LaTeX-style subscript markup like t_{ref} in PowerPoint text."""
+    """Render subscript markup like t_{ref}, and optionally N_T, in PowerPoint text."""
     cursor = 0
-    for match in re.finditer(r"_\{([^}]+)\}", text):
+    pattern = r"_\{([^}]+)\}|_([A-Za-z0-9]+(?:,[A-Za-z0-9]+)?)" if render_simple_subscripts else r"_\{([^}]+)\}"
+    for match in re.finditer(pattern, text):
         if match.start() > cursor:
             add_styled_run(paragraph, text[cursor : match.start()], size, color, font_name=font_name)
+        subscript_text = match.group(1) if match.group(1) is not None else match.group(2)
         run = paragraph.add_run()
-        run.text = match.group(1)
+        run.text = subscript_text
         run.font.name = font_name
         run.font.size = Pt(max(size - 4, 8))
         run.font.color.rgb = color
@@ -235,6 +238,12 @@ def metric_triplet(values: dict, decimals: int = 4) -> str:
         f"H={values['humidity']:.{decimals}f}, "
         f"L={values['illuminance']:.{decimals}f}"
     )
+
+
+def percent_reduction(before: float, after: float) -> float:
+    if before == 0:
+        return 0.0
+    return (before - after) / before * 100
 
 
 def is_formula_line(text: str) -> bool:
@@ -282,6 +291,13 @@ def is_formula_line(text: str) -> bool:
             "rᵛ",
             "R_v",
             "Rᵥ",
+            "Δy",
+            "X_",
+            "β",
+            "q_m",
+            "P(q",
+            "m ∈",
+            "Corr",
             "Penalty",
             "F_hybrid",
             "Fᵛ",
@@ -301,6 +317,7 @@ def is_formula_line(text: str) -> bool:
             "Score",
             "×",
             "+",
+            "-",
             "+ Σ",
         )
     )
@@ -336,6 +353,7 @@ def add_card(
     title_size: int = 16,
     body_size: int = 12,
     formula_size: int = 14,
+    render_simple_subscripts: bool = False,
 ) -> None:
     shadow = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
@@ -403,6 +421,7 @@ def add_card(
             formula_size if is_formula else effective_body_size,
             TEXT_COLOR,
             font_name=FORMULA_FONT if is_formula else BODY_FONT,
+            render_simple_subscripts=render_simple_subscripts,
         )
 
 
@@ -498,13 +517,13 @@ FORMULA_WALKTHROUGH = [
             "p = (x,y,z)，單位為公尺",
             "t 可代表啟動後時間、情境時間或 demo 時間軸",
         ],
-        "主張邊界",
+        "適用範圍",
         [
             "本研究不是只估單一平均值",
             "輸出是三維空間中任意點的三個環境量",
             "8 顆角落感測器只提供稀疏觀測",
             "其他採樣點是由模型與校正場推估出來",
-            "所以報告時要用「估計／推估」，不要說「量測到」",
+            "其他採樣點為模型估計值，非直接量測值",
         ],
     ),
     (
@@ -549,9 +568,9 @@ FORMULA_WALKTHROUGH = [
         "公式說明 4：baseline 的取得方式",
         "有啟動前觀測時",
         [
-            "T₀ = (1/|S|) ∑ₛ∈S Oₜ(pₛ, t_{ref})",
-            "H₀ = (1/|S|) ∑ₛ∈S Oₕ(pₛ, t_{ref})",
-            "L₀ = (1/|S|) ∑ₛ∈S Oₗ(pₛ, t_{ref})",
+            "T₀ = (1/|S|) ∑ₛ∈S O_{T}(pₛ, t_{ref})",
+            "H₀ = (1/|S|) ∑ₛ∈S O_{H}(pₛ, t_{ref})",
+            "L₀ = (1/|S|) ∑ₛ∈S O_{L}(pₛ, t_{ref})",
             "S 是 8 顆角落感測器集合",
             "t_{ref} 是設備尚未加入作用的參考時間",
         ],
@@ -561,7 +580,7 @@ FORMULA_WALKTHROUGH = [
             "例如標準房間預設 T₀=29°C、H₀=67%、L₀=90 lux",
             "因此 baseline 不是模型學出來的黑盒值",
             "它是後續設備影響與 residual correction 的共同起點",
-            "報告時要明確說出資料來源是哪一種",
+            "baseline 資料來源需在情境設定中明確標示",
         ],
     ),
     (
@@ -655,7 +674,7 @@ FORMULA_WALKTHROUGH = [
             "冷氣：依模式與設定溫差讓室內趨冷或趨暖",
             "窗戶：依 T_out - T₀ 表示外氣熱交換方向",
             "燈具：在溫度路徑中視為小型熱源",
-            "注意：燈具在溫度是熱源，在照度才是光源",
+            "燈具在溫度模型中代表發熱",
             "這就是變數專屬公式的意義",
         ],
     ),
@@ -674,7 +693,7 @@ FORMULA_WALKTHROUGH = [
             "S_ac,T(p,t) = s_m k_ac,Tˢ d_T P_ac E_ac(p,t)",
             "k_ac,Tˢ：冷氣局部空間增益",
             "E_ac(p,t)：出風口附近、方向與遮蔽造成的空間權重",
-            "解讀方式：B 是全室趨勢，S 是出風口附近差異",
+            "B 表示全室趨勢，S 表示出風口附近差異",
             "兩者不是任意疊加，而是修正 local-only 的缺陷",
         ],
     ),
@@ -743,7 +762,7 @@ FORMULA_WALKTHROUGH = [
             "+ L_lightᵈⁱʳ(p,t) + L_winᵃᵐᵇ(p,t) + Iʳᵉᶠˡ(p,t)}",
             "L₀：室內基準照度",
             "max{0,...}：照度不可為負",
-            "照度由光源、窗戶、遮蔽與反射決定",
+            "照度由燈具光束、窗戶、遮蔽與反射決定",
         ],
         "為什麼不同於溫濕度",
         [
@@ -768,8 +787,7 @@ FORMULA_WALKTHROUGH = [
         [
             "L_lightᵈⁱʳ(p,t) = G_light P_light A_light(t) Φ_light(p) Q_light(p) V_light(p)",
             "Φ_light：由光束角推得的 cosine 方向權重",
-            "Q_light：參考距離正規化後的距離衰減",
-            "V_light：燈具到查詢點的遮蔽或可見性",
+            "Q_light：參考距離正規化後的距離衰減；V_light：遮蔽或可見性",
             "L_winᵃᵐᵇ(p,t)：窗戶帶來的擴散環境光",
             "直射與環境光分開，可描述窗邊與全室背景亮度",
         ],
@@ -784,13 +802,13 @@ FORMULA_WALKTHROUGH = [
             "ρ_s：表面反射率",
             "Ī_s：表面接收到的平均照度",
         ],
-        "限制與說法",
+        "模型限制",
         [
             "一次漫反射用來補足非直射區域的回填亮度",
             "它不是完整 ray tracing 或 radiosity",
             "只計算一次反射，因此成本較低",
-            "可主張改善照度主要趨勢",
-            "不能主張達到精密光學模擬等級",
+            "主要用途是改善照度空間趨勢",
+            "不等同精密光學模擬等級",
         ],
     ),
     (
@@ -801,7 +819,7 @@ FORMULA_WALKTHROUGH = [
             "+ c₄XY + c₅XZ + c₆YZ + c₇XYZ",
             "X,Y,Z 是正規化房間座標",
             "8 個係數對應 8 個角落感測器約束",
-            "比 affine 多了交互項，仍保持低階可解釋",
+            "係數會依變數 v 與當次感測校正狀態而定",
         ],
         "為什麼剛好 8 點",
         [
@@ -835,8 +853,8 @@ FORMULA_WALKTHROUGH = [
         "公式說明 19：三線性校正式",
         "校正公式",
         [
-            "Cᵥ(X,Y,Z,t) = Σ_{a,b,c∈{0,1}} rᵛ_{abc}(t)",
-            "× ℓ_a(X) ℓ_b(Y) ℓ_c(Z)",
+            "Cᵥ(X,Y,Z,t) = Σ_{a,b,c∈B} rᵛ_{abc}(t)",
+            "× ℓ_a(X) ℓ_b(Y) ℓ_c(Z), B={0,1}",
             "ℓ₀(u)=1-u，ℓ₁(u)=u",
             "X/Y/Z 皆在 0 到 1 之間",
             "每個內部點都是 8 個角落 residual 的加權和",
@@ -860,13 +878,13 @@ FORMULA_WALKTHROUGH = [
             "在非角點：Cᵥ 是 8 個 residual 的三線性補間",
             "Nᵥ 則保留設備與物理結構的空間趨勢",
         ],
-        "主張邊界",
+        "適用範圍",
         [
             "8 顆感測器不能直接量到所有點",
-            "我們證明的是三線性 residual correction 的一致性與可表示範圍",
+            "三線性 residual correction 在角點與觀測一致",
             "其他點是 nominal model 加上低階 residual 補間的估計",
-            "所以主張是接近主要空間趨勢",
-            "不是宣稱無條件還原任意真實室內場",
+            "適用於主要空間趨勢估計",
+            "不等同無條件還原任意真實室內場",
         ],
     ),
     (
@@ -879,51 +897,52 @@ FORMULA_WALKTHROUGH = [
             "如果真實 residual 屬於 𝒱",
             "則 8 個角點 residual 可完全重建整個 residual 場",
         ],
-        "嚴謹主張",
+        "適用範圍",
         [
-            "這不是說所有室內場都一定是三線性",
-            "而是說在三線性 residual 假設下可完全重建",
-            "對平滑但非三線性的 residual，則用誤差界描述接近程度",
-            "對突發局部熱源、光斑或遮蔽尖峰，8 點不保證捕捉",
-            "這樣的 claim boundary 比較嚴謹",
+            "並非所有室內場都必然三線性",
+            "三線性 residual 假設下可完全重建",
+            "平滑但非三線性的 residual 可由誤差界描述接近程度",
+            "突發局部熱源、光斑或遮蔽尖峰需額外資料補強",
+            "此條件界定模型適用範圍",
         ],
     ),
     (
         "公式說明 22：平滑 residual 的誤差界",
-        "誤差上界",
+        "這個上界在衡量什麼",
         [
-            "|Rᵥ(p,t) - Cᵥ(p,t)| ≤ W²M_xx/8 + L²M_yy/8",
-            "+ H²M_zz/8",
-            "Rᵥ：真實 residual",
-            "Cᵥ：三線性校正 residual",
-            "W/L/H：房間寬、長、高",
+            "|Rᵥ-Cᵥ| ≤ W²M_xx/8 + L²M_yy/8 + H²M_zz/8",
+            "左邊：某個未量測點的 residual 可能補錯多少",
+            "M_xx ≥ max|∂²Rᵥ/∂x²|：x 方向曲率上界",
+            "M_yy、M_zz 同理對應 y/z 方向",
+            "W/L/H 越大，補間跨度越長",
         ],
-        "如何解釋「接近」",
+        "為什麼會這樣",
         [
-            "M_xx/M_yy/M_zz 是 residual 二階曲率上界",
-            "曲率越小，代表 residual 越平滑",
-            "平滑時，8 點三線性補間誤差可被上界限制",
-            "所以可說「在平滑 residual 假設下接近真實情況」",
-            "不能說高頻局部變化也一定準確",
+            "xx 表示對 x 微分兩次，不是 x×x",
+            "線性補間用端點連線近似中間曲線",
+            "若 residual 是直線，二階導數為 0",
+            "曲率越大，中間點越可能偏離直線",
+            "三線性補間是 x/y/z 三方向線性補間",
+            "平滑 residual 可控；尖峰或光斑需更多資料",
         ],
     ),
     (
         "公式說明 23：非連網裝置影響學習",
-        "特徵向量",
+        "before/after delta",
         [
-            "φᵢ = [xᵢ,yᵢ,zᵢ,tᵢ, baseline, outdoor, F_temp,",
-            "F_hum, F_illum, activations, powers, envelopes]",
-            "φᵢ 是模型已知的情境特徵",
-            "包含位置、時間、室內外條件與設備作用強度",
-            "目標是從觀測差異學出非連網設備的影響係數",
+            "Δy_m = y_mᵃᶠᵗᵉʳ - y_mᵇᵉᶠᵒʳᵉ",
+            "m ∈ {T,H,L}",
+            "X_{i,k}：第 i 個感測點對第 k 個裝置 envelope",
+            "Δy_m ≈ X β_m",
+            "同一筆 record 綁定裝置狀態、baseline 與 outdoor",
         ],
-        "標籤定義",
+        "least-squares 估計",
         [
-            "yᵢᵛ = F_trueᵛ(pᵢ,tᵢ) - Fᵥ(pᵢ,tᵢ)",
-            "yᵢᵛ 是主模型尚未吸收的 residual target",
-            "before/after 觀測提供設備啟用造成的差異訊號",
-            "least-squares 適合小資料、可解釋且可快速重算",
-            "若多個未知事件重疊，學到的是混合效果",
+            "β_m = argmin_{β} ||Δy_m - Xβ||²₂",
+            "β_m：裝置對第 m 個因子的影響係數",
+            "X：由 influence envelope 組成的設計矩陣",
+            "before/after 觀測提供真實操作造成的差異訊號",
+            "多事件重疊時係數代表混合效果",
         ],
     ),
     (
@@ -957,8 +976,8 @@ FORMULA_WALKTHROUGH = [
         ],
         "損失函數",
         [
-            "ℒ(θᵥ) = (1/N)Σᵢ ||Rᵥ* - Rᵥ(pᵢ,tᵢ;θᵥ)||²",
-            "+ λ||θᵥ||²",
+            "ℒ(θᵥ) = (1/N)Σᵢ ||Rᵥ*(pᵢ,tᵢ)",
+            "- Rᵥ(pᵢ,tᵢ;θᵥ)||² + λ||θᵥ||²",
             "第一項是 residual 預測誤差",
             "第二項是正則化，降低過擬合",
             "溫濕度響應較平滑可低通；照度因光源/遮蔽需保留快速跳變",
@@ -970,8 +989,8 @@ FORMULA_WALKTHROUGH = [
         [
             "MAE = (1/n) Σᵢ |ŷᵢ - yᵢ|",
             "RMSE = √[(1/n) Σᵢ (ŷᵢ - yᵢ)²]",
-            "ŷᵢ：模型估計值",
-            "yᵢ：truth 或觀測參考值",
+            "Corr = cov(ŷ,y)/(σ_{ŷ} σ_{y})",
+            "ŷᵢ：模型估計值；yᵢ：truth 或觀測",
             "n：比較樣本數",
         ],
         "使用原因",
@@ -993,7 +1012,7 @@ FORMULA_WALKTHROUGH = [
             "O_s：感測器觀測值",
             "q：距離權重指數",
         ],
-        "為什麼拿它比較",
+        "比較基準理由",
         [
             "IDW 是無設備物理先驗的幾何插值 baseline",
             "它只知道感測器位置與距離",
@@ -1006,30 +1025,149 @@ FORMULA_WALKTHROUGH = [
         "公式說明 28：推薦排序與驗證",
         "推薦分數",
         [
-            "Score(a) = P_before - P_after",
-            "Penalty 越大代表越偏離舒適目標",
-            "P_before：採取動作前的目標區域懲罰",
-            "P_after：反事實模擬動作後的懲罰",
+            "q_m(S)= (1/K)Σ_k F_m(p_{k},t)",
+            "P(q)=Σ_m w_m max(0,(|q_m-g_m|-δ_m)/δ_m)",
+            "Score(a)=P(q_base)-P(q_a)",
+            "m ∈ {T,H,L}",
             "Score 越高，預期改善越大",
         ],
-        "必須說清楚的限制",
+        "驗證限制",
         [
+            "S 是推薦評估的 sample scope 或目標區域",
+            "g_m 是目標值，δ_m 是容許範圍",
             "目前推薦排序是 counterfactual simulation",
-            "它是模型預測下的改善，不等於已證明因果效果",
             "真正驗證需做 before/after intervention",
             "比較實際 comfort penalty reduction 與預測改善是否一致",
-            "demo 可以呈現比較流程，但不能替代實測介入驗證",
         ],
     ),
 ]
+
+FORMULA_NUMERIC_EXAMPLES: dict[str, tuple[str, str]] = {
+    "公式說明 1：三因子場與查詢點": (
+        "p=(2,1,1.2), t=10 min → (T,H,L)=(27.4°C,60%,280 lux)",
+        "若查詢點 p=(2,1,1.2)，時間 t=10 min，模型輸出 T=27.4°C、H=60%、L=280 lux，表示同一個座標與時間可同時取得三個環境量。",
+    ),
+    "公式說明 2：總估計式": (
+        "N_T=27.0, C_T=-0.4 → F̂_T=26.6°C",
+        "以溫度為例，若 nominal model 得到 N_T=27.0°C，角點 residual correction 給 C_T=-0.4°C，則校正後 F̂_T=27.0-0.4=26.6°C。",
+    ),
+    "公式說明 3：Indoor baseline": (
+        "b₀=(29°C,67%,90 lux)",
+        "一個房間的初始狀態可寫成 b₀=(T₀,H₀,L₀)=(29°C,67%,90 lux)，後續裝置影響都以這組基準值作為起點。",
+    ),
+    "公式說明 4：baseline 的取得方式": (
+        "ΣT=232°C, |S|=8 → T₀=29°C",
+        "若 8 顆角落感測器在 t_{ref} 的溫度總和為 232°C，則 T₀=232/8=29°C；濕度與照度可用相同平均方式取得。",
+    ),
+    "公式說明 5：高度正規化": (
+        "z=1.2 m, Hᵣ=3 m → ζ=-0.1",
+        "若房高 Hᵣ=3 m、查詢點高度 z=1.2 m，則 ζ=1.2/3-0.5=-0.1，代表位置略低於房間中高。",
+    ),
+    "公式說明 6：設備 activation": (
+        "a=1, t=10, τ=10 → A=1-e^-1=0.632",
+        "若穩態強度 a=1、時間常數 τ=10 min、啟動後 t=10 min，則 A(t)=1-exp(-10/10)=1-e^-1≈0.632。",
+    ),
+    "公式說明 7：influence envelope": (
+        "A=0.8,R=0.5,D=0.9,V=1 → E=0.36",
+        "若某點的時間強度 A=0.8、距離權重 R=0.5、方向權重 D=0.9、無遮蔽 V=1，則 E=0.8×0.5×0.9×1=0.36。",
+    ),
+    "公式說明 8：溫度場主式": (
+        "29-1.2-0.5+0.2(-0.1)=27.28°C",
+        "若 T₀=29°C、B_T=-1.2°C、S_T=-0.5°C、γ_T M(t)=0.2、ζ=-0.1，則 N_T=29-1.2-0.5+0.2×(-0.1)=27.28°C。",
+    ),
+    "公式說明 9：溫度的全室與局部項": (
+        "B_T=-1.0+0.2+0.1=-0.7°C",
+        "若冷氣全室項 -1.0°C、窗戶全室項 +0.2°C、燈具熱源 +0.1°C，則 B_T=-1.0+0.2+0.1=-0.7°C。",
+    ),
+    "公式說明 10：冷氣溫度項": (
+        "s=-1,k=0.8,d=3,P=1,A=0.5 → B_ac,T=-1.2°C",
+        "冷房模式 s_m=-1，若 k_ac,Tᵍ=0.8、d_T=3、P_ac=1、A_ac=0.5，則 B_ac,T=-1×0.8×3×1×0.5=-1.2°C。",
+    ),
+    "公式說明 11：窗戶與燈具溫度項": (
+        "k=0.05,T_out-T₀=4 → B_win,T=+0.20°C",
+        "若窗戶熱交換係數 k_win,Tᵍ=0.05，室外與室內基準溫差 T_out-T₀=4°C，且 P_win=A_win=1，則 B_win,T=0.05×4=+0.20°C。",
+    ),
+    "公式說明 12：濕度場主式": (
+        "clip[0,100](67-5+1-0.2)=62.8%",
+        "若 H₀=67%、B_H=-5%、S_H=+1%、γ_HMζ=0.2，則 N_H=clip[0,100](67-5+1-0.2)=62.8%。",
+    ),
+    "公式說明 13：濕度來源項": (
+        "-0.4×10×0.5 + 0.02×8=-1.84%",
+        "若冷氣除濕項為 -0.4×10×0.5=-2.0%，窗戶項因 H_out-H₀=8 而為 0.02×8=+0.16%，則全室濕度項合計 -1.84%。",
+    ),
+    "公式說明 14：照度場主式": (
+        "max(0,90+250+120+40+30)=530 lux",
+        "若 L₀=90 lux、窗戶直射 250 lux、燈具直射 120 lux、環境光 40 lux、一次反射 30 lux，則 N_L=max(0,90+250+120+40+30)=530 lux。",
+    ),
+    "公式說明 15：直射光與環境光": (
+        "500×1×0.8×0.5×0.4×1=80 lux",
+        "若燈具增益 G_light=500、P_light=1、A_light=0.8、方向權重 Φ=0.5、距離衰減 Q=0.4、可見性 V=1，則 L_lightᵈⁱʳ=80 lux。",
+    ),
+    "公式說明 16：一次漫反射": (
+        "0.6×200×0.5×0.4×0.8×1=19.2 lux",
+        "若某牆面 ρ=0.6、接收平均照度 200 lux、相對面積 0.5、距離衰減 0.4、方向 cosine 0.8、可見性 1，則一次反射貢獻約 19.2 lux。",
+    ),
+    "公式說明 17：8 參數校正多項式": (
+        "X=Y=Z=0.5 → C=0.375",
+        "若 c₀=0.2、c₁=0.4、c₂=-0.2、c₃=0.1、c₄=0.1，其餘係數為 0，且 X=Y=Z=0.5，則 C=0.2+0.4×0.5-0.2×0.5+0.1×0.5+0.1×0.25=0.375。",
+    ),
+    "公式說明 18：角點 residual": (
+        "O_T=27.2,N_T=26.8 → r_T=+0.4°C",
+        "若某角點感測器觀測溫度 O_T=27.2°C，而 nominal model 在同一點預測 N_T=26.8°C，則 residual r_T=27.2-26.8=+0.4°C。",
+    ),
+    "公式說明 19：三線性校正式": (
+        "中心點權重各 1/8，Σr=1.6 → C=0.2",
+        "在房間中心 X=Y=Z=0.5 時，8 個角點權重各為 1/8；若 8 個角點 residual 總和為 1.6，則 C=1.6/8=0.2。",
+    ),
+    "公式說明 20：校正後估計值": (
+        "N_T=26.8,C_T=0.4 → F̂_T=27.2°C",
+        "若 nominal model 在某點給 N_T=26.8°C，校正場給 C_T=+0.4°C，則校正後 F̂_T=26.8+0.4=27.2°C。",
+    ),
+    "公式說明 21：可完全表示的 residual 空間": (
+        "R=0.2+0.3X+0.1Y，(0.5,0.5,0)→0.40",
+        "若 residual 函數 R=0.2+0.3X+0.1Y，屬於三線性函數空間；在 X=0.5、Y=0.5、Z=0 時，R=0.2+0.15+0.05=0.40。",
+    ),
+    "公式說明 22：平滑 residual 的誤差界": (
+        "W=6,L=4,H=3,M=(0.01,0.02,0.01) → bound≈0.096",
+        "若 W=6、L=4、H=3，且 M_xx=0.01、M_yy=0.02、M_zz=0.01，則上界為 36×0.01/8 + 16×0.02/8 + 9×0.01/8 = 0.09625，約 0.096。",
+    ),
+    "公式說明 23：非連網裝置影響學習": (
+        "X=[1,0.5], Δy=[-0.8,-0.4] → β=-0.8",
+        "若兩個感測點的 envelope 為 X=[1,0.5]，觀測變化 Δy=[-0.8,-0.4]，單一係數 least squares 為 β=(XᵀΔy)/(XᵀX)=(-0.8-0.2)/(1+0.25)=-0.8。",
+    ),
+    "公式說明 24：Hybrid residual": (
+        "F=27.0,R=-0.3 → F_hybrid=26.7°C",
+        "若 base estimator 輸出 F=27.0°C，hybrid residual model 預測 R=-0.3°C，則 F_hybrid=27.0-0.3=26.7°C。",
+    ),
+    "公式說明 25：Hybrid 訓練目標": (
+        "errors=(0.2,-0.1), λ||θ||²=0.01 → ℒ=0.035",
+        "若兩筆 residual 預測誤差為 0.2 與 -0.1，平方平均為 (0.04+0.01)/2=0.025，再加上正則化 0.01，則 ℒ=0.035。",
+    ),
+    "公式說明 26：MAE、RMSE 與 Correlation": (
+        "ŷ=[1,2,3], y=[1,2,4] → MAE=0.33, RMSE=0.58, Corr≈0.98",
+        "若 ŷ=[1,2,3]、y=[1,2,4]，絕對誤差平均為 (0+0+1)/3=0.33，RMSE=sqrt(1/3)=0.58，相關係數約 0.98。",
+    ),
+    "公式說明 27：IDW baseline": (
+        "O=(26,30), d=(1,3), q=2 → IDW≈26.4°C",
+        "若兩個感測器讀值為 26°C 與 30°C，距離為 1 m 與 3 m，q=2，則權重為 1 與 1/9，IDW=(26+30/9)/(1+1/9)≈26.4°C。",
+    ),
+    "公式說明 28：推薦排序與驗證": (
+        "q_base=30,g=26,δ=2 → P=1；q_a=27 → P=0；Score=1",
+        "若只看溫度，目標 g=26°C、容許 δ=2°C；動作前 q_base=30°C 時 P=(|30-26|-2)/2=1，候選動作後 q_a=27°C 時 P=0，因此 Score=1-0=1。",
+    ),
+}
+
+
 def add_formula_walkthrough(prs: Presentation, start_page: int, compact: bool = False) -> int:
     page = start_page
     for title, left_title, left_lines, right_title, right_lines in FORMULA_WALKTHROUGH:
         slide = new_slide(prs)
-        add_title(slide, title, "公式、符號意義、限制與可主張範圍")
+        add_title(slide, title, "公式、符號意義、假設與限制")
         card_height = 5.25 if compact else 5.35
-        add_card(slide, 0.65, 1.35, 6.05, card_height, left_title, left_lines)
-        add_card(slide, 6.95, 1.35, 5.75, card_height, right_title, right_lines)
+        example = FORMULA_NUMERIC_EXAMPLES.get(title)
+        right_lines_with_example = [*right_lines, f"數值例：{example[0]}"] if example else list(right_lines)
+        add_card(slide, 0.65, 1.35, 6.05, card_height, left_title, left_lines, render_simple_subscripts=True)
+        add_card(slide, 6.95, 1.35, 5.75, card_height, right_title, right_lines_with_example, render_simple_subscripts=True)
         add_footer(slide, page)
         page += 1
     return page
@@ -1394,7 +1532,7 @@ def build_presentation() -> Presentation:
             "有限角落感測器下仍可用分層式模型重建單房間三因子分布",
             "非連網裝置可透過環境變化進行影響學習與校正",
             "bedroom_01 7 天快照顯示校正後可改善未參與 fitting 的 pillow 點",
-            "各資料來源支援的 claim boundary 已拆開說明",
+            "各資料來源支援的驗證範圍已拆開說明",
             "模型已能輸出區域估計、反事實推薦排序與 AI 可查詢工具",
         ],
     )
@@ -1435,7 +1573,7 @@ def build_presentation_30min() -> Presentation:
     add_title(
         slide,
         "單房間非連網家電環境影響學習之稀疏感測空間數位孿生原型",
-        "論文口試簡報",
+        "碩士論文簡報",
     )
     add_bullets(
         slide,
@@ -1913,7 +2051,7 @@ def build_presentation_30min() -> Presentation:
 
     # evidence boundary
     slide = new_slide(prs)
-    add_title(slide, "證據鏈與 Claim Boundary")
+    add_title(slide, "證據鏈與驗證範圍")
     add_card(
         slide,
         0.65,
@@ -2040,11 +2178,12 @@ def build_presentation_30min() -> Presentation:
         3.7,
         3.6,
         2.4,
-        "IDW 比較",
+        "圖表資料",
         [
-            "IDW 可做 baseline",
-            "但缺設備位置與方向資訊",
-            "照度與局部熱區重建效果明顯較差",
+            "8 scenarios, full 3D grid",
+            "Y axis: log-scale Field MAE",
+            "Bars: IDW / Base / LOO Hybrid",
+            "IDW uses same 8 corner readings",
         ],
     )
     add_picture(slide, FIGURES / "submission" / "field_mae_comparison.png", 4.55, 1.25, 7.7, 3.25)
@@ -2078,8 +2217,8 @@ def build_presentation_30min() -> Presentation:
             "pillow 參考點不參與 8 角點 residual fitting",
             f"Raw pillow MAE: {metric_triplet(bedroom_aggregate['raw_pillow_mae'])}",
             f"Corrected pillow MAE: {metric_triplet(bedroom_aggregate['estimated_pillow_mae'])}",
-            "可主張：稀疏校正在此真實快照設定下能改善 held-out pillow 點",
-            "不可主張：已完成全室 dense real-room truth 驗證",
+            "支援範圍：此快照設定下的 held-out pillow 改善",
+            "尚未完成：全室 dense real-room truth 驗證",
         ],
         body_size=12,
     )
@@ -2095,7 +2234,7 @@ def build_presentation_30min() -> Presentation:
             "不可解讀為已完成實際控制有效性的因果驗證",
             "正式驗證應執行 before/after intervention",
             "比較 predicted improvement、actual penalty reduction 與 action rank consistency",
-            "這一點是未來工作，也是目前 claim boundary 的重點",
+            "此項列為未來工作與驗證限制",
         ],
         body_size=12,
     )
@@ -2310,7 +2449,7 @@ def build_outline() -> str:
         ("主要結果", ["平均 field MAE", "IDW / Base / LOO Hybrid 誤差比較", "真實臥室 pillow MAE 比較", "推薦排序目前為 counterfactual simulation", "3D 視覺化案例"]),
         ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO MAE", "train/test sample count", "研究定位不是黑盒替代", "LOO 結果限標準情境 family"]),
         ("公開資料任務拆解", ["SML2010：S1 純照度劣勢、S2 長視窗溫度部分優勢、S3 事件 delta 主要優勢", "CU-BEMS：C1/C3 勝 linear regression 但不勝 persistence，C2 照度劣勢", "明確說明 public benchmark 不是 full 3D 場驗證"]),
-        ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets", "明確列出每種資料支援的 claim boundary"]),
+        ("研究貢獻與資料策略", ["三因子、有限感測器、非連網裝置、服務化", "canonical synthetic benchmark + real-bedroom snapshots + task-aligned public datasets", "明確列出每種資料支援的驗證範圍"]),
         ("結論與未來工作", ["長期真實資料、dense real-room ground truth、更多因子、multi-zone、推薦動作介入驗證、閉環控制"]),
     ]
     slides.extend(
@@ -2349,9 +2488,9 @@ def build_outline_30min() -> str:
         ("系統實作與介面", ["MCP 是工具化介面，不是預測模型本身", "initialize：設定 scenario、baseline、外部邊界、設備/家具、時間與 estimator", "AC state：模式、目標溫度、風量、水平/垂直角度與固定/擺動", "sample point：註冊環境後查指定座標三因子估計", "learn impacts：以 before/after observations 建立可學習資料", "window direct / rank actions：直接輸入窗戶外部資料；rank actions 需指定 sample 與 T/H/L 目標", "Gemma/Ollama 透過 bridge 呼叫 tools；Web demo 負責人機互動展示"]),
         ("learn_impacts：動作如何成為資料記錄", ["start：device_name + device_state 記錄實際操作狀態", "record：儲存 learning_record_id、baseline、外部邊界、家具、elapsed time 與 before observations", "finish：用同一批感測器 after observations 計算 after-before delta", "least squares：由 influence envelope 與 delta 求 learned_device_impacts"]),
         ("驗證設計", ["E1-E3：truth-adjusted simulation、IDW、synthetic ablation", "E4-E6：裝置影響學習、window matrix、hybrid no-Fourier/LOO", "E7：bedroom_01 7 天真實快照與 pillow 位置比較", "E8：推薦動作 before/after intervention protocol", "E9：public datasets 僅作 task-aligned benchmark", "Web demo 與 3D 展示是呈現層，不列為量化實驗"]),
-        ("證據鏈與 Claim Boundary", ["Synthetic full-field 支援完整 3D 場比較，但不等同長期真實場", "Real-bedroom snapshot 支援稀疏校正的 held-out 點位檢查，但不是 dense truth", "Public datasets 僅支援相容子任務，不是單房間 8 點拓樸驗證", "Recommendation 目前是反事實排序，仍需 before/after 介入驗證"]),
+        ("證據鏈與驗證範圍", ["Synthetic full-field 支援完整 3D 場比較，但不等同長期真實場", "Real-bedroom snapshot 支援稀疏校正的 held-out 點位檢查，但不是 dense truth", "Public datasets 僅支援相容子任務，不是單房間 8 點拓樸驗證", "Recommendation 目前是反事實排序，仍需 before/after 介入驗證"]),
         ("情境設計與輸入模式", ["8 組 scenario、48 組窗戶矩陣、direct input、timeline"]),
-        ("主要量化結果", ["平均 MAE、IDW/Base/LOO Hybrid 誤差圖", "真實臥室 raw vs corrected pillow MAE", "推薦有效性以 actual comfort-penalty reduction 驗證", "實驗 E1-E7 與 E9 已有數值輸出；E8 僅為介入 protocol"]),
+        ("主要量化結果", ["圖表資料：8 組標準情境、full 3D grid Field MAE、log-scale y 軸", "三種柱狀結果：IDW、Base、LOO Hybrid", "真實臥室 raw vs corrected pillow MAE", "推薦有效性以 actual comfort-penalty reduction 驗證", "實驗 E1-E7 與 E9 已有數值輸出；E8 僅為介入 protocol"]),
         ("真實臥室快照與推薦驗證狀態", ["E7：pillow hold-out 不參與 8 角點 residual fitting，呈現 raw vs corrected MAE", "E8：rank actions 目前是模型反事實排序，需實測介入驗證因果效果"]),
         ("3D 視覺化結果", ["溫度與照度熱區案例"]),
         ("Hybrid Residual 結果", ["default held-out、no-Fourier、LOO robustness checks", "train/test sample count 與 synthetic benchmark 限制", "LOO 結果限標準情境 family", "真實快照作為 sparse calibration 驗證"]),
@@ -2406,6 +2545,9 @@ SPEAKER_NOTE_GLOSSARY: List[Tuple[str, Tuple[str, ...], str]] = [
     ("learning_record_id", ("learning_record_id",), "每一次 learn_impacts start 產生的唯一紀錄編號，用來在 finish 階段把 after observations 接回同一筆事件。"),
     ("before_observations / after_observations", ("before_observations", "after_observations"), "同一批感測器在裝置操作前後的真實讀值，格式通常是 sensor name 對應 temperature、humidity 與 illuminance。"),
     ("learned_device_impacts", ("learned_device_impacts", "metric coefficients"), "由 before/after 差值與設備 influence envelope 解出的裝置影響係數，描述該操作對三因子的方向與大小。"),
+    ("After-before delta Δy", ("Δy", "after-before delta"), "裝置操作後觀測值減去操作前觀測值，用來把實際動作轉成可學習的數值變化。"),
+    ("設計矩陣 X", ("X_{i,k}", "設計矩陣", "X β_m", "Xβ"), "每一列對應一個感測點或樣本，每一欄對應一個裝置 influence envelope，用於 least-squares 估計。"),
+    ("影響係數 β_m", ("β_m", "argmin_{β}", "影響係數"), "描述裝置操作對第 m 個環境因子的方向與大小；m 可為溫度、濕度或照度。"),
     ("Hybrid residual", ("hybrid residual", "F_hybrid", "hybrid"), "在可解釋 base estimator 後面再加一個資料驅動 residual 模型，不直接取代主模型。"),
     ("MCP", ("MCP", "Model Context Protocol"), "Model Context Protocol，是讓 LLM application 以標準化方式連接外部資料與工具的 open protocol；本研究用它封裝數位孿生工具。"),
     ("MCP host/client/server", ("MCP host", "MCP client", "MCP server", "client-server", "server"), "MCP 採 client-server 概念；host/client 是使用工具的 AI 應用端，server 則暴露工具、資源或 prompt。"),
@@ -2430,6 +2572,7 @@ SPEAKER_NOTE_GLOSSARY: List[Tuple[str, Tuple[str, ...], str]] = [
     ("Distance decay", ("距離衰減", "Rⱼ", "R_j"), "距離設備越遠，局部作用越弱的權重函數。"),
     ("Directionality", ("方向性", "Dⱼ", "D_j"), "冷氣出風方向、窗戶日照方向或光源方向造成的非均向影響。"),
     ("Visibility/obstruction", ("可見性", "遮蔽", "阻擋", "Vⱼ", "V_j", "obstruction"), "家具或幾何遮擋造成設備影響變弱的因素。"),
+    ("燈具光束權重", ("Φ_light", "Q_light", "V_light", "光束角", "cosine"), "照度模型中用方向權重、距離衰減與可見性近似燈具直射光，而非完整光線追蹤。"),
     ("IDW", ("IDW",), "Inverse Distance Weighting，反距離加權插值；只使用距離與感測值，不含設備物理先驗。"),
     ("黑盒模型", ("黑盒", "純黑盒"), "主要依資料學習輸入輸出關係、但內部物理意義較不明確的模型。"),
     ("IEQ", ("IEQ",), "Indoor Environmental Quality，室內環境品質，通常涵蓋熱舒適、空氣品質、照明等因素。"),
@@ -2445,9 +2588,10 @@ SPEAKER_NOTE_GLOSSARY: List[Tuple[str, Tuple[str, ...], str]] = [
     ("Real-bedroom snapshot", ("Real-bedroom snapshot", "bedroom_01", "真實臥室", "快照"), "真實臥室中的稀疏量測快照，用於檢查校正對未參與 fitting 點位的改善。"),
     ("Pillow hold-out", ("pillow", "hold-out"), "將 pillow 位置作為未參與校正 fitting 的參考點，用於測試非感測點估計效果。"),
     ("Dense ground truth", ("dense", "dense truth", "dense real-room ground truth", "完整 3D 場真值"), "房間內大量點位的真實環境場資料，是更嚴格但較難取得的驗證基準。"),
+    ("Log-scale", ("log-scale",), "對數刻度；適合把量級差很多的誤差放在同一張圖，但柱高不能用線性比例直接比較。"),
     ("MAE", ("MAE",), "Mean Absolute Error，平均絕對誤差；數值越低代表平均偏差越小。"),
     ("RMSE", ("RMSE",), "Root Mean Squared Error，均方根誤差；比 MAE 更放大尖峰或離群誤差。"),
-    ("Correlation", ("Correlation", "相關係數"), "衡量預測與真值趨勢方向一致性的指標。"),
+    ("Correlation", ("Correlation", "Corr", "cov(ŷ,y)", "相關係數"), "衡量預測與真值趨勢方向一致性的指標。"),
     ("Persistence", ("persistence",), "直接沿用上一時步值作預測的時間序列 baseline，在高慣性短視窗資料中通常很強。"),
     ("Linear regression", ("linear regression", "LR"), "線性回歸 baseline，用線性權重將輸入特徵映射到目標值。"),
     ("Structured prior", ("structured prior",), "模型內建的設備、邊界與物理結構先驗。"),
@@ -2456,6 +2600,8 @@ SPEAKER_NOTE_GLOSSARY: List[Tuple[str, Tuple[str, ...], str]] = [
     ("Zone-level", ("zone-level",), "以建築區域平均值為資料粒度，不含房間內細緻 3D 幾何。"),
     ("Counterfactual simulation", ("counterfactual", "反事實"), "假設某候選動作發生後重新估計結果，用來比較預期改善。"),
     ("Comfort penalty", ("comfort penalty", "Penalty", "舒適度"), "偏離目標溫濕照度時的懲罰值，推薦排序用它衡量改善幅度。"),
+    ("區域平均 q_m(S)", ("q_m", "q_base", "q_a", "sample scope"), "在指定 sample scope 或目標區域 S 內，彙整第 m 個環境因子的平均狀態。"),
+    ("目標值與容許範圍", ("g_m", "δ_m", "容許範圍"), "g_m 是舒適目標，δ_m 是允許偏離範圍；超出範圍才累積 penalty。"),
     ("Before/after intervention", ("before/after", "intervention", "介入驗證"), "實際採取動作前後量測環境變化，用於驗證推薦是否有因果改善效果。"),
     ("ESP32", ("ESP32",), "低成本微控制器平台，可用於後續長期真實感測資料蒐集。"),
     ("CO2", ("CO2", "CO₂"), "二氧化碳濃度，可作為未來室內空氣品質因子。"),
@@ -2509,6 +2655,12 @@ def build_speaker_notes_30min() -> str:
     default_hybrid = submission_summary["default_holdout_hybrid"]
     no_fourier = submission_summary["no_fourier_holdout_hybrid"]
     loo = submission_summary["leave_one_scenario_out"]
+    scenario_count = submission_summary["base_ablation"]["scenario_count"]
+    base_variants = submission_summary["base_ablation"]["variants"]
+    idw_mae = base_variants["idw"]["average_field_mae"]
+    base_mae = base_variants["full_base"]["average_field_mae"]
+    loo_hybrid_mae = loo["average_hybrid_field_mae"]
+    grid_resolution = bedroom_summary["grid_resolution"]
 
     slides: List[Tuple[str, List[str]]] = [
         (
@@ -2645,7 +2797,7 @@ def build_speaker_notes_30min() -> str:
             ],
         ),
         (
-            "證據鏈與 Claim Boundary",
+            "證據鏈與驗證範圍",
             [
                 "Synthetic full-field 支援完整 3D 場誤差比較，因此可以用來比較 base model、IDW、ablation 與 hybrid residual。",
                 "Real-bedroom snapshot 支援真實稀疏校正檢查，尤其是 pillow hold-out 點，但它不是 dense real-room ground truth。",
@@ -2663,9 +2815,13 @@ def build_speaker_notes_30min() -> str:
         (
             "主要量化結果",
             [
-                f"8 組標準情境中，base model 平均 field MAE 為 temperature {avg_mae['temperature']:.4f}、humidity {avg_mae['humidity']:.4f}、illuminance {avg_mae['illuminance']:.4f}。",
-                "圖中比較 IDW、base model 與 leave-one-scenario-out hybrid residual。IDW 因缺少裝置位置、方向與物理先驗，在照度與局部場上特別不利。",
-                f"真實臥室 pillow 點的 raw MAE 為 {metric_triplet(bedroom_aggregate['raw_pillow_mae'])}，校正後 MAE 為 {metric_triplet(bedroom_aggregate['estimated_pillow_mae'])}，顯示稀疏校正在此設定下有明顯改善。",
+                f"這頁上方的柱狀圖是 field_mae_comparison，資料來自 {scenario_count} 組 canonical scenarios 的完整 3D grid 評估。每一個 scenario 都會在整個房間網格上比較估計值與 truth，再把 temperature、humidity、illuminance 各自的 field MAE 平均起來。",
+                "圖表的三個群組分別代表溫度、濕度與照度。Y 軸是 log-scale，原因是照度 MAE 的量級比溫度與濕度大很多；因此這張圖要看柱上數字與相對排序，不能只用柱高做線性比例解讀。",
+                "每個群組內有三根柱。IDW 使用同一批 8 個角落觀測值做反距離插值，只知道距離與感測值；Base 是本研究的可解釋主模型，包含變數專屬 nominal model、裝置與幾何先驗、power calibration 與 trilinear residual correction；LOO Hybrid 是 leave-one-scenario-out 的 residual model 平均結果，用來檢查第二層 residual 是否只對單一切分有效。",
+                f"具體數字上，IDW 的平均 field MAE 是 {metric_triplet(idw_mae)}；Base 是 {metric_triplet(base_mae)}；LOO Hybrid 是 {metric_triplet(loo_hybrid_mae)}。Base 相對 IDW 的降幅約為 temperature {percent_reduction(idw_mae['temperature'], base_mae['temperature']):.1f}%、humidity {percent_reduction(idw_mae['humidity'], base_mae['humidity']):.1f}%、illuminance {percent_reduction(idw_mae['illuminance'], base_mae['illuminance']):.1f}%。",
+                "解讀重點是：IDW 在照度特別差，因為它不知道窗戶日照方向、燈具位置、家具遮蔽或反射；只靠距離很難重建局部光照分布。溫度與濕度也有改善，表示設備狀態、方向性與房間幾何先驗確實提供了純幾何插值沒有的資訊。",
+                f"右下角的真實臥室校正檢查不是同一張柱狀圖的資料，而是 E7 bedroom_01 的 {bedroom_summary['snapshot_count']} 筆真實快照，房間網格解析度為 {grid_resolution['nx']} x {grid_resolution['ny']} x {grid_resolution['nz']}。Pillow 參考點沒有參與 8 角點 residual fitting，所以可當 held-out point 檢查非感測點估計。",
+                f"真實臥室 pillow 點的 raw MAE 為 {metric_triplet(bedroom_aggregate['raw_pillow_mae'])}，校正後 MAE 為 {metric_triplet(bedroom_aggregate['estimated_pillow_mae'])}。相對 raw，校正後降幅約為 temperature {percent_reduction(bedroom_aggregate['raw_pillow_mae']['temperature'], bedroom_aggregate['estimated_pillow_mae']['temperature']):.1f}%、humidity {percent_reduction(bedroom_aggregate['raw_pillow_mae']['humidity'], bedroom_aggregate['estimated_pillow_mae']['humidity']):.1f}%、illuminance {percent_reduction(bedroom_aggregate['raw_pillow_mae']['illuminance'], bedroom_aggregate['estimated_pillow_mae']['illuminance']):.1f}%。這支持稀疏校正在此真實快照設定下有改善，但仍不能宣稱已具備 dense real-room ground truth 驗證。",
             ],
         ),
         (
@@ -2727,19 +2883,35 @@ def build_speaker_notes_30min() -> str:
     ]
 
     for title, left_title, left_lines, right_title, right_lines in FORMULA_WALKTHROUGH:
-        left_text = "；".join(left_lines[:3])
-        right_text = "；".join(right_lines[:3])
-        slides.append(
-            (
-                title,
-                [
-                    f"這頁說明「{left_title}」。可以先從公式或定義開始，指出它在整體模型中負責哪一部分。",
-                    f"左側重點包含：{left_text}。",
-                    f"接著說明「{right_title}」。這一部分通常用來補上模型設計理由、限制或可主張範圍。",
-                    f"右側重點包含：{right_text}。",
-                ],
+        example = FORMULA_NUMERIC_EXAMPLES.get(title)
+        if title == "公式說明 22：平滑 residual 的誤差界":
+            paragraphs = [
+                "這頁可以用很白話的方式說：我們只有 8 個角落點有真實 residual，房間中間很多點沒有直接量到，所以 Cᵥ 是用 8 個角點補出來的 residual。公式左邊 |Rᵥ-Cᵥ| 就是在問：某個沒量到的點，這個補出來的 residual 最多可能和真實 residual 差多少。",
+                "M_xx、M_yy、M_zz 的名字來自二階偏導數記號。M_xx 不是 x 乘 x，而是對 x 方向微分兩次後的最大絕對值上界，也就是 M_xx ≥ max|∂²Rᵥ/∂x²|。M_yy 和 M_zz 同理，分別代表 y 與 z 方向 residual 的最大彎曲程度。",
+                "右邊分成三個方向：W²M_xx/8 是 x 方向造成的最壞誤差，L²M_yy/8 是 y 方向，H²M_zz/8 是 z 方向。W、L、H 越大，代表角點之間隔得越遠，中間靠補間猜的距離越長；M_xx、M_yy、M_zz 越大，代表 residual 在該方向彎得越厲害，也越難用直線補準。",
+                "原因可以用「用直線補曲線」來理解。線性補間等於拿兩端點連成一條直線去估中間值；如果 residual 是直線，即使斜率很大，二階導數仍然是 0，線性補間可以補對；真正造成補間誤差的是曲線彎曲，也就是二階導數。這就是為什麼這裡用 M_xx、M_yy、M_zz，而不是用一階斜率。",
+                "三線性補間只是把這件事放到 3D 房間裡：先沿 x 方向補，再沿 y 方向補，再沿 z 方向補。因此三個方向各自有一個可能誤差，合起來就是 W²M_xx/8 + L²M_yy/8 + H²M_zz/8。這也說明為什麼主模型要先把冷氣、窗戶、燈具等主要效果吃掉；剩下的 residual 越平滑，這個上界才越有意義。若 residual 是局部尖峰、光斑或遮蔽邊界，曲率會變大，單靠 8 點就不夠，需要更多感測點或 hybrid residual 補強。",
+            ]
+            if example:
+                paragraphs.append(f"數字範例：{example[1]}")
+            slides.append((title, paragraphs))
+        else:
+            left_text = "；".join(left_lines[:3])
+            right_text = "；".join(right_lines[:3])
+            paragraphs = [
+                f"這頁說明「{left_title}」。可以先從公式或定義開始，指出它在整體模型中負責哪一部分。",
+                f"左側重點包含：{left_text}。",
+                f"接著說明「{right_title}」。這一部分通常用來補上模型設計理由、限制或可主張範圍。",
+                f"右側重點包含：{right_text}。",
+            ]
+            if example:
+                paragraphs.append(f"數字範例：{example[1]}")
+            slides.append(
+                (
+                    title,
+                    paragraphs,
+                )
             )
-        )
 
     lines = [
         "# 30 分鐘論文簡報逐頁講稿",

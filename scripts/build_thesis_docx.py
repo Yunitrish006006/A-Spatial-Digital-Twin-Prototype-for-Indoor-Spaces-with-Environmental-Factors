@@ -605,7 +605,7 @@ def build_blocks() -> List[Block]:
             ],
         ),
         heading("3.3.4 照度場模型", 3),
-        paragraph("照度場的 nominal model 採用光源、日照、遮蔽與反射近似，不使用溫濕度的全室混合項："),
+        paragraph("照度場的 nominal model 採用燈具光束、日照、遮蔽與反射近似，不使用溫濕度的全室混合項："),
         math(
             r"N_L(\mathbf{p},t)=\max\{0,L_0+L_{\mathrm{win}}^{\mathrm{dir}}(\mathbf{p},t)+L_{\mathrm{light}}^{\mathrm{dir}}(\mathbf{p},t)+L_{\mathrm{win}}^{\mathrm{amb}}(\mathbf{p},t)+I^{\mathrm{refl}}(\mathbf{p},t)\}"
         ),
