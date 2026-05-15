@@ -24,7 +24,8 @@
 - 公開資料集只比較相容子任務
 
 ## Slide 7: 整體系統架構
-- 人機互動層與 AI 工具呼叫層共用服務編排入口
+- top-down tree 呈現情境觀測、估測學習、服務決策三個責任域
+- scripts、Web、MCP/Gemma 共用同一套 estimator path
 
 ## Slide 8: 主要執行資料流
 - runtime request 到 dashboard / MCP response 的流程

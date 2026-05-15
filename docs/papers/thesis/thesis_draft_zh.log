@@ -668,7 +668,7 @@ File: assets/fig_3_3_room_topology.png Graphic file (type bmp)
 File: assets/fig_3_4_sensor_calibration_learning.png Graphic file (type bmp)
 <assets/fig_3_4_sensor_calibration_learning.png>
 
-[21] [22]
+[21]
 
 Package fontspec Warning: Font "Heiti TC" does not contain requested Script
 (fontspec)                "CJK".
@@ -694,18 +694,18 @@ Package fontspec Info: Font family 'HeitiTC(0)' created for font 'Heiti TC'
 (fontspec)             TC/BI/OT:language=dflt;"
 (fontspec)             - 'bold italic small caps'  (b/scit) with NFSS spec.: 
 
-[23] [24]
+[22] [23] [24]
 File: assets/fig_3_5_training_inference_flow.png Graphic file (type bmp)
 <assets/fig_3_5_training_inference_flow.png>
- [25] [26] [27]
+ [25]
 
 LaTeX Warning: Float too large for page by 2.4927pt on input line 1465.
 
-[28] [29] [30]
+[26] [27] [28] [29]
 
 LaTeX Warning: Float too large for page by 271.49268pt on input line 1650.
 
-[31] [32] [33] [34
+[30] [31] [32] [33] [34
 
 ] [35] [36] [37] [38]
 File: assets/fig_5_1_validation_flow.png Graphic file (type bmp)
@@ -719,8 +719,8 @@ File: assets/fig_5_3_ac_only_temp_3d.png Graphic file (type bmp)
 <assets/fig_5_3_ac_only_temp_3d.png>
 File: assets/fig_5_4_light_only_illum_3d.png Graphic file (type bmp)
 <assets/fig_5_4_light_only_illum_3d.png>
- [41] [42] [43] [44] [45]
-[46]
+ [41] [42] [43] [44]
+[45] [46]
 File: assets/field_mae_comparison.png Graphic file (type bmp)
 <assets/field_mae_comparison.png>
  [47] [48] [49]
@@ -738,8 +738,8 @@ File: assets/fig_5_10_light_only_illum_3d.png Graphic file (type bmp)
 <assets/fig_5_10_light_only_illum_3d.png>
  [55] [56] [57] [58] [59
 
-] [60]
-[61] [62
+]
+[60] [61] [62
 
 ] [63] [64]
 
@@ -751,4 +751,4 @@ LaTeX Warning: Float too large for page by 181.89258pt on input line 2529.
 Package rerunfilecheck Info: File `thesis_draft_zh.out' has not changed.
 (rerunfilecheck)             Checksum: 01CE5C810586E46DAEB18117EB74544E;1783.
  )
-Output written on thesis_draft_zh.xdv (75 pages, 1105112 bytes).
+Output written on thesis_draft_zh.xdv (75 pages, 1107292 bytes).

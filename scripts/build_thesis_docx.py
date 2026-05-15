@@ -237,7 +237,7 @@ def build_blocks() -> List[Block]:
         paragraph("表 5-11 CU-BEMS 任務族群優劣勢拆解…… 18"),
         page_break(),
         heading("圖目錄", 1),
-        paragraph("圖 3-1 系統整體分層架構…… 7"),
+        paragraph("圖 3-1 系統整體抽象樹狀架構…… 7"),
         paragraph("圖 3-2 主要執行資料流…… 7"),
         paragraph("圖 3-3 房間感測器與目標區域配置…… 8"),
         paragraph("圖 3-4 感測器校正與影響學習流程…… 9"),
@@ -392,11 +392,11 @@ def build_blocks() -> List[Block]:
         heading("第三章 系統架構與數學模型", 1),
         heading("3.1 系統架構", 2),
         paragraph(
-            "本研究系統由五個主要模組組成：房間與設備設定、三因子影響場模型、角落感測器校正、非連網裝置影響學習、以及控制動作排序與 MCP 工具介面。整體流程為：輸入房間幾何、設備位置與外部環境條件後，模型先建立背景場，再加入設備影響函數，接著使用 8 顆角落感測器觀測值校準 active device power scale 並建立 trilinear 校正場，最後輸出任意座標或目標區域的三因子估計；只有在已有 point/cluster sample 與完整三因子目標時，才進一步輸出候選控制動作排序。"
+            "本研究系統由五個主要模組組成：房間與設備設定、三因子影響場模型、角落感測器校正、非連網裝置影響學習、以及控制動作排序與 MCP 工具介面。為了避免把互動入口誤認為模型本體，圖 3-1 先以 top-down 樹狀圖整理系統責任邊界：情境與觀測層提供房間、感測器、外部邊界與時間狀態；估測與學習層負責三因子場模型、校正與殘差學習；服務與決策層則把同一套 estimator path 暴露給腳本、Web demo 與 MCP/Gemma bridge。整體流程為：輸入房間幾何、設備位置與外部環境條件後，模型先建立背景場，再加入設備影響函數，接著使用 8 顆角落感測器觀測值校準 active device power scale 並建立 trilinear 校正場，最後輸出任意座標或目標區域的三因子估計；只有在已有 point/cluster sample 與完整三因子目標時，才進一步輸出候選控制動作排序。"
         ),
         image(
             "outputs/figures/architecture/整體分層架構.svg",
-            "圖 3-1 系統整體分層架構。此圖說明人機互動或 AI 工具呼叫如何經由服務編排層進入環境數位孿生核心、校正與影響學習層，以及 optional residual neural layer，最後輸出空間估測與控制建議。",
+            "圖 3-1 系統整體抽象樹狀架構。此圖以 top-down tree 呈現情境與觀測、估測與學習、服務與決策三個責任域，並標示 MCP/Gemma bridge 屬於工具介面層而非主模型核心。",
             asset_name="fig_3_1_overall_architecture",
         ),
         image(

@@ -180,28 +180,34 @@
 
 ## Slide 7: 整體系統架構
 
-這頁說明系統不是單一模型函式，而是一個分層架構。最上層是使用者介面與 AI 工具呼叫，中間是服務編排，底層才是數位孿生核心、校正學習與視覺化輸出。
+這頁說明系統不是單一模型函式，而是一棵 top-down abstraction tree。最上層是單房間三因子空間數位孿生系統，往下分成情境與觀測、估測與學習、服務與決策三個責任域。
 
-Web demo 和 MCP tools 都是入口層。Web demo 讓使用者在畫面上設定房間、設備與查詢點；MCP tools 則讓 AI client 用結構化 arguments 呼叫 initialize、sample、learn 或 rank actions。
+情境與觀測層負責把 room schema、zones、furniture blockers、8 點角落感測、外部邊界與時間整理成系統可用的狀態。這一層界定資料從哪裡來，也界定本研究的 sparse IoT sensing 前提。
 
-服務編排層負責把不同入口的資料整理成同一種內部格式，例如 scenario、device_specs、baseline、outdoor boundary 和 estimator configuration。這一層可以避免 Web 顯示和 MCP 查詢走不同邏輯。
+估測與學習層才是主方法核心，包含 T/H/L nominal field model、設備影響函數、active-device power calibration、trilinear correction、非連網裝置影響學習與 optional hybrid residual。
 
-核心模型層負責真正的場估計、校正、裝置影響學習與推薦排序。也就是說，介面不直接決定結果，結果都來自同一套 estimator 和 correction pipeline。
+服務與決策層把同一套 estimator path 暴露給 reproduction scripts、Web demo、MCP tools 與 Gemma bridge。這些介面可以使用模型，但不取代模型本身。
 
-這樣設計的好處是可替換性。未來如果要換更好的 residual model、新增 CO2 或 PM2.5，或加入新的設備類型，不需要重寫 Web 或 MCP，只要在核心模型與服務編排補上對應欄位。
+這樣畫成樹狀圖的好處是先釐清責任邊界，再到下一頁用 runtime flow 說明執行順序。未來如果要新增 CO2、PM2.5 或新設備類型，也能知道要先補輸入 schema、模型層，還是服務輸出層。
 
 ### 名詞註釋
+- **單房間**：本研究限定在單一矩形房間，不處理多房間或整棟建築的氣流與能量交換。
+- **非連網家電/裝置**：沒有穩定 API 或遙測資料可讀取狀態的冷氣、窗戶、照明等設備。
+- **稀疏感測**：感測點數量少於完整空間場需求，需靠模型與校正推估未量測位置。
+- **角落感測器**：配置在房間地面四角與天花板四角的 8 個感測點，用於建立 sparse observation 與 residual correction。
 - **空間數位孿生**：以房間幾何、裝置、感測器與模型維持一個可查詢的室內環境狀態估計。
+- **三因子**：本研究同時估計溫度、相對濕度與照度三種室內環境量。
 - **空間場**：不是單一平均值，而是在房間 3D 座標中任意位置可查詢的環境量分布。
-- **Baseline**：泛指比較或模型參考基準；在模型脈絡中常指未加入設備作用前的室內溫濕照度基準。
+- **Zone**：房間內的目標區域，用於彙整多個點的平均狀態或舒適度評估。
 - **外部邊界**：室外溫度、濕度、日照等會透過窗戶或邊界條件影響室內的輸入。
 - **Residual**：觀測或 truth 與模型預測之間的差，用於校正或第二層學習。
-- **device_specs**：系統把 device_state 合併進目前註冊設備後形成的完整設備清單，是後續 sample、learning 與 ranking 使用的 runtime 裝置狀態。
+- **Trilinear correction**：用 X/Y/Z 三個座標方向的一階補間，由 8 個角點 residual 推估室內 residual 場。
+- **Power calibration**：依觀測差異調整設備影響強度，避免裝置作用尺度只依預設值決定。
+- **Hybrid residual**：在可解釋 base estimator 後面再加一個資料驅動 residual 模型，不直接取代主模型。
 - **MCP**：Model Context Protocol，是讓 LLM application 以標準化方式連接外部資料與工具的 open protocol；本研究用它封裝數位孿生工具。
 - **MCP Tools**：MCP server 可暴露可執行工具；client 可列出工具並以結構化 arguments 呼叫。
 - **Web demo**：人機互動展示介面，用於查看 3D 場、時間軸、設備狀態與查詢結果。
-- **Tool calling**：語言模型不是直接計算答案，而是呼叫外部工具取得模型查詢或操作結果。
-- **服務編排**：把 scenario、模型估計、校正、推薦與輸出流程串接起來的中介層。
+- **Gemma/Ollama bridge**：讓本地語言模型透過工具呼叫流程存取模型服務的橋接層。
 - **Estimator**：實際負責產生場估計的模型物件，可切換 base、corrected 或 hybrid 版本。
 - **Scenario**：一組房間、設備、外部邊界與時間設定，用於模擬或驗證。
 - **CO2**：二氧化碳濃度，可作為未來室內空氣品質因子。

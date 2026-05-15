@@ -1261,10 +1261,10 @@ def build_presentation() -> Presentation:
         5.2,
         5.0,
         [
-            "入口分成使用者互動層與 AI 工具呼叫層",
-            "所有請求都先進入服務編排層",
-            "後端主體為環境數位孿生核心與校正學習層",
-            "hybrid residual 只作為 optional 第二層修正器",
+            "top-down tree 先區分三個責任域",
+            "情境與觀測層整理房間、8 點感測與外部邊界",
+            "估測與學習層負責 T/H/L field model、校正與 residual",
+            "服務與決策層才包含 scripts、Web、MCP/Gemma 與 action ranking",
         ],
         level0_size=17,
     )
@@ -1813,10 +1813,10 @@ def build_presentation_30min() -> Presentation:
         5.0,
         5.2,
         [
-            "入口區分為人機互動層與 AI 工具呼叫層",
-            "所有請求經服務編排後進入環境數位孿生核心",
-            "校正與影響學習層負責修正稀疏感測誤差",
-            "輸出為空間場估測、區域估測、動作排序與 3D 視覺化",
+            "圖 3-1 以 top-down tree 呈現系統責任邊界",
+            "情境與觀測層提供 room schema、8 點感測、外部邊界與時間",
+            "估測與學習層負責三因子場模型、校正、影響學習與 hybrid residual",
+            "服務與決策層暴露 scripts、Web、MCP/Gemma 與 point/zone/action 輸出",
         ],
         level0_size=17,
     )
@@ -2439,7 +2439,7 @@ def build_outline() -> str:
     slides = [
         ("封面", ["題目、姓名、雙指導教授、研究定位"]),
         ("研究問題與動機", ["非連網裝置無法直接回報狀態", "有限感測器下仍需估計全室環境", "早期純插值與 local-only 模型都不合理"]),
-        ("系統架構", ["入口分成使用者互動層與 AI 工具呼叫層", "服務編排、主模型與 residual 修正的分工"]),
+        ("系統架構", ["top-down tree 區分情境觀測、估測學習、服務決策三個責任域", "MCP/Gemma bridge 屬於工具介面層，不是主模型核心"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器", "三個主要區域與三個核心裝置"]),
         ("數學模型", ["變數專屬 nominal model", "trilinear correction", "裝置與家具模組化", "溫度、濕度、照度分別使用不同公式"]),
         ("模型學習、推論與推薦資料流", ["學習端：raw records → 對齊 → scenario state → labels → coefficients/checkpoint", "推論端：runtime input → nominal field → correction / hybrid → point or zone prediction", "推薦端：sample / cluster + T/H/L 目標 → 反事實重跑 → penalty reduction 排序"]),
@@ -2478,7 +2478,7 @@ def build_outline_30min() -> str:
         ("研究背景與問題", ["非連網裝置造成空間影響但無法直接讀取", "有限感測器仍需估全室環境"]),
         ("研究問題與貢獻", ["RQ1-RQ4、主要技術貢獻、task-aligned benchmark 策略"]),
         ("文獻定位、研究缺口與比較原則", ["IEQ 實驗、場重建、hybrid model、digital twin 平台之差異", "公開資料集只比較相容子任務"]),
-        ("整體系統架構", ["人機互動層與 AI 工具呼叫層共用服務編排入口"]),
+        ("整體系統架構", ["top-down tree 呈現情境觀測、估測學習、服務決策三個責任域", "scripts、Web、MCP/Gemma 共用同一套 estimator path"]),
         ("主要執行資料流", ["runtime request 到 dashboard / MCP response 的流程"]),
         ("房間拓樸、感測器與目標區域", ["8 顆角落感測器與三個區域"]),
         ("模組化裝置與家具阻擋", ["裝置模組化、家具自適應阻擋"]),
@@ -2726,11 +2726,11 @@ def build_speaker_notes_30min() -> str:
         (
             "整體系統架構",
             [
-                "這頁說明系統不是單一模型函式，而是一個分層架構。最上層是使用者介面與 AI 工具呼叫，中間是服務編排，底層才是數位孿生核心、校正學習與視覺化輸出。",
-                "Web demo 和 MCP tools 都是入口層。Web demo 讓使用者在畫面上設定房間、設備與查詢點；MCP tools 則讓 AI client 用結構化 arguments 呼叫 initialize、sample、learn 或 rank actions。",
-                "服務編排層負責把不同入口的資料整理成同一種內部格式，例如 scenario、device_specs、baseline、outdoor boundary 和 estimator configuration。這一層可以避免 Web 顯示和 MCP 查詢走不同邏輯。",
-                "核心模型層負責真正的場估計、校正、裝置影響學習與推薦排序。也就是說，介面不直接決定結果，結果都來自同一套 estimator 和 correction pipeline。",
-                "這樣設計的好處是可替換性。未來如果要換更好的 residual model、新增 CO2 或 PM2.5，或加入新的設備類型，不需要重寫 Web 或 MCP，只要在核心模型與服務編排補上對應欄位。",
+                "這頁說明系統不是單一模型函式，而是一棵 top-down abstraction tree。最上層是單房間三因子空間數位孿生系統，往下分成情境與觀測、估測與學習、服務與決策三個責任域。",
+                "情境與觀測層負責把 room schema、zones、furniture blockers、8 點角落感測、外部邊界與時間整理成系統可用的狀態。這一層界定資料從哪裡來，也界定本研究的 sparse IoT sensing 前提。",
+                "估測與學習層才是主方法核心，包含 T/H/L nominal field model、設備影響函數、active-device power calibration、trilinear correction、非連網裝置影響學習與 optional hybrid residual。",
+                "服務與決策層把同一套 estimator path 暴露給 reproduction scripts、Web demo、MCP tools 與 Gemma bridge。這些介面可以使用模型，但不取代模型本身。",
+                "這樣畫成樹狀圖的好處是先釐清責任邊界，再到下一頁用 runtime flow 說明執行順序。未來如果要新增 CO2、PM2.5 或新設備類型，也能知道要先補輸入 schema、模型層，還是服務輸出層。",
             ],
         ),
         (

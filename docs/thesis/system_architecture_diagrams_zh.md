@@ -2,28 +2,27 @@
 
 本文件將目前單房間三因子空間數位孿生原型的實作架構整理成 GitHub 可直接顯示的 Mermaid 圖表，方便用於 README、論文方法章、口試簡報與系統說明。
 
-正式論文與簡報輸出的 SVG 由 `scripts/build_architecture_diagrams.py` 產生。該腳本目前使用統一的 16:9 local SVG renderer，讓圖 3-1、圖 3-2、圖 3-3、圖 3-4、圖 3-5 與圖 5-1 保持相同字級、色彩、框線與箭頭風格；下方 Mermaid 區塊保留作為語意草稿與 GitHub 預覽。
+正式論文與簡報輸出的 SVG 由 `scripts/build_architecture_diagrams.py` 產生。該腳本目前使用統一的 16:9 local SVG renderer，讓圖 3-1、圖 3-2、圖 3-3、圖 3-4、圖 3-5 與圖 5-1 保持相同字級、色彩、框線與箭頭風格；其中圖 3-1 由 Python top-down tree renderer 產生，用於整理整個系統的抽象責任邊界。下方 Mermaid 區塊保留作為語意草稿與 GitHub 預覽。
 
 ## 1. 整體分層架構
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28}} }%%
 flowchart TB
-    U1["Human interaction layer<br/>Web interface"]
-    U2["AI tool-access layer<br/>MCP-compatible clients + LLM bridge"]
-    S1["Service orchestration layer<br/>scenario assembly + parameter management"]
-    P0["Environmental digital twin core<br/>bulk + local field estimation + appliance influence modeling"]
-    C1["Calibration and impact-learning layer<br/>power calibration + trilinear correction + least-squares learning"]
-    N1["Optional residual neural layer<br/>hybrid residual correction"]
-    O1["System outputs<br/>spatial field estimate + zone estimate + action ranking + 3D visualization"]
+    ROOT["單房間三因子空間數位孿生系統<br/>Sparse IoT sensing + non-networked appliances"]
 
-    U1 --> S1
-    U2 --> S1
-    S1 --> P0
-    P0 --> C1
-    C1 --> N1
-    C1 --> O1
-    N1 --> O1
+    ROOT --> OBS["情境與觀測層<br/>room state enters one shared path"]
+    ROOT --> MODEL["估測與學習層<br/>interpretable model first"]
+    ROOT --> SERVICE["服務與決策層<br/>same estimator, multiple access surfaces"]
+
+    OBS --> ROOM["Room schema<br/>geometry / zones / furniture blockers"]
+    OBS --> SENSOR["Sparse IoT evidence<br/>8 corner sensors / outdoor + time"]
+
+    MODEL --> FIELD["T/H/L field model<br/>bulk + local field / device influence"]
+    MODEL --> LEARN["Calibration + learning<br/>power scale / trilinear / impact + hybrid residual"]
+
+    SERVICE --> TOOLS["Tool interfaces<br/>scripts / Web / MCP + Gemma bridge"]
+    SERVICE --> OUT["Decision outputs<br/>point / zone / 3D / action ranking"]
 ```
 
 ## 2. 主要執行資料流

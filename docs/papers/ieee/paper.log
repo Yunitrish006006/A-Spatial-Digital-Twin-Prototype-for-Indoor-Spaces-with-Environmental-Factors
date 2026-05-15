@@ -373,14 +373,11 @@ Underfull \hbox (badness 10000) in paragraph at lines 121--122
 \TU/pcr/m/n/10 run_bedroom_weekly_simulation.py, and
  []
 
-[4]
 File: assets/field_mae_comparison.png Graphic file (type bmp)
 <assets/field_mae_comparison.png>
+[4]
 File: ../thesis/assets/fig_5_7_light_only_illum_3d.png Graphic file (type bmp)
 <../thesis/assets/fig_5_7_light_only_illum_3d.png>
-
-Underfull \vbox (badness 1248) has occurred while \output is active []
-
  [5]
 Underfull \hbox (badness 1424) in paragraph at lines 220--221
 []\TU/pcr/m/n/10 For external comparison, we evaluate task-aligned
@@ -438,4 +435,4 @@ Before submitting the final camera ready copy, remember to:
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  )
-Output written on paper.xdv (7 pages, 305644 bytes).
+Output written on paper.xdv (7 pages, 305704 bytes).

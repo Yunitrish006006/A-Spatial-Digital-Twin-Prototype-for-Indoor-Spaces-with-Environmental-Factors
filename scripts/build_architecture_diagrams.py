@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import re
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 
@@ -39,6 +42,24 @@ STYLE = """
 """
 
 
+@dataclass(frozen=True)
+class TreeNode:
+    title: str
+    lines: tuple[str, ...] = ()
+    css: str = "blue"
+    children: tuple["TreeNode", ...] = ()
+
+
+@dataclass(frozen=True)
+class PositionedTreeNode:
+    node: TreeNode
+    depth: int
+    center_x: float
+    y: float
+    width: float
+    height: float
+
+
 def slugify(text: str) -> str:
     normalized = re.sub(r"^\d+\.\s*", "", text.strip())
     normalized = normalized.lower()
@@ -67,6 +88,82 @@ def box(x: float, y: float, w: float, h: float, css: str, title: str, lines=()) 
     if lines:
         content.append(text_lines(x + w / 2, y + 54, lines, "small", step=19))
     return "\n".join(content)
+
+
+def tree_node_box(position: PositionedTreeNode) -> str:
+    x = position.center_x - position.width / 2
+    content = [
+        f'<rect x="{x}" y="{position.y}" width="{position.width}" height="{position.height}" class="{position.node.css}"/>'
+    ]
+    content.append(text_lines(position.center_x, position.y + 32, position.node.title, "label"))
+    if position.node.lines:
+        content.append(text_lines(position.center_x, position.y + 58, position.node.lines, "small", step=19))
+    return "\n".join(content)
+
+
+def tree_leaf_count(node: TreeNode) -> int:
+    if not node.children:
+        return 1
+    return sum(tree_leaf_count(child) for child in node.children)
+
+
+def positioned_tree_nodes(
+    root: TreeNode,
+    left: float = 135,
+    right: float = 1465,
+    top: float = 128,
+    level_gap: float = 225,
+) -> list[PositionedTreeNode]:
+    width_by_depth = {0: 560, 1: 350, 2: 205, 3: 170}
+    height_by_depth = {0: 94, 1: 106, 2: 92, 3: 84}
+    leaf_slots = tree_leaf_count(root)
+    leaf_step = (right - left) / max(leaf_slots, 1)
+    positions: list[PositionedTreeNode] = []
+    leaf_index = 0
+
+    def place(node: TreeNode, depth: int) -> float:
+        nonlocal leaf_index
+        if node.children:
+            child_centers = [place(child, depth + 1) for child in node.children]
+            center_x = sum(child_centers) / len(child_centers)
+        else:
+            center_x = left + leaf_step * (leaf_index + 0.5)
+            leaf_index += 1
+        positions.append(
+            PositionedTreeNode(
+                node=node,
+                depth=depth,
+                center_x=center_x,
+                y=top + depth * level_gap,
+                width=width_by_depth.get(depth, width_by_depth[max(width_by_depth)]),
+                height=height_by_depth.get(depth, height_by_depth[max(height_by_depth)]),
+            )
+        )
+        return center_x
+
+    place(root, 0)
+    return positions
+
+
+def tree_links(positions: list[PositionedTreeNode]) -> str:
+    by_node = {id(position.node): position for position in positions}
+    paths: list[str] = []
+    for parent in positions:
+        for child_node in parent.node.children:
+            child = by_node[id(child_node)]
+            x1 = parent.center_x
+            y1 = parent.y + parent.height
+            x2 = child.center_x
+            y2 = child.y
+            mid_y = y1 + (y2 - y1) * 0.48
+            paths.append(f'<path d="M{x1} {y1} L{x1} {mid_y} L{x2} {mid_y} L{x2} {y2}" class="arrow"/>')
+    return "\n".join(paths)
+
+
+def render_tree(root: TreeNode) -> str:
+    positions = positioned_tree_nodes(root)
+    ordered_nodes = sorted(positions, key=lambda item: (item.depth, item.center_x))
+    return "\n".join([tree_links(positions), *(tree_node_box(position) for position in ordered_nodes)])
 
 
 def panel(x: float, y: float, w: float, h: float, title: str = "") -> str:
@@ -107,31 +204,63 @@ def page(title: str, subtitle: str, body: str) -> str:
 """
 
 
+def system_abstraction_tree() -> TreeNode:
+    return TreeNode(
+        "單房間三因子空間數位孿生系統",
+        ("Sparse IoT sensing + non-networked appliances", "indoor spatial intelligence and decision support"),
+        "green",
+        (
+            TreeNode(
+                "情境與觀測層",
+                ("room state enters one shared path",),
+                "blue",
+                (
+                    TreeNode("Room schema", ("geometry / zones", "furniture blockers"), "soft"),
+                    TreeNode("Sparse IoT evidence", ("8 corner sensors", "outdoor + time"), "soft"),
+                ),
+            ),
+            TreeNode(
+                "估測與學習層",
+                ("interpretable model first",),
+                "orange",
+                (
+                    TreeNode("T/H/L field model", ("bulk + local field", "device influence"), "soft"),
+                    TreeNode("Calibration + learning", ("power scale / trilinear", "impact + hybrid residual"), "soft"),
+                ),
+            ),
+            TreeNode(
+                "服務與決策層",
+                ("same estimator, multiple access surfaces",),
+                "yellow",
+                (
+                    TreeNode("Tool interfaces", ("scripts / Web", "MCP + Gemma bridge"), "soft"),
+                    TreeNode("Decision outputs", ("point / zone / 3D", "action ranking"), "soft"),
+                ),
+            ),
+        ),
+    )
+
+
 def svg_overall_architecture() -> str:
     body = "\n".join(
         [
-            panel(86, 115, 1428, 715, "從互動介面到估測與推薦輸出"),
-            box(145, 185, 350, 82, "green", "Human interaction", ["web demo / dashboard"]),
-            box(555, 185, 350, 82, "green", "AI tool access", ["MCP clients / Gemma bridge"]),
-            box(965, 185, 350, 82, "green", "Scripted experiments", ["reproduction and validation"]),
-            box(395, 330, 810, 84, "blue", "Service orchestration layer", ["scenario assembly, overrides, parameter management"]),
-            box(395, 470, 810, 84, "blue", "Environmental digital twin core", ["bulk + local field estimation, appliance influence modeling"]),
-            box(170, 625, 500, 84, "orange", "Calibration and impact learning", ["power calibration, trilinear correction, least-squares learning"]),
-            box(760, 625, 500, 84, "yellow", "Optional residual neural layer", ["hybrid residual correction"]),
-            box(455, 755, 690, 64, "green", "System outputs", ["spatial field, point sample, zone estimate, action ranking"]),
-            arrow(320, 267, 575, 330),
-            arrow(730, 267, 760, 330),
-            arrow(1140, 267, 1025, 330),
-            arrow(800, 414, 800, 470),
-            arrow(695, 554, 505, 625),
-            arrow(905, 554, 1010, 625),
-            arrow(520, 709, 665, 755),
-            arrow(1010, 709, 935, 755),
+            panel(66, 112, 1468, 710, "Top-down abstraction tree: responsibilities before execution order"),
+            render_tree(system_abstraction_tree()),
+            text_lines(
+                800,
+                765,
+                [
+                    "圖 3-2 再描述一次 runtime request 的執行路徑；此圖只用樹狀結構整理系統責任邊界。",
+                    "MCP / Gemma bridge 是服務與決策層的工具介面，不是主模型的新穎性核心。",
+                ],
+                "subtitle",
+                step=24,
+            ),
         ]
     )
     return page(
-        "系統整體分層架構",
-        "MCP 與 Web 只是入口；核心估測、校正與學習共用同一個 service path",
+        "系統整體抽象樹狀架構",
+        "由情境觀測、估測學習、服務決策三個責任域構成；所有入口共用同一個 estimator path",
         body,
     )
 
