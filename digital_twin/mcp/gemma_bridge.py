@@ -6,7 +6,8 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from digital_twin.core.service import list_scenario_metadata, list_window_scenario_metadata
-from digital_twin.mcp.mcp_server import LocalMCPServer, TOOLS as MCP_TOOLS
+from digital_twin.agent.tool_runtime import AgentToolRuntime
+from digital_twin.mcp.mcp_server import TOOLS as MCP_TOOLS
 
 
 DEFAULT_MODEL = "gemma4:26b"
@@ -17,7 +18,7 @@ AC_MODE_OPTIONS = {"cool", "dry", "heat", "fan"}
 AC_SWING_OPTIONS = {"fixed", "swing"}
 AC_FAN_SPEED_OPTIONS = {"quiet", "low", "medium", "mid", "high", "auto", "turbo"}
 MCP_TOOL_NAMES = {tool["name"] for tool in MCP_TOOLS}
-_BRIDGE_SERVER = LocalMCPServer()
+_RUNTIME = AgentToolRuntime()
 
 
 ToolFunction = Callable[[Dict[str, Any]], Dict[str, Any]]
@@ -92,19 +93,7 @@ def execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _execute_mcp_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-    response = _BRIDGE_SERVER.handle_message(
-        {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": tool_name, "arguments": arguments},
-        }
-    )
-    if response is None:
-        return {}
-    if "error" in response:
-        raise ValueError(response["error"]["message"])
-    return json.loads(response["result"]["content"][0]["text"])
+    return _RUNTIME.call_tool(tool_name, arguments)
 
 
 def available_tools() -> Dict[str, ToolFunction]:
